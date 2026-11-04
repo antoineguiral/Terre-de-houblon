@@ -10,6 +10,9 @@ export const CONFIG = {
   origins: list(process.env.ALLOWED_ORIGINS, ['http://localhost:8642', 'http://127.0.0.1:8642']),
   // Adresse publique du jeu, pour les liens envoyés (reprise de place, invitation)
   publicUrl: process.env.PUBLIC_URL || 'http://localhost:8642/',
+  // Notifications e-mail (différé) : clé API Brevo dédiée au jeu, expéditeur d'un domaine authentifié
+  brevoKey: process.env.BREVO_API_KEY || '',
+  mailFrom: process.env.MAIL_FROM || 'jeu@leperelamer.fr',
   // Délais par défaut et bornes (secondes)
   delays: {
     direct: { def: 90, min: 30, max: 600 },

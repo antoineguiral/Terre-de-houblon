@@ -59,8 +59,8 @@ async function step(page, c) {
   if ((await bob.inputValue('#jCode')) !== code) throw new Error('code non pré-rempli');
   await bob.fill('#jNom', 'Brasserie Alice');
   await bob.click('[data-h="rejoindre"]');
-  await bob.waitForSelector('.err');
-  console.log('nom en double :', await bob.locator('.err').first().textContent());
+  await bob.waitForFunction(() => document.querySelector('#jErr').textContent);
+  console.log('nom en double :', await bob.locator('#jErr').textContent());
   await bob.fill('#jNom', 'Chez Bob');
   await bob.click('[data-h="rejoindre"]');
   await bob.waitForSelector('.bigcode');

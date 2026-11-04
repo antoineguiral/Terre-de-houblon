@@ -8,7 +8,7 @@ import { createUi } from './rendu.js';
 import { startSolo } from './solo.js';
 import { connexion } from './reseau.js';
 import { SERVEUR, PAGE } from './config.js';
-import { renderAccueil, renderSalle, delaiOptions, duree, esc } from './accueil.js';
+import { renderAccueil, renderSalle, delaiOptions, duree, esc, blocEmail } from './accueil.js';
 
 const $ = (s) => document.querySelector(s);
 const store = {
@@ -83,6 +83,13 @@ function renderReseau() {
     return;
   }
   show('jeu');
+  // Carte « Prévenir par e-mail » (différé) : redessinée seulement si l'adresse change, pour ne pas effacer la saisie
+  const notif = $('#notif');
+  notif.hidden = m.mode !== 'differe';
+  if (m.mode === 'differe' && notif.dataset.email !== String(m.email)) {
+    notif.dataset.email = String(m.email);
+    $('#notifBody').innerHTML = blocEmail(m.email);
+  }
   const view = { ...m.view, players: m.view.players.map((p, i) => ({ ...p, status: statutPlace(m.sieges[i]) })) };
   ui.update(view, { busy: false, rejouer: false });
   chrono();
@@ -117,14 +124,15 @@ setInterval(chrono, 1000);
 function show(which) {
   $('#accueil').hidden = which !== 'accueil';
   $('#salle').hidden = which !== 'salle';
+  if (which !== 'salle') $('#salle').innerHTML = ''; // pas d'identifiants en double avec la carte e-mail du jeu
   $('#jeu').hidden = which !== 'jeu';
   $('#btnNew').hidden = mode !== 'solo';
   $('#btnAccueil').hidden = mode === 'accueil';
-  if (mode !== 'reseau') $('#codechip').hidden = true;
+  if (mode !== 'reseau') { $('#codechip').hidden = true; $('#notif').hidden = true; delete $('#notif').dataset.email; }
 }
 
 function renderHome() {
-  renderAccueil($('#accueil'), { nom: store.get('tdh-nom', ''), parties: home.parties, erreur: home.erreur, code: home.code, mode: home.mode });
+  renderAccueil($('#accueil'), { nom: store.get('tdh-nom', ''), email: store.get('tdh-email', ''), parties: home.parties, erreur: home.erreur, code: home.code, mode: home.mode });
 }
 function refreshParties() {
   if (!places().length) { home.parties = null; return; }
@@ -189,13 +197,15 @@ setInterval(() => { if (mode === 'accueil' && places().length) refreshParties();
 
 /* ---------- formulaires ---------- */
 
-function entrer(r, nom) {
+// Erreur affichée sous le formulaire concerné, sans le redessiner (la saisie est conservée)
+function entrer(r, nom, email, errId) {
   if (r.t !== 'place') {
-    home.erreur = r.error;
-    if (mode === 'accueil') renderHome();
+    const el = $(`#${errId}`);
+    if (el) el.textContent = r.error;
     return;
   }
   store.set('tdh-nom', nom);
+  if (email) store.set('tdh-email', email);
   addPlace({ jeton: r.jeton, code: r.code });
   go(`#p=${encodeURIComponent(r.jeton)}`);
 }
@@ -209,23 +219,37 @@ async function onHomeClick(e) {
   if (h === 'creer') {
     const nom = $('#fNom').value.trim();
     const m = document.querySelector('input[name=fMode]:checked').value;
+    const email = m === 'differe' ? $('#fMail').value.trim() : '';
     b.disabled = true;
-    const r = await getConn().send({ t: 'creer', nom, humains: +$('#fHum').value, mode: m, delai: +$('#fDelai').value });
+    const r = await getConn().send({ t: 'creer', nom, humains: +$('#fHum').value, mode: m, delai: +$('#fDelai').value, email });
     b.disabled = false;
-    return entrer(r, nom);
+    return entrer(r, nom, email, 'fErr');
   }
   if (h === 'rejoindre') {
     const nom = $('#jNom').value.trim(), code = $('#jCode').value.trim().toUpperCase();
-    if (!code) { home.erreur = 'Saisis le code de la partie.'; return renderHome(); }
+    if (!code) { $('#jErr').textContent = 'Saisis le code de la partie.'; return; }
     b.disabled = true;
-    const r = await getConn().send({ t: 'rejoindre', code, nom });
+    const email = $('#jMail').value.trim();
+    const r = await getConn().send({ t: 'rejoindre', code, nom, email });
     b.disabled = false;
-    return entrer(r, nom);
+    return entrer(r, nom, email, 'jErr');
   }
   if (h === 'lancer') {
     b.disabled = true;
     const r = await getConn().send({ t: 'demarrer' });
     if (r.t === 'refus') { b.disabled = false; $('#salleErr').textContent = r.error; }
+    return;
+  }
+  if (h === 'email') {
+    const zone = b.closest('#notif') ? '#notif' : '#salle', email = $(`${zone} #mEmail`).value.trim();
+    b.disabled = true;
+    const r = await getConn().send({ t: 'email', email });
+    b.disabled = false;
+    // La vue mise à jour arrive avant la réponse et peut avoir redessiné la carte : on cherche le message après
+    const msg = $(`${zone} #mEmailMsg`);
+    msg.className = r.t === 'ok' ? 'okmsg' : 'err';
+    msg.textContent = r.t === 'ok' ? (email ? 'Adresse enregistrée.' : 'Plus de messages pour cette partie.') : r.error;
+    if (r.t === 'ok' && email) store.set('tdh-email', email);
     return;
   }
   if (h === 'copier') {
@@ -235,12 +259,14 @@ async function onHomeClick(e) {
 }
 $('#accueil').addEventListener('click', onHomeClick);
 $('#salle').addEventListener('click', onHomeClick);
+$('#notif').addEventListener('click', onHomeClick);
 $('#accueil').addEventListener('change', (e) => {
-  if (e.target.name === 'fMode') { home.mode = e.target.value; $('#fDelai').innerHTML = delaiOptions(home.mode); }
+  if (e.target.name === 'fMode') { home.mode = e.target.value; $('#fDelai').innerHTML = delaiOptions(home.mode); $('#fMailWrap').hidden = home.mode !== 'differe'; }
 });
 $('#accueil').addEventListener('keydown', (e) => {
   if (e.key !== 'Enter' || e.target.tagName !== 'INPUT') return;
-  const act = e.target.id.startsWith('j') ? 'rejoindre' : 'creer';
+  const act = e.target.id.startsWith('j') ? 'rejoindre' : e.target.id === 'mEmail' ? null : 'creer';
+  if (!act) return;
   $(`#accueil [data-h="${act}"]`).click();
 });
 

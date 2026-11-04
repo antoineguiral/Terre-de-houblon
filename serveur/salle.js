@@ -11,6 +11,7 @@
 import { randomBytes } from 'node:crypto';
 import { createGame, applyAction, viewFor, aiStep, aiAction, waitingFor } from '../moteur/index.js';
 import { CONFIG as DEFAULT_CONFIG } from './config.js';
+import { emailValide } from './notifications.js';
 
 const AI_NAMES = ['Brasserie du Moulin', 'La Mousse Noire', 'Les Fûts Joyeux', 'La Cuve Dorée'];
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -24,6 +25,12 @@ export function nouveauCode(existe) {
   }
 }
 const cleanName = (n) => String(n ?? '').replace(/\s+/g, ' ').trim().slice(0, 28);
+// Adresse facultative : vide → null ; invalide → erreur
+function readEmail(e) {
+  const v = String(e ?? '').trim();
+  if (!v) return { email: null };
+  return emailValide(v) ? { email: v } : { error: 'Adresse e-mail invalide.' };
+}
 
 // Joueurs dont une décision fait avancer la partie (les réponses d'échange sont bornées à part)
 function decideurs(s) {
@@ -57,9 +64,11 @@ export class Salle {
 
   get config() { return this.deps.config ?? DEFAULT_CONFIG; }
 
-  static creer({ nom, humains, mode, delai }, deps) {
+  static creer({ nom, humains, mode, delai, email }, deps) {
     nom = cleanName(nom);
     if (!nom) return { error: 'Donne un nom à ta brasserie.' };
+    const em = readEmail(email);
+    if (em.error) return em;
     humains = Math.round(+humains);
     if (!(humains >= 1 && humains <= 4)) return { error: 'De 1 à 4 places humaines.' };
     if (!['direct', 'differe'].includes(mode)) return { error: 'Mode inconnu.' };
@@ -68,7 +77,7 @@ export class Salle {
     delai = Math.round(+delai || b.def);
     delai = Math.min(b.max, Math.max(b.min, delai));
     const code = nouveauCode(deps.base.codeExiste);
-    const sieges = [0, 1, 2, 3].map((i) => (i === 0 ? { type: 'humain', nom } : i < humains ? { type: 'ouvert', nom: null } : { type: 'ia', nom: null }));
+    const sieges = [0, 1, 2, 3].map((i) => (i === 0 ? { type: 'humain', nom, email: em.email } : i < humains ? { type: 'ouvert', nom: null } : { type: 'ia', nom: null }));
     const meta = { v: 1, mode, delai, humains, hote: 0, sieges, echeances: {}, echange: null, cree: deps.now() };
     deps.base.creerPartie(code, 'salle', meta, null);
     const jeton = nouveauJeton();
@@ -78,9 +87,11 @@ export class Salle {
 
   /* ---------- places ---------- */
 
-  rejoindre(nom) {
+  rejoindre(nom, email) {
     nom = cleanName(nom);
     if (!nom) return { error: 'Donne un nom à ta brasserie.' };
+    const em = readEmail(email);
+    if (em.error) return em;
     if (this.statut === 'fini') return { error: 'Cette partie est terminée.' };
     const siege = this.meta.sieges.findIndex((s) => s.type === 'ouvert');
     if (siege < 0) return { error: 'Toutes les places humaines sont prises.' };
@@ -89,6 +100,7 @@ export class Salle {
     const seat = this.meta.sieges[siege];
     seat.type = 'humain';
     seat.nom = nom;
+    seat.email = em.email;
     if (this.etat) {
       // Place reprise en cours de partie : l'IA rend la main
       this.etat = structuredClone(this.etat);
@@ -112,6 +124,18 @@ export class Salle {
     this.changed();
     return { ok: true };
   }
+
+  // Adresse de notification de sa place (vide = plus de messages)
+  definirEmail(siege, email) {
+    const em = readEmail(email);
+    if (em.error) return em;
+    this.meta.sieges[siege].email = em.email;
+    this.sauver();
+    this.diffuser();
+    return { ok: true };
+  }
+
+  sauver() { this.deps.base.sauver(this.code, this.statut, this.meta, this.etat); }
 
   isAi(i) {
     const s = this.meta.sieges[i];
@@ -141,11 +165,13 @@ export class Salle {
 
   // Après tout changement : fin de partie, délais, sauvegarde, envoi des vues, IA
   changed({ acteur = null } = {}) {
-    if (this.etat?.phase === 'over' && this.statut !== 'fini') this.statut = 'fini';
+    let fin = false;
+    if (this.etat?.phase === 'over' && this.statut !== 'fini') { this.statut = 'fini'; fin = true; }
     if (this.statut === 'jeu') this.majEcheances(acteur);
     else { this.meta.echeances = {}; this.meta.echange = null; }
-    this.deps.base.sauver(this.code, this.statut, this.meta, this.etat);
+    this.sauver();
     this.diffuser();
+    if (fin) this.deps.onFin?.(this);
     this.planifierIa();
     this.planifierEcheance();
   }
@@ -246,6 +272,7 @@ export class Salle {
       delai: m.delai,
       siege,
       hote: siege === m.hote,
+      email: m.sieges[siege]?.email ?? null,
       now: this.deps.now(),
       sieges: m.sieges.map((s, i) => ({
         nom: this.etat ? this.etat.players[i].name : s.nom,
