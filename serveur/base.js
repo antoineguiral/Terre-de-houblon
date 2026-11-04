@@ -37,6 +37,7 @@ export function openBase(path) {
     insertPlace: db.prepare('INSERT INTO places (jeton, code, siege, cree) VALUES (?, ?, ?, ?)'),
     getPlace: db.prepare('SELECT * FROM places WHERE jeton = ?'),
     codeExiste: db.prepare('SELECT 1 FROM parties WHERE code = ?'),
+    jetonDe: db.prepare('SELECT jeton FROM places WHERE code = ? AND siege = ? ORDER BY cree DESC LIMIT 1'),
   };
   const parse = (row) => row && { ...row, meta: JSON.parse(row.meta), etat: row.etat ? JSON.parse(row.etat) : null };
   return {
@@ -53,6 +54,7 @@ export function openBase(path) {
     ajouterPlace(jeton, code, siege) { q.insertPlace.run(jeton, code, siege, Date.now()); },
     place: (jeton) => q.getPlace.get(jeton),
     codeExiste: (code) => !!q.codeExiste.get(code),
+    jetonDe: (code, siege) => q.jetonDe.get(code, siege)?.jeton ?? null,
     close: () => db.close(),
   };
 }

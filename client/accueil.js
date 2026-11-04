@@ -34,7 +34,11 @@ function ligneParte(p, now) {
     <small>${detail} · contre ${esc(autres)}</small></button>`;
 }
 
-export function renderAccueil(el, { nom, parties, erreur, code, mode }) {
+// Champ e-mail commun (formulaires et réglage en partie)
+export const champEmail = (id, value, label = 'E-mail (facultatif)') => `<label class="field">${label}<input type="email" id="${id}" maxlength="200" autocomplete="email" value="${esc(value)}" placeholder="toi@exemple.fr"></label>`;
+const AIDE_MAIL = '<p class="hintsmall">En différé, on te prévient par e-mail quand c’est ton tour. Un lien dans chaque message permet d’arrêter.</p>';
+
+export function renderAccueil(el, { nom, email, parties, erreur, code, mode }) {
   const now = Date.now();
   const rang = (p) => (p.aMoi ? 0 : p.statut === 'jeu' ? 1 : p.statut === 'salle' ? 2 : 3);
   const liste = parties ? [...parties].sort((a, b) => rang(a) - rang(b)) : null;
@@ -55,7 +59,9 @@ export function renderAccueil(el, { nom, parties, erreur, code, mode }) {
         <label class="field">Code<input type="text" id="jCode" class="code" maxlength="5" autocomplete="off" value="${esc(code)}" placeholder="ABCDE"></label>
         <label class="field">Ta brasserie<input type="text" id="jNom" maxlength="28" value="${esc(nom)}" placeholder="Nom de ta brasserie"></label>
       </div>
+      ${champEmail('jMail', email)}${AIDE_MAIL}
       <button class="btn primary" data-h="rejoindre">Rejoindre</button>
+      <p class="err" id="jErr" role="alert"></p>
     </div>
     <div class="card wide">
       <h2>Créer une partie</h2>
@@ -71,7 +77,9 @@ export function renderAccueil(el, { nom, parties, erreur, code, mode }) {
         </div></div>
         <label class="field">Temps pour jouer<select id="fDelai">${delaiOptions(mode)}</select></label>
       </div>
+      <div id="fMailWrap" ${mode === 'differe' ? '' : 'hidden'}>${champEmail('fMail', email)}${AIDE_MAIL}</div>
       <button class="btn primary" data-h="creer">Créer la partie</button>
+      <p class="err" id="fErr" role="alert"></p>
     </div>`;
 }
 
@@ -97,5 +105,14 @@ export function renderSalle(el, m, { jeton, page }) {
         ? `<button class="btn primary" data-h="lancer">Lancer la partie</button>${libres ? `<p>${libres > 1 ? `${libres} places libres seront tenues` : 'La place libre sera tenue'} par l'ordinateur jusqu'à l'arrivée d'un joueur.</p>` : ''}`
         : `<p>${esc(hote.nom)} lancera la partie.</p>`}
       <p class="err" id="salleErr" role="alert"></p>
-    </div>`;
+    </div>
+    ${m.mode === 'differe' ? `<div class="card wide"><h2>Prévenir par e-mail</h2>${blocEmail(m.email)}</div>` : ''}`;
+}
+
+// Réglage de l'adresse de notification de sa place (salle d'attente et partie en différé)
+export function blocEmail(email) {
+  return `${champEmail('mEmail', email || '', 'Ton adresse')}
+    <p class="hintsmall">${email ? 'Tu seras prévenu à cette adresse quand ce sera ton tour. Vide le champ pour ne plus recevoir de messages.' : 'Laisse ton adresse pour être prévenu quand c’est ton tour.'}</p>
+    <div class="mrow"><button class="btn" data-h="email">Enregistrer</button></div>
+    <p class="okmsg" id="mEmailMsg" role="status"></p>`;
 }

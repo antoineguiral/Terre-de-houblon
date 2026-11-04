@@ -16,17 +16,20 @@ import { WebSocketServer } from 'ws';
 import { CONFIG } from './config.js';
 import { openBase } from './base.js';
 import { Salle } from './salle.js';
+import { creerNotifier, envoyeurBrevo } from './notifications.js';
 
 export function demarrerServeur(opts = {}) {
   const config = { ...CONFIG, ...opts.config };
   const log = opts.log ?? ((m) => console.log(new Date().toISOString(), m));
   const base = opts.base ?? openBase(config.db);
+  const timers = { now: opts.now ?? Date.now, setTimeout: opts.setTimeout ?? setTimeout, clearTimeout: opts.clearTimeout ?? clearTimeout };
+  const envoyer = opts.envoyer !== undefined ? opts.envoyer : config.brevoKey ? envoyeurBrevo({ apiKey: config.brevoKey, from: config.mailFrom }) : null;
+  const notifier = creerNotifier({ publicUrl: config.publicUrl, envoyer, base, log, ...timers });
   const deps = {
     base,
-    now: opts.now ?? Date.now,
-    setTimeout: opts.setTimeout ?? setTimeout,
-    clearTimeout: opts.clearTimeout ?? clearTimeout,
-    onTour: opts.onTour,
+    ...timers,
+    onTour: (salle, siege) => { notifier.onTour(salle, siege); opts.onTour?.(salle, siege); },
+    onFin: (salle) => notifier.onFin(salle),
     log,
     config,
   };
@@ -51,7 +54,22 @@ export function demarrerServeur(opts = {}) {
 
   const allowed = (origin) => !!origin && config.origins.includes(origin);
 
+  // Désinscription depuis le lien d'un e-mail (GET) ou le bouton de la messagerie (POST, List-Unsubscribe-Post)
+  function desabonner(req, res, url) {
+    const p = base.place(url.searchParams.get('jeton') || '');
+    const s = p && salle(p.code);
+    if (s && s.meta.sieges[p.siege]?.email) s.definirEmail(p.siege, '');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.end(`<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Terres de Houblon</title>
+<body style="margin:0;background:#211915;color:#f2e6d0;font-family:system-ui,sans-serif;padding:40px 16px"><div style="max-width:480px;margin:0 auto">
+<h1 style="font-family:Georgia,serif;color:#d38b46;font-weight:400">Terres de Houblon</h1>
+<p>${s ? `C'est noté : tu ne recevras plus de messages pour la partie ${s.code}.` : 'Ce lien ne correspond à aucune partie.'}</p>
+<p><a style="color:#d38b46" href="${config.publicUrl}">Revenir au jeu</a></p></div></body></html>`);
+  }
+
   const server = http.createServer((req, res) => {
+    const url = new URL(req.url, 'http://local');
+    if (url.pathname === '/desabonner' && (req.method === 'GET' || req.method === 'POST')) return desabonner(req, res, url);
     const origin = req.headers.origin;
     if (allowed(origin)) { res.setHeader('Access-Control-Allow-Origin', origin); res.setHeader('Vary', 'Origin'); }
     if (req.method === 'GET' && req.url === '/sante') {
@@ -123,11 +141,16 @@ export function demarrerServeur(opts = {}) {
           case 'rejoindre': {
             const s = salle(m.code);
             if (!s) return refus('Aucune partie avec ce code.');
-            const r = s.rejoindre(m.nom);
+            const r = s.rejoindre(m.nom, m.email);
             if (r.error) return refus(r.error);
             log(`[${s.code}] place ${r.siege} prise`);
             client.send({ t: 'place', jeton: r.jeton, code: s.code, siege: r.siege, ref });
             return entrer(s, r.siege);
+          }
+          case 'email': {
+            if (!client.salle) return refus("Tu n'es dans aucune partie.");
+            const r = client.salle.definirEmail(client.siege, m.email);
+            return client.send(r.error ? { t: 'refus', error: r.error, ref } : { t: 'ok', ref });
           }
           case 'demarrer': {
             if (!client.salle) return refus("Tu n'es dans aucune partie.");
@@ -183,6 +206,7 @@ export function demarrerServeur(opts = {}) {
         async fermer() {
           clearInterval(ping);
           for (const s of salles.values()) s.arreter();
+          notifier.arreter();
           for (const ws of wss.clients) ws.terminate();
           await new Promise((r) => wss.close(r));
           await new Promise((r) => server.close(r));

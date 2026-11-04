@@ -5,7 +5,8 @@ Le jeu tient sur un seul domaine, **https://jeu.leperelamer.fr** :
 - Apache sert la page (`index.html`, `client/`, `moteur/`) depuis `/srv/terres-de-houblon`, un clone du dépôt ;
 - Apache relaie `/ws` (WebSocket) et `/sante` vers le serveur de jeu Node, qui écoute sur `127.0.0.1:3210` ;
 - le serveur tourne en service systemd `terres-de-houblon`, sous l'utilisateur `houblon`, avec le Node 22 d'apt (`/usr/bin/node`) ; le Node de `/usr/local/bin`, utilisé par les autres sites, n'est pas touché ;
-- les parties sont dans `/var/lib/terres-de-houblon/parties.sqlite`, sauvegardées chaque nuit dans `/var/backups/terres-de-houblon`.
+- les parties sont dans `/var/lib/terres-de-houblon/parties.sqlite`, sauvegardées chaque nuit dans `/var/backups/terres-de-houblon` ;
+- en différé, les joueurs qui ont laissé leur adresse sont prévenus par e-mail (API Brevo, expéditeur `jeu@leperelamer.fr`) ; `/desabonner` arrête les messages.
 
 Pas de Docker, pas de pm2 : systemd redémarre le service s'il tombe et au démarrage de la machine, et ses journaux vont dans journald.
 
@@ -38,6 +39,19 @@ install -d -m 750 -o houblon -g houblon /var/backups/terres-de-houblon
 cp /srv/terres-de-houblon/deploiement/sauvegarde.cron /etc/cron.d/terres-de-houblon
 ```
 
+## Clé Brevo (notifications)
+
+Dans Brevo : *SMTP & API* → *Clés API* → créer une clé dédiée « Terres de Houblon ». Puis, en root :
+
+```bash
+nano /etc/terres-de-houblon.env          # BREVO_API_KEY=xkeysib-…
+systemctl restart terres-de-houblon
+# E-mail d'essai, avec la configuration du service :
+runuser -u houblon -- bash -c 'set -a; . /etc/terres-de-houblon.env; /usr/bin/node /srv/terres-de-houblon/outils/test-email.js toi@exemple.fr'
+```
+
+Sans clé, le jeu fonctionne et le journal indique « notifications e-mail désactivées ». Un envoi refusé par Brevo (clé révoquée, plan échu) est écrit dans le journal du service (`e-mail NON envoyé …`), sans bloquer la partie.
+
 ## Vérifier que tout tourne
 
 ```bash
@@ -56,6 +70,7 @@ journalctl -u terres-de-houblon -f                 # serveur de jeu en direct (c
 journalctl -u terres-de-houblon --since today
 tail -f /var/log/apache2/jeu.error.log /var/log/apache2/jeu.access.log
 journalctl -t houblon-sauvegarde                   # sauvegardes
+journalctl -u terres-de-houblon | grep -i e-mail   # notifications envoyées ou refusées
 ```
 
 ## Mettre à jour
@@ -68,7 +83,9 @@ Après un `git push` sur `main` :
 
 Le script tire `main`, réinstalle les dépendances du serveur, redémarre le service et affiche la santé. Les joueurs connectés sont reconnectés automatiquement ; aucune partie n'est perdue (l'état est écrit après chaque action et rechargé au démarrage, minuteurs compris).
 
-Si le service, le vhost ou la configuration changent dans `deploiement/`, recopier le fichier concerné comme à l'installation, puis `systemctl daemon-reload && systemctl restart terres-de-houblon` ou `apache2ctl configtest && systemctl reload apache2`.
+Si le service change dans `deploiement/`, le recopier dans `/etc/systemd/system/` puis `systemctl daemon-reload && systemctl restart terres-de-houblon`.
+
+Si le vhost change, **ne pas recopier** `jeu.leperelamer.fr.conf` par-dessus celui du serveur : certbot y a ajouté la redirection vers HTTPS et en a tiré `jeu.leperelamer.fr-le-ssl.conf`. Reporter la modification à la main dans les **deux** fichiers de `/etc/apache2/sites-available/`, puis `apache2ctl configtest && systemctl reload apache2`.
 
 ## Sauvegarde et restauration
 

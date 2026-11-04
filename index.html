@@ -126,8 +126,8 @@ details.card summary{cursor:pointer;font-family:var(--font-num);font-weight:600;
 .home .card p{margin:0;color:var(--muted);font-size:14px}
 .home .wide{grid-column:1/-1}
 .field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
-input[type=text]{font:500 15px var(--font-body);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:9px 10px;min-width:0;width:100%;box-sizing:border-box}
-input[type=text]:focus-visible{outline:2px solid var(--copper);outline-offset:2px}
+input[type=text],input[type=email]{font:500 15px var(--font-body);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:9px 10px;min-width:0;width:100%;box-sizing:border-box}
+input[type=text]:focus-visible,input[type=email]:focus-visible{outline:2px solid var(--copper);outline-offset:2px}
 input.code{text-transform:uppercase;letter-spacing:.2em;font-family:var(--font-num);font-weight:700;font-size:18px}
 .row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
 .seg{display:flex;border:1px solid var(--line);border-radius:5px;overflow:hidden}
@@ -137,6 +137,8 @@ input.code{text-transform:uppercase;letter-spacing:.2em;font-family:var(--font-n
 .seg input:checked+span{background:var(--copper);color:var(--dark)}
 .seg input:focus-visible+span{outline:2px solid var(--copper);outline-offset:-2px}
 .err{color:#f0a487;font-size:13.5px;margin:0;min-height:0}
+.okmsg{color:#a9cf8e;font-size:13.5px;margin:0}
+.hintsmall{font-size:12.5px;color:var(--muted);margin:0}
 .glist{display:flex;flex-direction:column;gap:8px}
 .grow2{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:5px;background:var(--panel2);cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%}
 .grow2:hover{border-color:var(--copper)}
@@ -204,6 +206,7 @@ input.code{text-transform:uppercase;letter-spacing:.2em;font-family:var(--font-n
           <p>Bonus de 2 points : plus grand réseau de livraison (5 tournées d'affilée minimum) et meilleur dossier comptable (3 experts-comptables joués minimum).</p>
         </div>
       </details>
+      <div class="card" id="notif" hidden><h2>Prévenir par e-mail</h2><div id="notifBody" class="tsec"></div></div>
       <div class="card"><h2>Journal</h2><ol class="log" id="log"></ol></div>
     </aside>
   </main>
