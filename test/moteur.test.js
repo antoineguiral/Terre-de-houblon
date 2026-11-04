@@ -426,3 +426,44 @@ describe('actions légales', () => {
     }
   });
 });
+
+describe('IA sans information cachée', () => {
+  // Redistribue au hasard le contenu des mains et des cartes Événement des autres (mêmes nombres), mélange la pioche
+  function scramble(s, pi, seed) {
+    const t = structuredClone(s);
+    let x = seed;
+    const rnd = () => { x = (x * 1103515245 + 12345) % 2147483648; return x / 2147483648; };
+    t.players.forEach((p, i) => {
+      if (i === pi) return;
+      const n = total(p.res);
+      p.res = Z();
+      for (let k = 0; k < n; k++) p.res[RES[Math.floor(rnd() * 5)]]++;
+      p.dev = p.dev.map((c) => ({ ...c, t: ['knight', 'vp', 'roads', 'plenty', 'mono'][Math.floor(rnd() * 5)] }));
+    });
+    t.deck = [...t.deck].sort(() => rnd() - 0.5);
+    return t;
+  }
+  test('changer le contenu caché des autres ne change jamais la décision de l’IA', () => {
+    let checked = 0;
+    for (const seed of ['cache-1', 'cache-2', 'cache-3']) {
+      let s = allAi(seed);
+      for (let n = 0; n < 4000 && s.phase !== 'over'; n++) {
+        const pi = waitingFor(s).find((i) => aiAction(s, i));
+        const a = aiAction(s, pi);
+        if (n % 3 === 0) {
+          for (let k = 1; k <= 3; k++) assert.deepEqual(aiAction(scramble(s, pi, n * 7 + k), pi), a, `décision changée (${a.type})`);
+          checked++;
+        }
+        s = ok(applyAction(s, pi, a));
+      }
+    }
+    assert.ok(checked > 300);
+  });
+  test('les actions légales se calculent aussi sur la vue d’un joueur', () => {
+    let s = allAi('vue-legale');
+    for (let n = 0; n < 2000 && s.phase !== 'over'; n++) {
+      for (const pi of [0, 1, 2, 3]) assert.deepEqual(legalActions(viewFor(s, pi), pi), legalActions(s, pi));
+      s = aiStep(s).state;
+    }
+  });
+});

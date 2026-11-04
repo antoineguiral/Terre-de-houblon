@@ -112,6 +112,7 @@ export function roadLen(s, pi) {
   TOPO.verts.forEach((v, i) => { if (v.edges.some((e) => s.edges[e] === pi)) best = Math.max(best, dfs(i, new Set())); });
   return best;
 }
+export const deckCount = (s) => (typeof s.deck === 'number' ? s.deck : s.deck.length);
 export const playableDev = (s, pi) => s.players[pi].dev.filter((c) => c.t !== 'vp' && c.turn < s.turn);
 export const robberVictims = (s, hex, pi) =>
   [...new Set(TOPO.hexes[hex].verts.map((v) => s.verts[v].o).filter((o) => o !== null && o !== pi && total(s.players[o].res) > 0))];
@@ -451,7 +452,12 @@ const HANDLERS = {
     const give = r.s === 'counter' ? r.give : t.give, get = r.s === 'counter' ? r.get : t.get;
     const a = s.players[pi], b = s.players[w];
     if (!canAfford(a.res, give)) return "Tu n'as plus les cartes proposées.";
-    if (!canAfford(b.res, get)) { delete t.resp[w]; return "Ce joueur n'a plus les cartes demandées."; }
+    if (!canAfford(b.res, get)) {
+      // Le proposant ne voit pas la main de l'autre : on ne lui renvoie pas d'erreur, la réponse devient un refus
+      t.resp[w] = { s: 'refuse' };
+      log(s, { k: 'tradeResp', p: w, from: t.from, s: 'refuse', lacking: true });
+      return null;
+    }
     RES.forEach((x) => { a.res[x] += get[x] - give[x]; b.res[x] += give[x] - get[x]; });
     s.trade = null;
     log(s, { k: 'tradeDone', p: pi, with: w, give, get });
@@ -512,7 +518,7 @@ export function legalActions(s, pi) {
   }
   const B = [['road', COST.road, p.roads > 0 && validRoad(s, pi)], ['settle', COST.settle, p.settles > 0 && validSettle(s, pi, false)], ['city', COST.city, p.cities > 0 && validCity(s, pi)]];
   B.forEach(([what, c, t]) => { if (t && t.length && canAfford(p.res, c)) out.push({ type: 'build', what, targets: t }); });
-  if (s.deck.length && canAfford(p.res, COST.dev)) out.push({ type: 'buyDev' });
+  if (deckCount(s) && canAfford(p.res, COST.dev)) out.push({ type: 'buyDev' });
   RES.forEach((give) => { const n = rate(s, pi, give); if (p.res[give] >= n) out.push({ type: 'bankTrade', give, rate: n }); });
   if (!s.trade && total(p.res) > 0) out.push({ type: 'proposeTrade' });
   out.push({ type: 'endTurn' });

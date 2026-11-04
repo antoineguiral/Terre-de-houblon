@@ -4,7 +4,7 @@ export * from './constantes.js';
 export { TOPO } from './plateau.js';
 export {
   VERSION, createGame, applyAction, legalActions, waitingFor, viewFor,
-  vp, rate, roadLen, validSettle, validRoad, validCity, playableDev, canAfford,
+  vp, rate, roadLen, validSettle, validRoad, validCity, playableDev, canAfford, deckCount, robberVictims,
 } from './regles.js';
 export { aiAction } from './ia.js';
 

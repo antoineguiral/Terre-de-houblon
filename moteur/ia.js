@@ -4,7 +4,8 @@
 //                                (ou s'il attend la réponse d'un autre, ex. à son offre d'échange).
 //
 // Le hasard de l'IA vient d'un générateur dérivé de l'état : la même position donne toujours la même décision.
-// L'IA lit l'état complet (mains comprises), comme dans la version d'origine.
+// L'IA ne lit que ce qu'un joueur à sa place voit : sa propre main, le plateau, le nombre de cartes des autres.
+// Elle ne connaît ni le contenu des mains adverses, ni leurs cartes Événement, ni la pioche.
 
 import { RES, COST, PIPS, Z, total } from './constantes.js';
 import { local, next, shuffle } from './alea.js';
@@ -15,7 +16,17 @@ import {
 
 const settleOK = (s, v) => s.verts[v].o === null && TOPO.verts[v].adj.every((a) => s.verts[a].o === null);
 const missing = (res, c) => Object.entries(c).reduce((m, [r, n]) => m + Math.max(0, n - res[r]), 0);
-const sumOthers = (s, pi, r) => s.players.reduce((n, q, i) => n + (i === pi ? 0 : q.res[r]), 0);
+// Nombre de cartes `r` attendu chez le joueur i, d'après ce qui est public : ses bâtiments et son nombre de cartes.
+function estimate(s, i, r) {
+  const w = Z();
+  s.verts.forEach((v, vi) => {
+    if (v.o !== i) return;
+    TOPO.verts[vi].hexes.forEach((h) => { const t = s.hexes[h]; if (t.res !== 'friche') w[t.res] += PIPS(t.num) * v.t; });
+  });
+  const n = total(s.players[i].res), tw = total(w);
+  return tw ? (n * w[r]) / tw : n / RES.length;
+}
+const expectedOthers = (s, pi, r) => s.players.reduce((n, _, i) => n + (i === pi ? 0 : estimate(s, i, r)), 0);
 const isHuman = (s, i) => !s.players[i].ai;
 
 function production(s, pi) {
@@ -154,9 +165,9 @@ function respond(s, pi) {
   if (RES.some((r) => s.players[pi].res[r] < t.get[r])) return { type: 'respondTrade', accept: false };
   if (aiAccepts(s, pi, t.from, t.give, t.get)) return { type: 'respondTrade', accept: true };
   if (isHuman(s, t.from)) {
-    const from = s.players[t.from];
+    // Contre-proposition : une carte de plus, d'une ressource que le proposant ne demande pas
     for (const r of RES) {
-      if (from.res[r] > t.give[r]) {
+      if (!t.get[r]) {
         const g = { ...t.give };
         g[r]++;
         if (aiAccepts(s, pi, t.from, g, t.get)) return { type: 'respondTrade', counter: { give: g, get: { ...t.get } } };
@@ -172,7 +183,7 @@ function followOwnTrade(s, pi) {
   for (const w of t.to) {
     const r = t.resp[w];
     if (!r) continue;
-    if (r.s === 'accept' && canAfford(s.players[w].res, t.get)) return { type: 'concludeTrade', with: w };
+    if (r.s === 'accept') return { type: 'concludeTrade', with: w };
     if (r.s === 'counter' && canAfford(s.players[pi].res, r.give) && aiAccepts(s, pi, w, r.get, r.give)) return { type: 'concludeTrade', with: w };
   }
   if (t.to.every((w) => t.resp[w])) return { type: 'cancelTrade' };
@@ -188,7 +199,7 @@ function seekTrade(s, pi, cost, rnd) {
   const give = Z(), get = Z();
   give[spare[0]] = 1; get[need[0]] = 1;
   const to = s.players.map((_, i) => i).filter((i) => {
-    if (i === pi || !s.players[i].offersOn || s.players[i].res[need[0]] <= 0) return false;
+    if (i === pi || !s.players[i].offersOn || total(s.players[i].res) === 0) return false;
     if (isHuman(s, i)) return s.opts.aiOffersToHumans && vp(s, i, false) < 8;
     return true;
   });
@@ -216,11 +227,11 @@ function mainStep(s, pi, rnd) {
     const army = s.army === null ? null : s.players[s.army];
     const c = pl.find((c) => c.t === 'knight' && (robberHurts(s, pi) || (p.knights + 1 >= 3 && s.army !== pi && (army === null || army.knights < p.knights + 1))))
       || pl.find((c) => c.t === 'plenty')
-      || pl.find((c) => c.t === 'mono' && RES.some((r) => sumOthers(s, pi, r) >= 3))
+      || pl.find((c) => c.t === 'mono' && RES.some((r) => expectedOthers(s, pi, r) >= 3))
       || pl.find((c) => c.t === 'roads' && p.roads > 0 && roadTarget(s, pi) !== null);
     if (c) {
       if (c.t === 'plenty') return { type: 'playDev', card: 'plenty', res: want(s, pi, 2, rnd) };
-      if (c.t === 'mono') return { type: 'playDev', card: 'mono', r: RES.reduce((a, b) => (sumOthers(s, pi, b) > sumOthers(s, pi, a) ? b : a)) };
+      if (c.t === 'mono') return { type: 'playDev', card: 'mono', r: RES.reduce((a, b) => (expectedOthers(s, pi, b) > expectedOthers(s, pi, a) ? b : a)) };
       return { type: 'playDev', card: c.t };
     }
   }
