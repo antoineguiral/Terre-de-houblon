@@ -18,12 +18,12 @@ import {
   LEV_REPIQUAGE, ACHAT, PRIX_PLANCHER, PRIX_REMONTEE, DEMANDE_BONUS, DEMANDE_REP, CLIENTS, FOIRES, TOURNEE_COUT, TOURNEE_COUT_CAMION,
   TOURNEE_GRATUITE_DIST, LIVRAISON_PAR_CLIENT, LIVRAISON_CAMION, FERMENTEURS_DEPART, FERMENTEURS_MAX, CUVE, STOCK_MAX, TOURAILLE_MALT,
   TOURAILLE_PAR_SAISON, SALLE_UNITES, SALLE_BONUS, SALLE_REP_HIVER, AMELIORATIONS, DEPART, CARTES, CARTE, CONCOURS, DOUANES_PAR, FETE_MULT,
-  DIVERSITE, ARGENT_PAR_POINT, Z, ZS, ZI, total,
+  DIVERSITE, ARGENT_PAR_POINT, MARCHE_STOCK, COLLAB_UNITE_BONUS, COLLAB_REP, COLLAB_PAR_SAISON, Z, ZS, ZI, total,
 } from './constantes.js';
 import { hashSeed, int, next, shuffle } from './alea.js';
 import { TOPO, rollBoard, distClient } from './plateau.js';
 
-export const VERSION = 1;
+export const VERSION = 2;
 
 /* ---------- création ---------- */
 
@@ -47,11 +47,12 @@ export function createGame({ seed = Date.now(), players, aiOffersToHumans = true
     deck: Object.fromEntries(SAISONS.map((k) => [k, shuffle(s, CARTES[k].map((c) => c.id))])),
     saison: -1, carte: null, demande: [], capa: {},
     marche: Object.fromEntries(STYLES.map((st) => [st, RECETTES[st].prix])),
+    stockMarche: Z(),
     players: players.map((p) => ({
       name: p.name, ai: !!p.ai, hex: null,
       res: { ...DEPART.res }, argent: DEPART.argent,
       nferm: FERMENTEURS_DEPART, ferms: [], cuve: 0, stock: ZS(), upg: [], tournees: [],
-      rep: 0, styles: [], livr: {}, torr: 0, salle: 0, offersOn: true,
+      rep: 0, styles: [], livr: {}, torr: 0, salle: 0, collabs: 0, offersOn: true,
     })),
     phase: 'setup',
     setup: { k: 0, step: 'hex', ordre: [...ordre0].reverse() },
@@ -110,6 +111,10 @@ export const peutBrasser = (s, p, st) => {
   if (r.exige && !a(p, r.exige)) return false;
   return RES.every((x) => p.res[x] >= r[x]);
 };
+// Collab : le joueur peut-il encore en faire une cette saison ?
+export const collabLibre = (p) => (p.collabs ?? 0) < COLLAB_PAR_SAISON;
+// Ce qui est en vente au Marché cette saison
+export const stockMarche = (s, r) => s.stockMarche?.[r] ?? 0;
 export const coutRecette = (st) => { const r = RECETTES[st], c = Z(); RES.forEach((x) => { c[x] = r[x]; }); return c; };
 
 export function ameliorationsPossibles(s, p) {
@@ -199,6 +204,53 @@ function readItems(o) {
   return c;
 }
 
+function readRes(o) {
+  if (!o || typeof o !== 'object') return null;
+  const c = Z();
+  for (const k of Object.keys(o)) {
+    if (!RES.includes(k)) return null;
+    const n = o[k] ?? 0;
+    if (!Number.isInteger(n) || n < 0) return null;
+    c[k] = n;
+  }
+  return c;
+}
+const aLesMatieres = (p, c) => RES.every((x) => p.res[x] >= c[x]);
+
+// Répartition d'une recette de collab : hôte + partenaire = la recette, chacun apporte au moins une matière
+export function lireApport(style, apport) {
+  const H = readRes(apport?.hote), P = readRes(apport?.part);
+  if (!H || !P) return { error: 'Répartition illisible.' };
+  const r = RECETTES[style];
+  if (RES.some((x) => H[x] + P[x] !== r[x])) return { error: 'La répartition doit couvrir exactement la recette.' };
+  if (!total(H) || !total(P)) return { error: 'Chacun apporte au moins une matière.' };
+  return { hote: H, part: P };
+}
+// Répartition par défaut : l'hôte apporte ce qu'il a, le partenaire complète (au moins une matière chacun).
+// null si le partenaire n'a pas de quoi compléter.
+export function apportParDefaut(s, hote, w, style) {
+  const r = RECETTES[style], H = s.players[hote], P = s.players[w];
+  const h = Z(), part = Z();
+  RES.forEach((x) => { h[x] = Math.min(r[x], H.res[x]); part[x] = r[x] - h[x]; });
+  if (!total(part)) {
+    const x = RES.filter((y) => h[y] > 0 && P.res[y] > 0).sort((y, z) => P.res[z] - P.res[y])[0];
+    if (!x) return null;
+    h[x]--; part[x]++;
+  }
+  if (!total(h) || RES.some((x) => P.res[x] < part[x])) return null;
+  return { hote: h, part };
+}
+
+// La collab peut-elle se brasser chez l'hôte maintenant ? Renvoie la raison sinon.
+function collabImpossible(s, hote, w, style) {
+  const H = s.players[hote], P = s.players[w], r = RECETTES[style];
+  if (H.ferms.length >= H.nferm) return `${H.name} n'a plus de fermenteur libre.`;
+  if (r.exige && !a(H, r.exige)) return `Ce style demande : ${AMELIORATIONS[r.exige].nom}, chez celui qui prête le fermenteur.`;
+  if (!collabLibre(H)) return `${H.name} a déjà fait une collab cette saison.`;
+  if (!collabLibre(P)) return `${P.name} a déjà fait une collab cette saison.`;
+  return null;
+}
+
 /* ---------- saisons ---------- */
 
 function ordreSaison(s) {
@@ -217,6 +269,8 @@ function startSaison(s) {
   s.carte = carte.id;
   s.demande = [...carte.demande];
   s.pending = null; s.trade = null;
+  // Le Marché se réapprovisionne : ce qui n'a pas été acheté disparaît
+  s.stockMarche = { ...MARCHE_STOCK[s.players.length] };
   // Capacités des clients
   s.capa = {};
   for (const id of clientIds(s)) {
@@ -228,7 +282,7 @@ function startSaison(s) {
   // Production, brassins terminés
   const gains = [], finis = [];
   s.players.forEach((p, i) => {
-    p.livr = {}; p.torr = 0; p.salle = 0;
+    p.livr = {}; p.torr = 0; p.salle = 0; p.collabs = 0;
     const g = Z();
     for (const h of [p.hex, ...TOPO.hexes[p.hex].near]) {
       const t = s.tiles[h];
@@ -243,7 +297,15 @@ function startSaison(s) {
     gains.push({ p: i, res: g });
     const done = p.ferms.filter((f) => f.left <= 0);
     p.ferms = p.ferms.filter((f) => f.left > 0);
-    for (const f of done) { p.stock[f.st] += f.u; p.res.lev += LEV_REPIQUAGE; finis.push({ p: i, st: f.st, u: f.u }); }
+    for (const f of done) {
+      p.res.lev += LEV_REPIQUAGE;
+      if (f.collab === undefined) { p.stock[f.st] += f.u; finis.push({ p: i, st: f.st, u: f.u }); continue; }
+      // Collab : partage en deux, l'unité impaire à l'hôte ; la part du partenaire arrive dans son stock
+      const part = Math.floor(f.u / 2);
+      p.stock[f.st] += f.u - part;
+      s.players[f.collab].stock[f.st] += part;
+      finis.push({ p: i, st: f.st, u: f.u - part, collab: f.collab, part });
+    }
   });
   log(s, { k: 'saison', carte: carte.id, gains, finis });
   // Événement
@@ -319,6 +381,31 @@ function endTradeIfAny(s, why) {
   s.trade = null;
 }
 
+function conclureCollab(s, pi, w, r) {
+  const t = s.trade, ap = r.s === 'counter' ? r.apport : t.apport;
+  const H = s.players[pi], P = s.players[w];
+  const why = collabImpossible(s, pi, w, t.style);
+  if (why) return why;
+  if (!aLesMatieres(H, ap.hote)) return "Tu n'as plus les matières que tu apportais.";
+  if (!aLesMatieres(P, ap.part)) {
+    t.resp[w] = { s: 'refuse' };
+    log(s, { k: 'tradeResp', p: w, from: t.from, s: 'refuse', collab: t.style, lacking: true });
+    return null;
+  }
+  RES.forEach((x) => { H.res[x] -= ap.hote[x]; P.res[x] -= ap.part[x]; });
+  const rec = RECETTES[t.style], u = cuveUnites(H) + COLLAB_UNITE_BONUS;
+  H.ferms.push({ st: t.style, left: rec.ferm, u, collab: w });
+  const premiere = [];
+  for (const [i, q] of [[pi, H], [w, P]]) {
+    q.rep += COLLAB_REP;
+    q.collabs = (q.collabs ?? 0) + 1;
+    if (!q.styles.includes(t.style)) { q.styles.push(t.style); q.rep += REP_PREMIERE; premiere.push(i); }
+  }
+  s.trade = null;
+  log(s, { k: 'collab', p: pi, with: w, style: t.style, u, ferm: rec.ferm, apport: ap, premiere });
+  return null;
+}
+
 const HANDLERS = {
   placer(s, pi, { hex }) {
     if (s.phase !== 'setup' || s.setup.step !== 'hex') return 'Les brasseries sont déjà placées.';
@@ -362,9 +449,10 @@ const HANDLERS = {
     if (!RES.includes(r)) return 'Matière inconnue.';
     n = readInt(n, 20);
     if (!n) return 'Quantité illisible.';
-    const p = s.players[pi], cout = ACHAT[r] * n;
+    const p = s.players[pi], cout = ACHAT[r] * n, dispo = stockMarche(s, r);
+    if (dispo < n) return dispo ? `Le Marché n'a plus que ${dispo} ${r === 'torr' ? 'Malt torréfié' : { malt: 'Malt', houb: 'Houblon', lev: 'Levure', eau: 'Eau' }[r]} cette saison.` : 'Le Marché n’en a plus cette saison.';
     if (p.argent < cout) return `Il te faut ${cout} Argent.`;
-    p.argent -= cout; p.res[r] += n;
+    p.argent -= cout; p.res[r] += n; s.stockMarche[r] -= n;
     log(s, { k: 'acheter', p: pi, r, n, cout });
     return null;
   },
@@ -492,6 +580,25 @@ const HANDLERS = {
     return null;
   },
 
+  // Collab : une bière brassée à deux dans un fermenteur du proposant ; l'autre accepte, refuse ou contre-propose
+  proposeCollab(s, pi, { style, with: w, apport }) {
+    const g = monTour(s, pi);
+    if (g) return g;
+    if (s.trade) return 'Une offre est déjà ouverte.';
+    if (!STYLES.includes(style)) return 'Style inconnu.';
+    if (!Number.isInteger(w) || w === pi || !s.players[w]) return 'Choisis une brasserie partenaire.';
+    if (!s.players[w].offersOn) return `${s.players[w].name} ne reçoit pas de propositions.`;
+    const why = collabImpossible(s, pi, w, style);
+    if (why) return why;
+    const ap = lireApport(style, apport);
+    if (ap.error) return ap.error;
+    if (!aLesMatieres(s.players[pi], ap.hote)) return "Tu n'as pas les matières que tu apportes.";
+    s.trade = { id: ++s.tradeSeq, kind: 'collab', from: pi, to: [w], style, apport: ap, resp: {} };
+    s.tradesThisTurn++;
+    log(s, { k: 'collabOffer', p: pi, with: w, style, apport: ap });
+    return null;
+  },
+
   proposeTrade(s, pi, { give, get, to }) {
     const g = monTour(s, pi);
     if (g) return g;
@@ -512,6 +619,22 @@ const HANDLERS = {
   respondTrade(s, pi, { accept, counter }) {
     const t = s.trade;
     if (!t || !t.to.includes(pi)) return "Aucune offre ne t'est adressée.";
+    if (t.kind === 'collab') {
+      const p = s.players[pi];
+      if (counter) {
+        const ap = lireApport(t.style, counter.apport);
+        if (ap.error) return ap.error;
+        if (!aLesMatieres(p, ap.part)) return "Tu n'as pas les matières que tu apportes.";
+        if (!collabLibre(p)) return 'Tu as déjà fait une collab cette saison.';
+        t.resp[pi] = { s: 'counter', apport: ap };
+      } else if (accept) {
+        if (!aLesMatieres(p, t.apport.part)) return "Tu n'as pas les matières demandées.";
+        if (!collabLibre(p)) return 'Tu as déjà fait une collab cette saison.';
+        t.resp[pi] = { s: 'accept' };
+      } else t.resp[pi] = { s: 'refuse' };
+      log(s, { k: 'tradeResp', p: pi, from: t.from, s: t.resp[pi].s, collab: t.style, apport: t.resp[pi].apport });
+      return null;
+    }
     if (counter) {
       const G = readItems(counter.give), W = readItems(counter.get);
       if (!G || !W || !total(G) || !total(W)) return 'Contre-proposition illisible.';
@@ -530,6 +653,7 @@ const HANDLERS = {
     if (!t || t.from !== pi) return "Tu n'as pas d'offre ouverte.";
     const r = t.resp[w];
     if (!r || r.s === 'refuse') return "Ce joueur n'a pas accepté.";
+    if (t.kind === 'collab') return conclureCollab(s, pi, w, r);
     const give = r.s === 'counter' ? r.give : t.give, get = r.s === 'counter' ? r.get : t.get;
     const A = s.players[pi], B = s.players[w];
     if (!possede(A, give)) return "Tu n'as plus ce que tu proposais.";
@@ -577,7 +701,10 @@ const HANDLERS = {
 export function legalActions(s, pi) {
   if (s.phase === 'over') return [];
   const out = [], p = s.players[pi];
-  if (s.trade && s.trade.to.includes(pi) && !s.trade.resp[pi]) out.push({ type: 'respondTrade', canAccept: possede(p, s.trade.get) });
+  if (s.trade && s.trade.to.includes(pi) && !s.trade.resp[pi]) {
+    const t = s.trade;
+    out.push({ type: 'respondTrade', kind: t.kind ?? 'echange', canAccept: t.kind === 'collab' ? aLesMatieres(p, t.apport.part) && collabLibre(p) : possede(p, t.get) });
+  }
   if (s.phase === 'setup') {
     if (s.cur !== pi) return out;
     if (s.setup.step === 'hex') out.push({ type: 'placer', targets: s.tiles.map((t, i) => (PRODUCTION[t] && !s.players.some((q) => q.hex === i) ? i : -1)).filter((i) => i >= 0) });
@@ -599,8 +726,8 @@ export function legalActions(s, pi) {
   }
   const brassables = STYLES.filter((st) => peutBrasser(s, p, st));
   if (p.ferms.length < p.nferm && brassables.length) out.push({ type: 'brasser', styles: brassables });
-  const achats = RES.filter((r) => p.argent >= ACHAT[r]);
-  if (achats.length) out.push({ type: 'acheter', res: achats });
+  const achats = RES.filter((r) => p.argent >= ACHAT[r] && stockMarche(s, r) > 0);
+  if (achats.length) out.push({ type: 'acheter', res: achats, stock: { ...s.stockMarche } });
   const enStock = STYLES.filter((st) => p.stock[st] > 0);
   if (enStock.length) out.push({ type: 'vendre', styles: enStock });
   const livr = [];
@@ -617,6 +744,11 @@ export function legalActions(s, pi) {
   if (a(p, 'touraille') && p.torr < TOURAILLE_PAR_SAISON && p.res.malt >= TOURAILLE_MALT) out.push({ type: 'torrefier' });
   if (a(p, 'salle') && p.salle < SALLE_UNITES && enStock.length) out.push({ type: 'salle', styles: enStock });
   if (!s.trade && total(avoirs(p)) > 0) out.push({ type: 'proposeTrade' });
+  if (!s.trade && p.ferms.length < p.nferm && collabLibre(p)) {
+    const partenaires = s.players.map((_, i) => i).filter((i) => i !== pi && s.players[i].offersOn && collabLibre(s.players[i]));
+    const styles = STYLES.filter((st) => !RECETTES[st].exige || a(p, RECETTES[st].exige));
+    if (partenaires.length) out.push({ type: 'proposeCollab', partenaires, styles });
+  }
   if (unites(p) <= STOCK_MAX) out.push({ type: 'endTurn' });
   return out;
 }

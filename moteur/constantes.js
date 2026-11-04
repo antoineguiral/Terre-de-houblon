@@ -38,6 +38,12 @@ export const NB_VILLAGES = 3;
 
 // Marché
 export const ACHAT = { malt: 2, houb: 2, lev: 3, eau: 1, torr: 5 };
+// Stock de matières du Marché, renouvelé à chaque saison selon le nombre de joueurs (ce qui n'est pas acheté disparaît)
+export const MARCHE_STOCK = {
+  2: { malt: 4, houb: 2, lev: 2, eau: 4, torr: 1 },
+  3: { malt: 5, houb: 3, lev: 3, eau: 5, torr: 2 },
+  4: { malt: 6, houb: 4, lev: 4, eau: 6, torr: 2 },
+};
 export const PRIX_PLANCHER = 1;
 export const PRIX_REMONTEE = 1;   // par saison, vers le prix de base
 export const DEMANDE_BONUS = 2;   // sur le prix du Marché pour un style en demande
@@ -86,6 +92,11 @@ export const AMELIORATIONS = {
   camion:    { cout: 8,  nom: 'Camion',               txt: 'Tournées à 1 Argent par case, et 2 unités par client et par saison.' },
   salle:     { cout: 10, nom: 'Salle de dégustation', txt: 'Vend 2 unités par saison au prix de base +1, et rapporte 1 Réputation chaque hiver.' },
 };
+
+// Collaboration : une bière brassée à deux, dans le fermenteur de celui qui la propose
+export const COLLAB_UNITE_BONUS = 1;   // unités en plus de la cuve de l'hôte
+export const COLLAB_REP = 1;           // réputation de chacun au brassage
+export const COLLAB_PAR_SAISON = 1;    // collabs par brasserie et par saison
 
 // Départ
 export const DEPART = { res: { malt: 4, houb: 2, lev: 2, eau: 2, torr: 0 }, argent: 6 };

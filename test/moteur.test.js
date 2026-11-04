@@ -379,3 +379,122 @@ test('IA : une décision pour chaque joueur attendu, y compris les réponses aux
   const b = aiAction(s, pi);
   assert.ok(['concludeTrade', 'cancelTrade'].includes(b.type));
 });
+
+/* ---------- Marché limité et collabs ---------- */
+
+import { MARCHE_STOCK, COLLAB_UNITE_BONUS, Z } from '../moteur/index.js';
+
+// Termine la saison en cours : chacun passe, les décisions d'événement sont prises par l'IA
+function finirSaison(s) {
+  const t = s.saison;
+  for (let n = 0; n < 200 && s.saison === t && s.phase !== 'over'; n++) {
+    if (s.pending) { s = aiStep(s).state; continue; }
+    s = ok(applyAction(s, s.cur, { type: 'endTurn' }));
+  }
+  while (s.pending) s = aiStep(s).state;
+  return s;
+}
+
+test('marché limité : stock par saison selon le nombre de joueurs, partagé, sans report', () => {
+  let s = enJeu(11);
+  assert.deepEqual(s.stockMarche, MARCHE_STOCK[4]);
+  assert.deepEqual(enJeu(11, P4.slice(0, 2)).stockMarche, MARCHE_STOCK[2]);
+  const a = s.cur, b = s.ordre[1];
+  s = dote(s, a, {}, 50);
+  s = ok(applyAction(s, a, { type: 'acheter', r: 'torr', n: MARCHE_STOCK[4].torr }));
+  assert.equal(s.stockMarche.torr, 0);
+  ko(applyAction(s, a, { type: 'acheter', r: 'torr', n: 1 }), /plus cette saison/);
+  ko(applyAction(s, a, { type: 'acheter', r: 'malt', n: MARCHE_STOCK[4].malt + 1 }), new RegExp(`plus que ${MARCHE_STOCK[4].malt} Malt`));
+  assert.ok(!legalActions(s, a).find((x) => x.type === 'acheter').res.includes('torr'));
+  s = ok(applyAction(s, a, { type: 'acheter', r: 'malt', n: 1 }));
+  s = ok(applyAction(s, a, { type: 'endTurn' }));
+  s = dote(s, b, {}, 50);
+  ko(applyAction(s, b, { type: 'acheter', r: 'torr', n: 1 }), /plus cette saison/);
+  assert.equal(s.stockMarche.malt, MARCHE_STOCK[4].malt - 1);
+  s = finirSaison(s);
+  assert.deepEqual(s.stockMarche, MARCHE_STOCK[4], 'réapprovisionné, sans report');
+  assert.deepEqual(viewFor(s, 0).stockMarche, MARCHE_STOCK[4]);
+});
+
+test('collab : proposition, acceptation, brassage chez l’hôte, réputation, une par saison, partage', () => {
+  let s = enJeu(12);
+  const h = s.cur, w = s.ordre[1];
+  s = dote(s, h, { malt: 2, houb: 1, lev: 1, eau: 1, torr: 0 }, 20);
+  s = dote(s, w, { malt: 0, houb: 2, lev: 0, eau: 0, torr: 0 });
+  const rep0 = [s.players[h].rep, s.players[w].rep];
+  const apport = { hote: { malt: 2, houb: 1, lev: 1, eau: 1 }, part: { houb: 2 } };
+  ko(applyAction(s, h, { type: 'proposeCollab', style: 'ipa', with: w, apport: { hote: apport.hote, part: { houb: 1 } } }), /exactement la recette/);
+  ko(applyAction(s, h, { type: 'proposeCollab', style: 'ipa', with: w, apport: { hote: { malt: 2, houb: 3, lev: 1, eau: 1 }, part: {} } }), /au moins une matière/);
+  ko(applyAction(s, h, { type: 'proposeCollab', style: 'ipa', with: h, apport }), /partenaire/);
+  ko(applyAction(s, w, { type: 'proposeCollab', style: 'ipa', with: h, apport }), /ton tour/);
+  assert.ok(legalActions(s, h).find((x) => x.type === 'proposeCollab').partenaires.includes(w));
+  s = ok(applyAction(s, h, { type: 'proposeCollab', style: 'ipa', with: w, apport }));
+  assert.equal(s.trade.kind, 'collab');
+  assert.ok(waitingFor(s).includes(w));
+  assert.equal(legalActions(s, w)[0].type, 'respondTrade');
+  assert.equal(legalActions(s, w)[0].canAccept, true);
+  s = ok(applyAction(s, w, { type: 'respondTrade', accept: true }));
+  s = ok(applyAction(s, h, { type: 'concludeTrade', with: w }));
+  const H = s.players[h], W = s.players[w];
+  const u = CUVE[0] + COLLAB_UNITE_BONUS;
+  assert.deepEqual(H.ferms.at(-1), { st: 'ipa', left: 2, u, collab: w });
+  assert.equal(W.ferms.length, 0, 'rien chez le partenaire');
+  assert.equal(H.res.malt, 0); assert.equal(W.res.houb, 0);
+  assert.equal(H.rep, rep0[0] + 2, '+1 collab, +1 première fois');
+  assert.equal(W.rep, rep0[1] + 2);
+  assert.ok(W.styles.includes('ipa'), 'le style compte pour la diversité du partenaire');
+  assert.equal(s.trade, null);
+  assert.equal(s.log.at(-1).k, 'collab');
+  // une collab par saison, pour l'un comme pour l'autre
+  s = dote(s, h, { malt: 5, houb: 5, lev: 5, eau: 5 });
+  ko(applyAction(s, h, { type: 'proposeCollab', style: 'blonde', with: s.ordre[2], apport: { hote: { malt: 2, houb: 1, lev: 1 }, part: { eau: 1 } } }), /déjà fait une collab/);
+  assert.ok(!legalActions(s, h).find((x) => x.type === 'proposeCollab'));
+  // partage à la fin de la fermentation (2 saisons) : l'unité impaire à l'hôte
+  const st0 = [H.stock.ipa, W.stock.ipa];
+  s = finirSaison(s);
+  assert.equal(s.players[h].ferms.at(-1).left, 1);
+  s = finirSaison(s);
+  assert.equal(s.players[h].stock.ipa, st0[0] + u - Math.floor(u / 2));
+  assert.equal(s.players[w].stock.ipa, st0[1] + Math.floor(u / 2));
+  const fin = s.log.find((e) => e.k === 'saison' && e.finis.some((f) => f.collab === w));
+  assert.ok(fin, 'journal du partage');
+  assert.equal(s.players[h].collabs, 0, 'nouvelle saison : collab de nouveau possible');
+});
+
+test('collab : équipement de l’hôte, contre-proposition, partenaire sans les matières, refus des propositions', () => {
+  let s = enJeu(13);
+  const h = s.cur, w = s.ordre[1], x = s.ordre[2];
+  const lager = { hote: { malt: 2, houb: 1, lev: 1, eau: 1 }, part: { eau: 1 } };
+  s = dote(s, h, { malt: 4, houb: 4, lev: 4, eau: 4 }, 30);
+  s = dote(s, w, { malt: 4, houb: 4, lev: 4, eau: 4 });
+  ko(applyAction(s, h, { type: 'proposeCollab', style: 'lager', with: w, apport: lager }), /Chambre froide/);
+  s = ok(applyAction(s, h, { type: 'ameliorer', u: 'froide' }));
+  assert.ok(!s.players[w].upg.includes('froide'));
+  s = ok(applyAction(s, h, { type: 'proposeCollab', style: 'lager', with: w, apport: lager }));
+  // contre-proposition : le partenaire apporte le malt plutôt que l'eau
+  const counter = { apport: { hote: { malt: 1, houb: 1, lev: 1, eau: 2 }, part: { malt: 1 } } };
+  ko(applyAction(s, w, { type: 'respondTrade', counter: { apport: { hote: lager.hote, part: {} } } }), /exactement|au moins/);
+  s = ok(applyAction(s, w, { type: 'respondTrade', counter }));
+  const avant = s.players[w].res.malt;
+  let t = ok(applyAction(s, h, { type: 'concludeTrade', with: w }));
+  assert.equal(t.players[w].res.malt, avant - 1);
+  assert.equal(t.players[w].res.eau, 4, 'le partenaire garde son eau');
+  // le partenaire n'a plus les matières au moment de conclure : sa réponse devient un refus
+  const sans = structuredClone(s);
+  sans.players[w].res.malt = 0;
+  t = ok(applyAction(sans, h, { type: 'concludeTrade', with: w }));
+  assert.equal(t.trade.resp[w].s, 'refuse');
+  assert.equal(t.players[h].ferms.length, s.players[h].ferms.length);
+  // un joueur qui refuse les propositions ne peut pas être sollicité
+  let u = ok(applyAction(s, h, { type: 'cancelTrade' }));
+  u = ok(applyAction(u, x, { type: 'setOffers', on: false }));
+  ko(applyAction(u, h, { type: 'proposeCollab', style: 'blonde', with: x, apport: { hote: { malt: 2, houb: 1, lev: 1 }, part: { eau: 1 } } }), /ne reçoit pas/);
+});
+
+test('IA : des collabs ont lieu entre IA (actions refusées = échec de aiStep)', () => {
+  // le journal est tronqué en cours de partie : on compte les collabs au fil de l'eau
+  let s = createGame({ seed: 24, players: P4, niveau: 'compagnon' }), vues = 0;
+  let last = -1;
+  while (s.phase !== 'over') { s = aiStep(s).state; for (const e of s.log) if (e.i > last) { last = e.i; if (e.k === 'collab') vues++; } }
+  assert.ok(vues > 0, 'au moins une collab dans une partie de compagnons');
+});

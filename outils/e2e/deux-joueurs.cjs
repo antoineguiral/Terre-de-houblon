@@ -17,6 +17,15 @@ async function step(page, c) {
       return false; // on attend les réponses
     }
     if (/Contre-proposition/.test(title)) { await box.locator('[data-cback]').click(); return true; }
+    // Collabs : accepter une fois sur deux celle qu'on reçoit, brasser la sienne dès qu'elle est acceptée
+    if (/Collab avec/.test(title)) { bump('collab reçue'); const acc = box.locator('[data-y]:not(:disabled)'); try { if (await acc.count() && c['collab reçue'] % 2) { await acc.click({ timeout: 1500 }); bump('collab acceptée'); } else await box.locator('[data-n]').click({ timeout: 1500 }); } catch { bump('collab disparue'); } return true; }
+    if (/Ta collab/.test(title)) {
+      const k = box.locator('[data-k]:not([data-k="-1"])');
+      if (await k.count()) { bump('collab brassée'); await k.first().click(); return true; }
+      if (/Fermer|Renoncer/.test(await box.locator('[data-k="-1"]').textContent())) { await box.locator('[data-k="-1"]').click(); return true; }
+      return false;
+    }
+    if (/Autre répartition/.test(title)) { await box.locator('[data-ccback]').click(); return true; }
     throw new Error('fenêtre inconnue : ' + title);
   }
   const spot = page.locator('#board .hpick, #board .cpick');

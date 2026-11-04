@@ -8,8 +8,9 @@ import {
   RES, STYLES, ITEMS, RECETTES, ACHAT, AMELIORATIONS, CLIENTS, FOIRES, CARTE, SAISONS, NB_SAISONS, STOCK_MAX, FERMENTEURS_MAX, CUVE,
   TOURAILLE_MALT, SALLE_UNITES, SALLE_BONUS, DEMANDE_BONUS, PRODUCTION, PRODUIT, PUITS, TOPO, ZI, total, legalActions, saisonIdx, unites,
   clientIds, clientKind, clientPos, coutTournee, limiteLivraison, prixMarche, valeurLivraison, cuveUnites, pointsDiversite,
+  apportParDefaut, COLLAB_UNITE_BONUS, Z,
 } from '../moteur/index.js';
-import { RN, RI, SN, SI, TILE, SAISON_NOM, EVT, nomClient, nomSaison, meteoTexte, fmt, logLines, nomItem } from './textes.js';
+import { RN, RI, SN, SI, TILE, SAISON_NOM, EVT, nomClient, nomSaison, meteoTexte, fmt, fmtRes, logLines, nomItem } from './textes.js';
 
 export const RCOL = { malt: '#d8af40', houb: '#5d9638', lev: '#d2c9a8', eau: '#3d86aa', torr: '#4a2d1c', argent: '#d38b46' };
 export const RTXT = { malt: '#2a1d15', houb: '#f1f7ea', lev: '#2a1d15', eau: '#f2f8fb', torr: '#f6eadb', argent: '#1a120d' };
@@ -39,7 +40,7 @@ const plural = (n, s) => `${n} ${s}${n > 1 ? 's' : ''}`;
 
 export function createUi({ send, onNewGame, onHome }) {
   let view = null, opts = {}, L = [];
-  const ui = { mode: null, offer: { give: ZI(), get: ZI() }, counter: null, counterFor: null, modalKey: null, error: '', errorTimer: null, winClosed: false, qty: 1 };
+  const ui = { mode: null, offer: { give: ZI(), get: ZI() }, counter: null, counterFor: null, modalKey: null, error: '', errorTimer: null, winClosed: false, qty: 1, collab: null, collabCounter: null };
 
   const me = () => view.me;
   const P = () => view.players;
@@ -155,6 +156,30 @@ export function createUi({ send, onNewGame, onHome }) {
     return keys.map((k) => `<span class="rl">${ichip(k)}${nomItem(k)}</span>${stepper('give', k, give[k], maxGive(k))}${stepper('get', k, get[k], maxGet(k))}`).join('');
   }
 
+  // Parts d'une collab : l'hôte garde l'unité impaire
+  const collabUnites = (hote) => cuveUnites(P()[hote]) + COLLAB_UNITE_BONUS;
+  const collabParts = (u) => ({ hote: u - Math.floor(u / 2), part: Math.floor(u / 2) });
+  // Lignes de répartition d'une recette : ce qu'apporte l'hôte, ce qu'apporte le partenaire (flèches pour déplacer une matière)
+  function lignesApport(style, ap, k, nomHote, nomPart) {
+    const r = RECETTES[style];
+    return `<div class="apport"><span></span><span class="oh">${esc(nomHote)}</span><span></span><span class="oh">${esc(nomPart)}</span>
+      ${RES.filter((x) => r[x]).map((x) => `<span class="rl">${chip(x)}${RN[x]}</span><b>${ap.hote[x]}</b>
+        <span class="stp"><button class="btn mini" data-${k}="${x}" data-d="-1" aria-label="${RN[x]} vers ${esc(nomHote)}" ${ap.part[x] ? '' : 'disabled'}>←</button><button class="btn mini" data-${k}="${x}" data-d="1" aria-label="${RN[x]} vers ${esc(nomPart)}" ${ap.hote[x] ? '' : 'disabled'}>→</button></span>
+        <b>${ap.part[x]}</b>`).join('')}</div>`;
+  }
+  // Une répartition est-elle possible ? Renvoie la raison sinon.
+  function apportInvalide(ap, hote, part) {
+    if (!total(ap.hote) || !total(ap.part)) return 'Chacun apporte au moins une matière.';
+    if (RES.some((x) => P()[hote].res[x] < ap.hote[x])) return `${hote === me() ? 'Tu n’as' : esc(P()[hote].name) + ' n’a'} pas assez de matières pour sa part.`;
+    if (RES.some((x) => P()[part].res[x] < ap.part[x])) return `${part === me() ? 'Tu n’as' : esc(P()[part].name) + ' n’a'} pas assez de matières pour sa part.`;
+    return '';
+  }
+  function resumeCollab(style, hote, part) {
+    const u = collabUnites(hote), c = collabParts(u), r = RECETTES[style];
+    const nouveau = [hote, part].filter((i) => !P()[i].styles.includes(style)).map((i) => (you(i) ? 'toi' : esc(P()[i].name)));
+    return `Brassée chez ${you(hote) ? 'toi' : esc(P()[hote].name)} : ${u} unités (${you(hote) ? 'ta' : 'sa'} cuve + ${COLLAB_UNITE_BONUS}), ${c.hote} pour ${you(hote) ? 'toi' : esc(P()[hote].name)} et ${c.part} pour ${you(part) ? 'toi' : esc(P()[part].name)}, prêtes dans ${plural(r.ferm, 'saison')}. +1 Réputation chacun${nouveau.length ? `, +1 de plus pour un style nouveau (${nouveau.join(', ')})` : ''}.`;
+  }
+
   function currentModal() {
     const v = view, p = my();
     if (v.phase === 'over') {
@@ -183,6 +208,38 @@ export function createUi({ send, onNewGame, onHome }) {
         <div class="mrow">${cc.styles.map((st) => `<button class="btn" data-style="${st}">${SN[st]} · ${RECETTES[st].rep + (v.demande.includes(st) ? 1 : 0)}</button>`).join('')}</div>`,
     };
     const t = v.trade;
+    if (t?.kind === 'collab' && t.to.includes(me()) && !t.resp[me()]) {
+      const from = P()[t.from];
+      if (ui.collabCounter) {
+        const ap = ui.collabCounter, why = apportInvalide(ap, t.from, me());
+        return {
+          key: `collabctr-${t.id}`,
+          html: `<h2>Autre répartition</h2><p>Une ${SN[t.style]} chez ${esc(from.name)}. Déplace les matières entre vous deux.</p>
+            ${lignesApport(t.style, ap, 'cc', from.name, 'Toi')}
+            <p class="small">${why || resumeCollab(t.style, t.from, me())}</p>
+            <div class="mrow"><button class="btn primary" data-ccok ${why ? 'disabled' : ''}>Envoyer</button><button class="btn ghost" data-ccback>Retour</button></div>`,
+        };
+      }
+      return {
+        key: `collab-${t.id}`,
+        html: `<h2>Collab avec ${esc(from.name)}</h2><p>${esc(from.name)} te propose de brasser ensemble une <b>${SN[t.style]}</b>, chez lui.</p>
+          <p>Tu apportes <b>${fmtRes(t.apport.part)}</b> ; ${esc(from.name)} apporte ${fmtRes(t.apport.hote)}.</p>
+          <p class="small">${resumeCollab(t.style, t.from, me())}</p>
+          <div class="mrow"><button class="btn primary" data-y ${legal('respondTrade')?.canAccept ? '' : 'disabled'}>Accepter</button><button class="btn" data-n>Refuser</button><button class="btn ghost" data-cctr>Autre répartition</button></div>`,
+      };
+    }
+    if (t?.kind === 'collab' && t.from === me()) {
+      const w = t.to[0], r = t.resp[w], name = esc(P()[w].name);
+      const ap = r?.s === 'counter' ? r.apport : t.apport;
+      const txt = !r ? 'Réfléchit…' : r.s === 'refuse' ? 'Refuse.' : r.s === 'accept' ? 'Accepte.' : `Propose une autre répartition : tu apporterais ${fmtRes(r.apport.hote)}, lui ${fmtRes(r.apport.part)}.`;
+      const can = r && r.s !== 'refuse' && RES.every((x) => p.res[x] >= ap.hote[x]);
+      return {
+        key: `collabresp-${t.id}`,
+        html: `<h2>Ta collab</h2><p>Une ${SN[t.style]} chez toi, avec ${name}.</p>
+          <div class="resp">${sw(w)}<div><b>${name}</b><small>${txt}</small></div>${can ? `<button class="btn primary" data-k="${w}">Brasser</button>` : ''}</div>
+          <button class="btn ghost" data-k="-1">${r && r.s !== 'refuse' ? 'Renoncer' : r ? 'Fermer' : 'Retirer la proposition'}</button>`,
+      };
+    }
     if (t && t.to.includes(me()) && !t.resp[me()]) {
       const from = P()[t.from];
       if (ui.counter) {
@@ -243,6 +300,10 @@ export function createUi({ send, onNewGame, onHome }) {
     if ('close' in ds) { if (view.phase === 'over') ui.winClosed = true; return render(); }
     if ('y' in ds) return act({ type: 'respondTrade', accept: true });
     if ('n' in ds) return act({ type: 'respondTrade', accept: false });
+    if ('cctr' in ds) { ui.collabCounter = structuredClone(view.trade.apport); return render(); }
+    if (ds.cc) { const ap = ui.collabCounter, x = ds.cc, d = +ds.d; if (d > 0 && ap.hote[x]) { ap.hote[x]--; ap.part[x]++; } if (d < 0 && ap.part[x]) { ap.part[x]--; ap.hote[x]++; } return render(); }
+    if ('ccback' in ds) { ui.collabCounter = null; return render(); }
+    if ('ccok' in ds) { const apport = ui.collabCounter; ui.collabCounter = null; return act({ type: 'respondTrade', counter: { apport } }); }
     if ('ctr' in ds) { ui.counter = { give: { ...ZI(), ...view.trade.give }, get: { ...ZI(), ...view.trade.get } }; return render(); }
     if (ds.c) { const c = ui.counter[ds.c]; c[ds.r] = Math.max(0, c[ds.r] + +ds.d); return render(); }
     if ('cback' in ds) { ui.counter = null; return render(); }
@@ -276,17 +337,35 @@ export function createUi({ send, onNewGame, onHome }) {
     const v = view;
     if (v.saison < 0) { $('#saison').innerHTML = '<p class="empty">La saison commence quand les brasseries sont installées.</p>'; return; }
     const c = CARTE[v.carte];
-    const cal = Array.from({ length: NB_SAISONS }, (_, t) => {
-      const k = SAISONS[t % 4], an = Math.floor(t / 4), d = v.deck[k];
-      const id = t < v.saison || t === v.saison ? d.revelees[an] : null;
-      const cls = t === v.saison ? 'now' : t < v.saison ? 'past' : '';
-      const txt = id ? CARTE[id].nom : d.restantes.map((x) => CARTE[x].nom).join(' ou ');
-      return `<span class="cal ${cls}" title="${esc(nomSaison(t))} : ${esc(txt)}">${SAISON_NOM[k].slice(0, 1)}</span>`;
-    }).join('');
     $('#saison').innerHTML = `<div class="season"><b>${nomSaison(v.saison)}</b><span class="cardname">${esc(c.nom)}</span>
       <small>${meteoTexte(c.meteo)}. En demande : ${c.demande.map((s) => `<span class="dem">${SN[s]}</span>`).join(' et ')}${c.evt ? ` · <span class="evt" title="${esc(EVT[c.evt].txt)}">${EVT[c.evt].nom}</span>` : ''}.</small>
-      <div class="calrow" title="Les 12 saisons ; passe la souris pour voir les cartes possibles">${cal}</div>
-      <small>Saison suivante : ${v.saison + 1 < NB_SAISONS ? v.deck[SAISONS[(v.saison + 1) % 4]].restantes.map((x) => `${esc(CARTE[x].nom)} (${CARTE[x].demande.map((s) => SN[s]).join(', ')})`).join(' · ') : 'fin de la partie'}</small></div>`;
+      <small>La frise au-dessus du plateau montre les saisons passées et ce qui peut encore venir.</small></div>`;
+  }
+
+  // Frise des 12 saisons : carte sortie, ou cartes encore possibles (chacune sort une seule fois en trois ans)
+  function renderFrise() {
+    const v = view, el = $('#frise');
+    if (v.saison < 0) { el.innerHTML = ''; el.hidden = true; return; }
+    el.hidden = false;
+    const dem = (ids) => [...new Set(ids.flatMap((id) => CARTE[id].demande))].map((st) => schip(st)).join('');
+    const evts = (ids) => [...new Set(ids.map((id) => CARTE[id].evt).filter(Boolean))];
+    let html = '';
+    for (let an = 0; an < NB_SAISONS / 4; an++) {
+      html += `<span class="an">An ${an + 1}</span>`;
+      for (let j = 0; j < 4; j++) {
+        const t = an * 4 + j, k = SAISONS[j], d = v.deck[k];
+        const id = t <= v.saison ? d.revelees[an] : null;
+        const cls = t === v.saison ? 'now' : t < v.saison ? 'past' : 'futur';
+        if (id) {
+          const c = CARTE[id];
+          html += `<div class="fz ${cls}" title="${esc(nomSaison(t))} : ${esc(c.nom)}. ${esc(meteoTexte(c.meteo))}."><span class="fs">${SAISON_NOM[k]}</span><b>${esc(c.nom)}</b><span class="fd">${dem([id])}</span>${c.evt ? `<span class="fe" title="${esc(EVT[c.evt].txt)}">${EVT[c.evt].court}</span>` : ''}</div>`;
+        } else {
+          const ids = d.restantes, ev = evts(ids);
+          html += `<div class="fz ${cls}" title="${esc(nomSaison(t))} : ${esc(ids.map((x) => CARTE[x].nom).join(' ou '))}"><span class="fs">${SAISON_NOM[k]}</span><span class="opts">${ids.length > 1 ? `${ids.length} possibles` : esc(CARTE[ids[0]].nom)}</span><span class="fd">${dem(ids)}</span>${ev.length ? `<span class="fe" title="${esc(ev.map((e) => `${EVT[e].nom} : ${EVT[e].txt}`).join(' '))}">${ev.map((e) => `${EVT[e].court} ?`).join(' ')}</span>` : ''}</div>`;
+        }
+      }
+    }
+    el.innerHTML = html;
   }
 
   function renderPlayers() {
@@ -312,16 +391,26 @@ export function createUi({ send, onNewGame, onHome }) {
       if (i >= p.nferm) return '<div class="ferm none" title="Fermenteur à acheter">—</div>';
       const f = p.ferms[i];
       if (!f) return '<div class="ferm empty">libre</div>';
-      return `<div class="ferm" style="--rc:${SCOL[f.st]};--rt:${STXT[f.st]}" title="${SN[f.st]} : ${f.u} unités, prête dans ${plural(f.left, 'saison')}"><b>${SN[f.st]}</b><span>${f.u} u · ${f.left} sais.</span></div>`;
+      const col = f.collab !== undefined ? ` · collab avec ${esc(P()[f.collab].name)} (${collabParts(f.u).hote} pour toi)` : '';
+      return `<div class="ferm" style="--rc:${SCOL[f.st]};--rt:${STXT[f.st]}" title="${SN[f.st]} : ${f.u} unités, prête dans ${plural(f.left, 'saison')}${col}"><b>${SN[f.st]}${f.collab !== undefined ? ' <i>collab</i>' : ''}</b><span>${f.u} u · ${f.left} sais.</span></div>`;
     }).join('');
     const stock = STYLES.filter((st) => p.stock[st] > 0);
     $('#brasserie').innerHTML = `<div class="hand">${RES.map((r) => `<div class="res ${p.res[r] ? '' : 'zero'}" style="--rc:${RCOL[r]};--rt:${RTXT[r]}"><b>${p.res[r]}</b><span>${r === 'torr' ? 'Torréfié' : RN[r]}</span></div>`).join('')}
       <div class="res" style="--rc:${RCOL.argent};--rt:${RTXT.argent}"><b>${p.argent}</b><span>Argent</span></div></div>
       <div class="sub2">Fermenteurs · cuve de ${cuveUnites(p)} unités</div><div class="ferms">${slots}</div>
+      ${chezLesAutres(p)}
       <div class="sub2">Stock ${unites(p)}/${STOCK_MAX}${unites(p) > STOCK_MAX ? ' · trop plein' : ''}</div>
       <div class="stock">${stock.length ? stock.map((st) => `<span class="stk" style="--rc:${SCOL[st]};--rt:${STXT[st]}"><b>${p.stock[st]}</b> ${SN[st]}</span>`).join('') : '<span class="empty">Rien en stock.</span>'}</div>
       <div class="sub2">Équipement</div><div class="stock">${p.upg.length || p.nferm > 2 ? [...p.upg.map((u) => AMELIORATIONS[u].nom), ...(p.nferm > 2 ? [`${p.nferm} fermenteurs`] : [])].map((n) => `<span class="eq">${esc(n)}</span>`).join('') : '<span class="empty">Le strict nécessaire.</span>'}</div>
       <div class="sub2">Styles brassés : ${p.styles.length}/7 (diversité ${pointsDiversite(p.styles.length)} pt${pointsDiversite(p.styles.length) > 1 ? 's' : ''})</div>`;
+  }
+
+  // Mes parts de collab qui fermentent chez les autres
+  function chezLesAutres() {
+    const parts = [];
+    P().forEach((q, i) => q.ferms.forEach((f) => { if (f.collab === me()) parts.push({ i, f }); }));
+    if (!parts.length) return '';
+    return `<div class="sub2">En collab chez les autres</div><div class="stock">${parts.map(({ i, f }) => `<span class="stk" style="--rc:${SCOL[f.st]};--rt:${STXT[f.st]}" title="Chez ${esc(P()[i].name)}, prête dans ${plural(f.left, 'saison')}"><b>${collabParts(f.u).part}</b> ${SN[f.st]} · ${esc(P()[i].name)}, ${f.left} sais.</span>`).join('')}</div>`;
   }
 
   function renderBrasser() {
@@ -341,7 +430,8 @@ export function createUi({ send, onNewGame, onHome }) {
     const v = view, p = my();
     if (!p) { $('#marche').innerHTML = ''; return; }
     const ach = free() && legal('acheter'), ven = free() && legal('vendre'), sal = free() && legal('salle');
-    $('#marche').innerHTML = `<div class="sub2">Acheter</div><div class="buyrow">${RES.map((r) => `<button class="btn buy" data-act="acheter" data-r="${r}" ${ach && ach.res.includes(r) ? '' : 'disabled'} title="${RN[r]} : ${ACHAT[r]} Argent">${chip(r)} ${ACHAT[r]}</button>`).join('')}</div>
+    const st = (r) => v.stockMarche?.[r] ?? 0;
+    $('#marche').innerHTML = `<div class="sub2">Acheter · prix, et ce qui reste cette saison</div><div class="buyrow">${RES.map((r) => `<button class="btn buy" data-act="acheter" data-r="${r}" ${ach && ach.res.includes(r) ? '' : 'disabled'} title="${RN[r]} : ${ACHAT[r]} Argent, ${st(r)} en vente cette saison">${chip(r)} ${ACHAT[r]}<small class="left ${st(r) ? '' : 'out'}">${st(r) ? `reste ${st(r)}` : 'épuisé'}</small></button>`).join('')}</div>
       <div class="sub2">Vendre · prix courant (base)</div>
       <div class="sellgrid ${p.upg.includes('salle') ? 'with-salle' : ''}">${STYLES.map((st) => {
         const cur = prixMarche(v, st), can = ven && ven.styles.includes(st), canS = sal && sal.styles.includes(st);
@@ -388,10 +478,34 @@ export function createUi({ send, onNewGame, onHome }) {
     const okOffer = free() && legal('proposeTrade') && total(o.give) && total(o.get) && ITEMS.every((k) => avoir(p, k) >= o.give[k]) && !ITEMS.some((k) => o.give[k] && o.get[k]);
     const stp = (k, key, n, max) => `<span class="stp"><button class="btn mini" data-act="${k}" data-r="${key}" data-d="-1" aria-label="Moins" ${n ? '' : 'disabled'}>−</button><b>${n}</b><button class="btn mini" data-act="${k}" data-r="${key}" data-d="1" aria-label="Plus" ${n < max ? '' : 'disabled'}>+</button></span>`;
     const keys = ITEMS.filter((k) => avoir(p, k) > 0 || o.get[k] || o.give[k] || RES.includes(k) || k === 'argent');
-    $('#trade').innerHTML = `<div class="offer"><span></span><span class="oh">Tu donnes</span><span class="oh">Tu demandes</span>
+    $('#trade').innerHTML = `<div class="sub2">Échange</div><div class="offer"><span></span><span class="oh">Tu donnes</span><span class="oh">Tu demandes</span>
       ${keys.map((k) => `<span class="rl">${ichip(k)}${nomItem(k)}</span>${stp('og', k, o.give[k], avoir(p, k))}${stp('ow', k, o.get[k], 20)}`).join('')}</div>
       <button class="btn" data-act="propose" ${okOffer ? '' : 'disabled'}>Proposer l'échange</button>
-      <label class="chk"><input type="checkbox" id="offersOn" ${p.offersOn ? 'checked' : ''}>Recevoir les offres des autres brasseries</label>`;
+      <div class="sub2">Collab · une bière brassée à deux, chez toi</div>${formCollab(p)}
+      <label class="chk"><input type="checkbox" id="offersOn" ${p.offersOn ? 'checked' : ''}>Recevoir les offres et les collabs des autres brasseries</label>`;
+  }
+
+  // Formulaire de collab : partenaire, style, répartition (pré-remplie : tu apportes ce que tu as)
+  function formCollab(p) {
+    const pc = free() && legal('proposeCollab');
+    if (!pc) {
+      const why = !free() ? 'Pendant ton tour.' : view.trade ? 'Une offre est déjà ouverte.' : p.ferms.length >= p.nferm ? 'Il faut un fermenteur libre chez toi.' : (p.collabs ?? 0) >= 1 ? 'Une collab par saison : tu as déjà fait la tienne.' : 'Personne n’est disponible pour une collab cette saison.';
+      ui.collab = null;
+      return `<p class="hintsmall">${why}</p>`;
+    }
+    let c = ui.collab;
+    if (!c || !pc.partenaires.includes(c.w) || !pc.styles.includes(c.st)) {
+      const w = pc.partenaires[0];
+      const st = pc.styles.find((x) => apportParDefaut(view, me(), w, x)) ?? pc.styles[0];
+      c = ui.collab = { w, st, ap: apportParDefaut(view, me(), w, st) };
+    }
+    const nomW = P()[c.w].name;
+    const why = !c.ap ? `${esc(nomW)} n'a pas de quoi compléter cette recette.` : apportInvalide(c.ap, me(), c.w);
+    return `<div class="trade"><label>Avec<select id="colW">${pc.partenaires.map((i) => `<option value="${i}" ${i === c.w ? 'selected' : ''}>${esc(P()[i].name)}</option>`).join('')}</select></label>
+      <label>Style<select id="colSt">${pc.styles.map((x) => `<option value="${x}" ${x === c.st ? 'selected' : ''}>${SN[x]}</option>`).join('')}</select></label></div>
+      ${c.ap ? lignesApport(c.st, c.ap, 'colmv', 'Toi', nomW) : ''}
+      <p class="hintsmall">${why || resumeCollab(c.st, me(), c.w)}</p>
+      <button class="btn" data-act="collab" ${why ? 'disabled' : ''}>Proposer la collab</button>`;
   }
 
   function renderHint(mode) {
@@ -409,7 +523,7 @@ export function createUi({ send, onNewGame, onHome }) {
   function suivreOffre() {
     const t = view.trade, waitingMe = t && mine() && t.to.includes(me()) && !t.resp[me()];
     if (offreVue && (!t || t.id !== offreVue.id) && !ui.error) {
-      const done = view.log.some((e) => e.k === 'tradeDone' && e.p === offreVue.from && e.with === me());
+      const done = view.log.some((e) => (e.k === 'tradeDone' || e.k === 'collab') && e.p === offreVue.from && e.with === me());
       if (!done) showError(`L'offre de ${P()[offreVue.from].name} n'est plus disponible : conclue avec quelqu'un d'autre, ou retirée.`);
     }
     offreVue = waitingMe ? { id: t.id, from: t.from } : null;
@@ -420,11 +534,11 @@ export function createUi({ send, onNewGame, onHome }) {
     if (!view) return;
     suivreOffre();
     L = mine() ? legalActions(view, me()) : [];
-    if (view.trade?.id !== ui.counterFor) { ui.counter = null; ui.counterFor = view.trade?.id; }
+    if (view.trade?.id !== ui.counterFor) { ui.counter = null; ui.collabCounter = null; ui.counterFor = view.trade?.id; }
     const mode = boardMode();
     lastMode = mode;
     renderBoard(mode);
-    renderSaison(); renderPlayers(); renderTurn(); renderBrasserie(); renderBrasser(); renderMarche(); renderClients(); renderAmeliorer(); renderTrade();
+    renderFrise(); renderSaison(); renderPlayers(); renderTurn(); renderBrasserie(); renderBrasser(); renderMarche(); renderClients(); renderAmeliorer(); renderTrade();
     renderHint(mode);
     renderLog();
     renderModal();
@@ -449,6 +563,11 @@ export function createUi({ send, onNewGame, onHome }) {
       const r = await act({ type: 'proposeTrade', give: { ...ui.offer.give }, get: { ...ui.offer.get } });
       if (r?.ok) ui.offer = { give: ZI(), get: ZI() };
     },
+    collab: async () => {
+      const c = ui.collab;
+      const r = await act({ type: 'proposeCollab', style: c.st, with: c.w, apport: c.ap });
+      if (r?.ok) ui.collab = null;
+    },
     new: () => onNewGame?.(),
     accueil: () => onHome?.(),
   };
@@ -456,7 +575,20 @@ export function createUi({ send, onNewGame, onHome }) {
     const b = e.target.closest('[data-act]');
     if (b && !b.disabled && ACTS[b.dataset.act]) ACTS[b.dataset.act](b);
   });
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-colmv]');
+    if (!b || b.disabled || !ui.collab?.ap) return;
+    const ap = ui.collab.ap, x = b.dataset.colmv;
+    if (+b.dataset.d > 0 && ap.hote[x]) { ap.hote[x]--; ap.part[x]++; }
+    if (+b.dataset.d < 0 && ap.part[x]) { ap.part[x]--; ap.hote[x]++; }
+    render();
+  });
   document.addEventListener('change', (e) => {
+    if (e.target.id === 'colW' || e.target.id === 'colSt') {
+      const w = e.target.id === 'colW' ? +e.target.value : ui.collab.w, st = e.target.id === 'colSt' ? e.target.value : ui.collab.st;
+      ui.collab = { w, st, ap: apportParDefaut(view, me(), w, st) };
+      return render();
+    }
     if (e.target.id === 'offersOn') act({ type: 'setOffers', on: e.target.checked });
   });
   function boardPick(e) {

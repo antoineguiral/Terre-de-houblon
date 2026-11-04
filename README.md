@@ -7,10 +7,12 @@ Issu de [Terres de Houblon](https://github.com/antoineguiral/Terre-de-houblon), 
 ## Les règles
 
 - **Le plateau.** 19 cases : le Bourg au centre, 3 villages, 15 terroirs (champs d'orge, houblonnières, sources). Chaque joueur pose sa brasserie sur un terroir : sa case et ses six voisines l'approvisionnent. Six foires sur la côte, une par saison ou presque.
-- **Les saisons.** 12 saisons. Chaque carte Saison donne la météo, deux styles en demande et parfois un événement (contamination, canicule, concours régional, contrôle des douanes, fête au village). Chaque carte sort une fois sur les trois ans : on sait ce qui peut encore venir.
+- **Les saisons.** 12 saisons. Chaque carte Saison donne la météo, deux styles en demande et parfois un événement (contamination, canicule, concours régional, contrôle des douanes, fête au village). Chaque carte sort une fois sur les trois ans : la frise au-dessus du plateau montre ce qui est sorti et ce qui peut encore venir.
 - **Les matières.** Malt (été, automne), Houblon (surtout automne), Eau (printemps et sources), Levure (récupérée à la fin de chaque fermentation), Malt torréfié (fabriqué à la Touraille).
 - **Brasser.** 7 styles, de la Blonde (1 saison, 3 Argent, 1 réputation) à la Bière de garde (3 saisons, 7 Argent, 4 réputation). Un brassin occupe un fermenteur, donne 2 à 4 unités selon la cuve. La première fois qu'on brasse un style : +1 réputation.
+- **Le Marché.** On y achète les matières à prix fixe, mais en quantité limitée : un stock par saison selon le nombre de joueurs, sans report. Premier arrivé, premier servi ; le moins réputé joue en premier.
 - **Vendre.** Au Marché du Bourg, sans limite, mais chaque unité vendue baisse le prix de 1. Aux clients, avec une tournée (2 Argent par case de distance) : ils paient plus et donnent la réputation. Capacité limitée par saison, à prendre dans l'ordre de jeu.
+- **Les collabs.** Pendant son tour, on peut proposer à une autre brasserie de brasser une bière à deux, dans son propre fermenteur : chacun apporte une partie de la recette, gagne 1 Réputation (et le bonus de style nouveau), et la bière (cuve + 1 unité) se partage. Une collab par brasserie et par saison.
 - **S'équiper.** Cuve, fermenteurs, Touraille, Chambre froide, Labo, Camion, Salle de dégustation.
 - **L'ordre.** Le moins réputé joue en premier. On ne peut pas finir son tour avec plus de 6 unités en stock.
 - **Le décompte.** Réputation + diversité (3 styles +2, 5 styles +5, 7 styles +9) + 1 point par 8 Argent.
