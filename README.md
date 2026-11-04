@@ -1,8 +1,8 @@
 # Terres de Houblon
 
-Jeu de plateau dans l'univers de la brasserie, inspiré des jeux de colonisation à cases hexagonales. Une partie se joue dans le navigateur, contre trois brasseries gérées par l'ordinateur.
+Jeu de plateau dans l'univers de la brasserie, inspiré des jeux de colonisation à cases hexagonales. Une partie se joue dans le navigateur, seul contre l'ordinateur ou à plusieurs, en direct ou en différé.
 
-**Jouer :** https://antoineguiral.github.io/Terre-de-houblon/
+**Jouer :** https://jeu.leperelamer.fr
 
 ## Principe
 
@@ -22,7 +22,7 @@ python3 -m http.server 8642   # puis http://localhost:8642
 
 Le mode solo tourne entièrement dans le navigateur ; la partie en cours est gardée entre deux visites.
 
-## Moteur de jeu (branche `multijoueur`)
+## Moteur de jeu
 
 Toute la logique vit dans `moteur/`, en modules JavaScript purs, sans DOM, utilisables tels quels par le navigateur et par Node (22.13 ou plus récent) :
 
@@ -38,7 +38,7 @@ npm test                       # tests du moteur, dont 30 parties complètes IA 
 npm run simulation -- 100      # 100 parties IA contre IA, avec statistiques
 ```
 
-## Jeu en réseau (branche `multijoueur`)
+## Jeu en réseau
 
 Le serveur (`serveur/`) est l'arbitre : il détient l'état, tire les dés, fait jouer l'ordinateur et envoie à chacun sa vue par WebSocket. Les parties sont gardées dans SQLite après chaque action.
 
@@ -57,3 +57,5 @@ npm run page                           # dans un autre terminal : la page sur ht
 npm test                               # moteur, salle et serveur
 npm run e2e:solo && npm run e2e:deux   # parties complètes jouées dans Chrome (serveur et page lancés)
 ```
+
+Mise en production sur le serveur : voir [`DEPLOIEMENT.md`](DEPLOIEMENT.md).

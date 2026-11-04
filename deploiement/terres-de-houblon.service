@@ -1,0 +1,31 @@
+# /etc/systemd/system/terres-de-houblon.service
+[Unit]
+Description=Terres de Houblon : serveur de jeu
+After=network.target
+
+[Service]
+Type=simple
+User=houblon
+Group=houblon
+WorkingDirectory=/srv/terres-de-houblon/serveur
+EnvironmentFile=/etc/terres-de-houblon.env
+Environment=NODE_ENV=production TZ=Europe/Paris NODE_NO_WARNINGS=1
+# Node 22 installé par apt (le Node de /usr/local/bin reste celui des autres sites)
+ExecStart=/usr/bin/node serveur.js
+Restart=always
+RestartSec=3
+TimeoutStopSec=10
+# La base vit dans /var/lib/terres-de-houblon, créé par systemd pour l'utilisateur houblon
+StateDirectory=terres-de-houblon
+StateDirectoryMode=0750
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target
