@@ -2,7 +2,7 @@
 // le même code sert au mode solo et au jeu en réseau.
 //
 //   const ui = createUi({ send, onNewGame });   send(action) → { ok, error } (ou une promesse)
-//   ui.update(view, { busy })                    busy : l'adversaire joue, on attend
+//   ui.update(view, { busy, rejouer })           busy : l'adversaire joue ; rejouer : proposer une nouvelle partie à la fin
 
 import { RES, COST, TOPO, PIPS, Z, total, legalActions, rate } from '../moteur/index.js';
 import { RN, RI, TILE, DEV, fmt, logLines } from './textes.js';
@@ -30,7 +30,7 @@ const chip = (r) => `<span class="cst" title="${RN[r]}" style="--rc:${RCOL[r]};-
 const chips = (c) => `<span class="costs">${Object.entries(c).flatMap(([r, n]) => Array(n).fill(chip(r))).join('')}</span>`;
 const sw = (i) => `<span class="sw" style="background:${PCOL[i]}"></span>`;
 
-export function createUi({ send, onNewGame }) {
+export function createUi({ send, onNewGame, onHome }) {
   let view = null, opts = {}, L = [];
   const ui = { mode: null, give: 'fut', get: 'malt', offer: { give: Z(), get: Z() }, modal: null, sel: Z(), counter: null, modalKey: null, error: '', errorTimer: null };
 
@@ -150,13 +150,14 @@ export function createUi({ send, onNewGame }) {
   function currentModal() {
     const v = view;
     if (v.phase === 'over') {
+      if (ui.winClosed) return null;
       const w = v.winner, P0 = P();
       const order = P0.map((_, i) => i).sort((a, b) => P0[b].vp - P0[a].vp);
       return {
         key: 'win',
         html: `<h2>${you(w) ? 'Tu remportes la saison !' : esc(P0[w].name) + ' remporte la saison'}</h2><p>${you(w) ? 'Ta brasserie est la plus réputée du terroir.' : 'Sa brasserie est la plus réputée du terroir.'}</p>
           ${order.map((i) => `<div class="score">${sw(i)}<span>${esc(P0[i].name)}</span><b>${P0[i].vp} PV</b></div>`).join('')}
-          ${onNewGame ? '<button class="btn primary" data-again>Rejouer</button>' : '<button class="btn" data-close>Fermer</button>'}`,
+          <div class="mrow">${opts.rejouer ? '<button class="btn primary" data-again>Rejouer</button>' : '<button class="btn primary" data-home>Retour à l’accueil</button>'}<button class="btn ghost" data-close>Voir le plateau</button></div>`,
       };
     }
     if (!mine()) return null;
@@ -239,7 +240,8 @@ export function createUi({ send, onNewGame }) {
     if ('ok' in ds) return m.ok();
     if (ds.v !== undefined) return m.pick(+ds.v);
     if ('again' in ds) return onNewGame?.();
-    if ('close' in ds) { if (view.phase === 'over') { $('#modal').hidden = true; modalNow = null; return; } ui.modal = null; return render(); }
+    if ('home' in ds) return onHome?.();
+    if ('close' in ds) { if (view.phase === 'over') ui.winClosed = true; ui.modal = null; return render(); }
     if (ds.r && ui.modal === 'mono') { ui.modal = null; return act({ type: 'playDev', card: 'mono', r: ds.r }); }
     if ('y' in ds) return act({ type: 'respondTrade', accept: true });
     if ('n' in ds) return act({ type: 'respondTrade', accept: false });
@@ -322,9 +324,21 @@ export function createUi({ send, onNewGame }) {
     $('#log').innerHTML = lines.map((l) => `<li><i style="background:${l.p === null || l.p === undefined ? 'var(--muted)' : PCOL[l.p]}"></i><span>${esc(l.txt)}</span></li>`).join('');
   }
 
+  // Une offre qui m'était adressée disparaît avant ma réponse : on le dit, au lieu de fermer la fenêtre sans un mot
+  let offreVue = null;
+  function suivreOffre() {
+    const t = view.trade, waitingMe = t && mine() && t.to.includes(me()) && !t.resp[me()];
+    if (offreVue && (!t || t.id !== offreVue.id) && !ui.error) {
+      const done = view.log.some((e) => e.k === 'tradeDone' && e.p === offreVue.from && e.with === me());
+      if (!done) showError(`L'offre de ${P()[offreVue.from].name} n'est plus disponible : conclue avec quelqu'un d'autre, ou retirée.`);
+    }
+    offreVue = waitingMe ? { id: t.id, from: t.from } : null;
+  }
+
   let lastMode = null;
   function render() {
     if (!view) return;
+    suivreOffre();
     L = mine() ? legalActions(view, me()) : [];
     if (view.trade?.id !== ui.counterFor) { ui.counter = null; ui.counterFor = view.trade?.id; }
     const mode = boardMode();
@@ -359,6 +373,7 @@ export function createUi({ send, onNewGame }) {
     },
     bank: () => act({ type: 'bankTrade', give: ui.give, get: ui.get }),
     new: () => onNewGame?.(),
+    accueil: () => onHome?.(),
   };
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]');
@@ -383,6 +398,6 @@ export function createUi({ send, onNewGame }) {
 
   return {
     update(v, o = {}) { view = v; opts = o; render(); },
-    reset() { ui.mode = null; ui.modal = null; ui.offer = { give: Z(), get: Z() }; ui.counter = null; ui.modalKey = null; },
+    reset() { ui.mode = null; ui.modal = null; ui.offer = { give: Z(), get: Z() }; ui.counter = null; ui.modalKey = null; ui.winClosed = false; view = null; $('#modal').hidden = true; },
   };
 }

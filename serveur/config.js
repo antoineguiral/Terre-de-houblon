@@ -20,5 +20,5 @@ export const CONFIG = {
   maxGamesPerHourPerIp: 30,
   maxMessagesPerSecond: 20,
   // Rythme des IA (ms entre deux décisions)
-  aiPace: { direct: 1, differe: 0.3 },
+  aiPace: { direct: +(process.env.AI_PACE || 1), differe: 0.3 * +(process.env.AI_PACE || 1) },
 };

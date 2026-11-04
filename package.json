@@ -4,9 +4,16 @@
   "type": "module",
   "scripts": {
     "test": "node --test test/*.test.js",
-    "simulation": "node outils/simulation.js"
+    "simulation": "node outils/simulation.js",
+    "serveur": "cd serveur && node serveur.js",
+    "page": "python3 -m http.server 8642",
+    "e2e:solo": "node outils/e2e/solo.cjs",
+    "e2e:deux": "node outils/e2e/deux-joueurs.cjs"
   },
   "engines": {
     "node": ">=22.13"
+  },
+  "devDependencies": {
+    "playwright": "1.58.0"
   }
 }

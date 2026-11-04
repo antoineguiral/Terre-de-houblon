@@ -33,7 +33,7 @@ export function startSolo(ui) {
   let state = load() ?? fresh();
   let timer = null;
 
-  const show = () => { ui.update(viewFor(state, 0), { busy: timer !== null }); save(state); };
+  const show = () => { ui.update(viewFor(state, 0), { busy: timer !== null, rejouer: true }); save(state); };
 
   function tick() {
     timer = null;
@@ -69,5 +69,9 @@ export function startSolo(ui) {
     show();
   }
 
-  return { send, newGame, start() { kick(600); show(); } };
+  return {
+    send, newGame,
+    start() { kick(600); show(); },
+    stop() { clearTimeout(timer); timer = null; },
+  };
 }

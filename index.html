@@ -116,6 +116,42 @@ details.card summary{cursor:pointer;font-family:var(--font-num);font-weight:600;
 .prow .btn{padding:4px;min-height:32px}
 .mrow{display:flex;gap:8px;flex-wrap:wrap}
 .score{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:8px;align-items:center}
+/* accueil, salle d'attente, partie en réseau */
+.topacts{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.netstat{font-size:13px;color:var(--muted)}
+.netstat.bad{color:var(--copper)}
+.codechip{font-family:var(--font-num);font-weight:700;letter-spacing:.14em;font-size:15px;padding:6px 10px;border:1px solid var(--line);border-radius:5px;color:var(--ink)}
+.home{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+@media (max-width:760px){.home{grid-template-columns:minmax(0,1fr)}}
+.home .card p{margin:0;color:var(--muted);font-size:14px}
+.home .wide{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+input[type=text]{font:500 15px var(--font-body);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:9px 10px;min-width:0;width:100%;box-sizing:border-box}
+input[type=text]:focus-visible{outline:2px solid var(--copper);outline-offset:2px}
+input.code{text-transform:uppercase;letter-spacing:.2em;font-family:var(--font-num);font-weight:700;font-size:18px}
+.row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.seg{display:flex;border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.seg label{flex:1;display:flex}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{flex:1;text-align:center;padding:9px 6px;font-weight:600;font-size:14px;color:var(--muted);cursor:pointer;background:var(--panel2)}
+.seg input:checked+span{background:var(--copper);color:var(--dark)}
+.seg input:focus-visible+span{outline:2px solid var(--copper);outline-offset:-2px}
+.err{color:#f0a487;font-size:13.5px;margin:0;min-height:0}
+.glist{display:flex;flex-direction:column;gap:8px}
+.grow2{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:5px;background:var(--panel2);cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%}
+.grow2:hover{border-color:var(--copper)}
+.grow2.mine{box-shadow:inset 3px 0 0 var(--copper)}
+.grow2 b{font-weight:600}
+.grow2 small{color:var(--muted);font-size:12.5px;grid-column:1}
+.grow2 .st{grid-row:1/span 2;grid-column:2;font-family:var(--font-num);font-weight:600;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.grow2.mine .st{color:var(--copper)}
+.bigcode{font-family:var(--font-display);font-size:44px;letter-spacing:.12em;color:var(--copper);line-height:1}
+.seat{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border-radius:5px;background:var(--panel2)}
+.seat small{color:var(--muted);font-size:12.5px}
+.share{display:flex;gap:8px;align-items:stretch}
+.share input{flex:1}
+.chrono{font-size:13px;color:var(--muted);width:100%}
+.chrono.urgent{color:var(--copper);font-weight:600}
 /* plateau */
 .tile{stroke:rgba(0,0,0,.35);stroke-width:2}
 .hot{fill:none;stroke:var(--copper);stroke-width:5}
@@ -137,16 +173,23 @@ details.card summary{cursor:pointer;font-family:var(--font-num);font-weight:600;
       <h1>Terres de Houblon</h1>
       <p class="sub">Récolte, brasse, livre. Premier à 10 points de réputation.</p>
     </div>
-    <button class="btn" data-act="new">Nouvelle partie</button>
+    <div class="topacts">
+      <span id="netstat" class="netstat" hidden></span>
+      <span id="codechip" class="codechip" title="Code de la partie" hidden></span>
+      <button class="btn ghost" data-act="accueil" id="btnAccueil" hidden>Accueil</button>
+      <button class="btn" data-act="new" id="btnNew" hidden>Nouvelle partie</button>
+    </div>
   </header>
-  <main class="layout">
+  <section id="accueil" class="home" hidden></section>
+  <section id="salle" class="home" hidden></section>
+  <main class="layout" id="jeu" hidden>
     <section class="boardWrap">
       <svg id="board" viewBox="-340 -300 680 600" role="img" aria-label="Plateau de jeu"></svg>
       <div id="hint" class="hint" aria-live="polite"></div>
     </section>
     <aside class="side">
       <div class="card"><h2>Brasseries</h2><div id="players"></div></div>
-      <div class="card"><h2>Ton tour</h2><div class="turnrow" id="turn"></div></div>
+      <div class="card"><h2>Ton tour</h2><div class="turnrow" id="turn"></div><div id="chrono" class="chrono" hidden></div></div>
       <div class="card"><h2>Tes ressources</h2><div class="hand" id="hand"></div></div>
       <div class="card"><h2>Construire</h2><div class="build" id="build"></div></div>
       <div class="card"><h2>Cartes Événement</h2><div class="devs" id="devs"></div></div>

@@ -37,3 +37,23 @@ Toute la logique vit dans `moteur/`, en modules JavaScript purs, sans DOM, utili
 npm test                       # tests du moteur, dont 30 parties complètes IA contre IA
 npm run simulation -- 100      # 100 parties IA contre IA, avec statistiques
 ```
+
+## Jeu en réseau (branche `multijoueur`)
+
+Le serveur (`serveur/`) est l'arbitre : il détient l'état, tire les dés, fait jouer l'ordinateur et envoie à chacun sa vue par WebSocket. Les parties sont gardées dans SQLite après chaque action.
+
+- **Créer** une partie : nom de sa brasserie, nombre de joueurs humains (1 à 4), rythme (en direct ou en différé) et temps pour jouer. Les places sans joueur sont tenues par l'ordinateur ; une place libre peut être reprise en cours de partie avec le code.
+- **Rejoindre** avec le code à 5 caractères ou le lien d'invitation (`#rejoindre=CODE`).
+- **Reprendre sa place** sur un autre appareil avec son lien personnel (`#p=…`), affiché dans la salle d'attente.
+- **Délais** : en direct, l'ordinateur joue la décision en retard, puis tient la place après deux retards de suite, jusqu'au retour du joueur ; en différé, il termine le tour de l'absent. Une offre d'échange reste ouverte jusqu'à la fin du tour du proposant, 45 s au plus en direct et 4 h en différé.
+
+### En local
+
+```bash
+cd serveur && npm install && cd ..     # une fois (dépendance : ws)
+npm install                            # une fois (Playwright, pour les scénarios navigateur)
+AI_PACE=0.3 npm run serveur            # serveur sur localhost:3210 (AI_PACE < 1 : ordinateur plus rapide)
+npm run page                           # dans un autre terminal : la page sur http://localhost:8642
+npm test                               # moteur, salle et serveur
+npm run e2e:solo && npm run e2e:deux   # parties complètes jouées dans Chrome (serveur et page lancés)
+```
