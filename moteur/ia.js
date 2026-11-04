@@ -199,7 +199,8 @@ function seekTrade(s, pi, cost, rnd) {
   const give = Z(), get = Z();
   give[spare[0]] = 1; get[need[0]] = 1;
   const to = s.players.map((_, i) => i).filter((i) => {
-    if (i === pi || !s.players[i].offersOn || total(s.players[i].res) === 0) return false;
+    // Seulement ceux qui ont probablement la ressource, d'après ce qui est public (bâtiments, nombre de cartes)
+    if (i === pi || !s.players[i].offersOn || estimate(s, i, need[0]) < 0.75) return false;
     if (isHuman(s, i)) return s.opts.aiOffersToHumans && vp(s, i, false) < 8;
     return true;
   });

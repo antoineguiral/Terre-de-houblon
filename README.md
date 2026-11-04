@@ -12,7 +12,15 @@ Jeu de plateau dans l'univers de la brasserie, inspiré des jeux de colonisation
 - Négoce avec le grossiste ou avec les autres brasseries.
 - Premier à 10 points de réputation.
 
-Un seul fichier `index.html`, sans dépendance à installer.
+Sans dépendance ni étape de construction : `index.html` charge les modules de `client/` et `moteur/`.
+
+Pour jouer en local, il faut servir le dossier (un double-clic sur `index.html` ne charge pas les modules) :
+
+```bash
+python3 -m http.server 8642   # puis http://localhost:8642
+```
+
+Le mode solo tourne entièrement dans le navigateur ; la partie en cours est gardée entre deux visites.
 
 ## Moteur de jeu (branche `multijoueur`)
 
