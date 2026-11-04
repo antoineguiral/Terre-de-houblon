@@ -1,8 +1,8 @@
 # Déploiement sur srv.leperelamer.fr
 
-Brassins tourne à côté de Terres de Houblon sur la même machine : même utilisateur `houblon` (déjà créé), mais son propre dossier, son propre service, sa propre base et son propre port (3211). Le sous-domaine `brassins.leperelamer.fr` est à remplacer par celui choisi, dans les fichiers de `deploiement/` et dans `/etc/brassins.env`.
+Brassins tourne à côté de Terres de Houblon sur la même machine : même utilisateur `houblon` (déjà créé), mais son propre dossier, son propre service, sa propre base et son propre port (3211). Le dépôt `Terre-de-houblon` porte les deux jeux : Brassins sur `main` (cloné dans `/srv/brassins`), Terres de Houblon sur la branche `terres-de-houblon` (cloné dans `/srv/terres-de-houblon`, qui doit rester sur cette branche).
 
-Le jeu tient sur un seul domaine, **https://brassins.leperelamer.fr** :
+Le jeu tient sur un seul domaine, **https://thegame.leperelamer.fr** :
 
 - Apache sert la page (`index.html`, `client/`, `moteur/`) depuis `/srv/brassins`, un clone du dépôt ;
 - Apache relaie `/ws` (WebSocket) et `/sante` vers le serveur de jeu Node, qui écoute sur `127.0.0.1:3211` ;
@@ -17,7 +17,7 @@ Pas de Docker, pas de pm2 : systemd redémarre le service s'il tombe et au déma
 ```bash
 # 1. Utilisateur dédié et code
 # (l'utilisateur houblon existe déjà, créé pour Terres de Houblon)
-git clone https://github.com/antoineguiral/brassins.git /srv/brassins
+git clone -b main https://github.com/antoineguiral/Terre-de-houblon.git /srv/brassins
 chown -R houblon:houblon /srv/brassins
 runuser -u houblon -- env PATH=/usr/bin:/bin npm ci --omit=dev --prefix /srv/brassins/serveur --cache /tmp/npm-houblon --no-audit --no-fund
 
@@ -31,10 +31,10 @@ systemctl enable --now brassins
 
 # 4. Apache : module WebSocket, site, certificat
 a2enmod proxy proxy_http proxy_wstunnel headers
-cp /srv/brassins/deploiement/brassins.leperelamer.fr.conf /etc/apache2/sites-available/
-a2ensite brassins.leperelamer.fr
+cp /srv/brassins/deploiement/thegame.leperelamer.fr.conf /etc/apache2/sites-available/
+a2ensite thegame.leperelamer.fr
 apache2ctl configtest && systemctl reload apache2
-certbot --apache -d brassins.leperelamer.fr --redirect -n
+certbot --apache -d thegame.leperelamer.fr --redirect -n
 
 # 5. Sauvegarde quotidienne
 install -d -m 750 -o houblon -g houblon /var/backups/brassins
@@ -59,11 +59,11 @@ Sans clé, le jeu fonctionne et le journal indique « notifications e-mail désa
 ```bash
 systemctl status brassins --no-pager      # active (running)
 curl -s http://127.0.0.1:3211/sante                # {"ok":true,"parties":…,"connexions":…}
-curl -s https://brassins.leperelamer.fr/sante           # même réponse, à travers Apache et HTTPS
-curl -s -o /dev/null -w '%{http_code}\n' https://brassins.leperelamer.fr/serveur/config.js   # 403 : le code serveur n'est pas servi
+curl -s https://thegame.leperelamer.fr/sante           # même réponse, à travers Apache et HTTPS
+curl -s -o /dev/null -w '%{http_code}\n' https://thegame.leperelamer.fr/serveur/config.js   # 403 : le code serveur n'est pas servi
 ```
 
-Puis ouvrir https://brassins.leperelamer.fr, créer une partie et la rejoindre depuis un autre navigateur.
+Puis ouvrir https://thegame.leperelamer.fr, créer une partie et la rejoindre depuis un autre navigateur.
 
 ## Journaux
 
@@ -87,7 +87,7 @@ Le script tire `main`, réinstalle les dépendances du serveur, redémarre le se
 
 Si le service change dans `deploiement/`, le recopier dans `/etc/systemd/system/` puis `systemctl daemon-reload && systemctl restart brassins`.
 
-Si le vhost change, **ne pas recopier** `brassins.leperelamer.fr.conf` par-dessus celui du serveur : certbot y a ajouté la redirection vers HTTPS et en a tiré `brassins.leperelamer.fr-le-ssl.conf`. Reporter la modification à la main dans les **deux** fichiers de `/etc/apache2/sites-available/`, puis `apache2ctl configtest && systemctl reload apache2`.
+Si le vhost change, **ne pas recopier** `thegame.leperelamer.fr.conf` par-dessus celui du serveur : certbot y a ajouté la redirection vers HTTPS et en a tiré `thegame.leperelamer.fr-le-ssl.conf`. Reporter la modification à la main dans les **deux** fichiers de `/etc/apache2/sites-available/`, puis `apache2ctl configtest && systemctl reload apache2`.
 
 ## Sauvegarde et restauration
 
@@ -110,5 +110,5 @@ La copie est faite par `VACUUM INTO`, cohérente même pendant que le serveur é
 
 ```bash
 cd /srv/brassins && runuser -u houblon -- git checkout <commit>   # puis systemctl restart brassins
-# Désinstaller : systemctl disable --now brassins ; a2dissite brassins.leperelamer.fr brassins.leperelamer.fr-le-ssl ; systemctl reload apache2
+# Désinstaller : systemctl disable --now brassins ; a2dissite thegame.leperelamer.fr thegame.leperelamer.fr-le-ssl ; systemctl reload apache2
 ```
