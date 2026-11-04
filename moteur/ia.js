@@ -8,19 +8,21 @@
 //               ouvre des tournées, négocie quand il lui manque une matière ;
 //   maître    : en plus, anticipe les cartes qui peuvent encore sortir (styles en demande, foires) et garde
 //               ses meilleures bières pour les clients qui paient la réputation.
+// Collabs : le compagnon et le maître en proposent quand elles valent mieux qu'un brassin seul, et les
+// évaluent quand on leur en propose ; l'apprenti n'en propose pas et n'accepte que les plus avantageuses.
 //
 // Le hasard de l'IA vient d'un générateur dérivé de l'état : la même position donne toujours la même décision.
 // Tout ce qu'elle lit est public (l'état de Brassins l'est presque entièrement).
 
 import {
   SAISONS, NB_SAISONS, RES, STYLES, ITEMS, RECETTES, ACHAT, AMELIORATIONS, CLIENTS, FOIRES, STOCK_MAX, FERMENTEURS_MAX, CUVE,
-  TOURAILLE_MALT, TOURAILLE_PAR_SAISON, SALLE_UNITES, CARTE, DEMANDE_BONUS, PRODUCTION, PRODUIT, Z, ZI, total,
+  TOURAILLE_MALT, TOURAILLE_PAR_SAISON, SALLE_UNITES, CARTE, DEMANDE_BONUS, PRODUCTION, PRODUIT, COLLAB_UNITE_BONUS, COLLAB_REP, Z, ZI, total,
 } from './constantes.js';
 import { local, next } from './alea.js';
 import { TOPO, distClient } from './plateau.js';
 import {
   saisonIdx, annee, unites, cuveUnites, a, clientIds, clientKind, clientPos, distance, coutTournee, limiteLivraison, enDemande, prixMarche,
-  valeurLivraison, peutBrasser, ameliorationsPossibles, avoirs, legalActions,
+  valeurLivraison, peutBrasser, ameliorationsPossibles, avoirs, legalActions, collabLibre, stockMarche, apportParDefaut,
 } from './regles.js';
 
 export const NIVEAUX = {
@@ -95,6 +97,7 @@ function planBrassage(s, pi) {
       achats[x] = miss;
       cout += miss * ACHAT[x];
     }
+    if (RES.some((x) => achats[x] > stockMarche(s, x))) continue; // le Marché n'en a pas assez cette saison
     if (lvl === 'apprenti' && cout > 0) continue; // l'apprenti n'achète pas pour brasser
     const reserve = lvl === 'apprenti' ? 0 : 2;
     if (cout > p.argent - reserve) continue;
@@ -171,7 +174,8 @@ function meilleureAmelioration(s, pi) {
     const gain = {
       cuve2: rem * bps * uv * 0.8, cuve3: rem * bps * uv * 0.8,
       ferm: rem * (busy ? 0.55 * (cuveUnites(p) * uv - 6) : 0.3),
-      touraille: rem * 1.0 + achatsTorr * 1.5,
+      // le Malt torréfié est rare au Marché : sans Touraille, les styles foncés deviennent difficiles
+      touraille: rem * 1.0 + achatsTorr * 1.5 + rem * 1.5 * Math.max(0, 1 - stockMarche(s, 'torr') / s.players.length),
       froide: rem * 1.0 + lost * 1.5,
       labo: rem * 1.3,
       camion: rem * (0.4 + 0.4 * p.tournees.length),
@@ -247,6 +251,70 @@ function proposition(s, pi) {
   return { type: 'proposeTrade', give, get, to };
 }
 
+/* ---------- collabs ---------- */
+
+const coutMatieres = (c) => RES.reduce((n, x) => n + c[x] * ACHAT[x] * 0.6, 0);
+const duree = (st) => Math.pow(RECETTES[st].ferm, 0.65);
+
+// Ce que rapporte une collab à pi : sa part des unités, la réputation, un style nouveau
+function gainCollab(s, pi, hote, st) {
+  const p = s.players[pi], r = RECETTES[st];
+  const u = cuveUnites(s.players[hote]) + COLLAB_UNITE_BONUS, half = Math.floor(u / 2);
+  const part = pi === hote ? u - half : half;
+  let g = part * valeurUnite(s, pi, st, s.saison + r.ferm) + W(s) * COLLAB_REP;
+  if (!p.styles.includes(st)) g += 2 + W(s);
+  return g;
+}
+
+// Le partenaire accepterait-il cette répartition ? (évaluation sur ce qui est public)
+function accepteCollab(s, pi, hote, st, apport) {
+  const p = s.players[pi];
+  if (!collabLibre(p) || RES.some((x) => p.res[x] < apport.part[x])) return false;
+  if (RECETTES[st].ferm > restantes(s) - 1) return false; // ne serait pas prête à temps
+  if (s.players[hote].rep > p.rep + 8 && restantes(s) <= 6) return false; // ne pas pousser le meneur en fin de partie
+  const av = avoirs(p), apres = { ...av };
+  RES.forEach((x) => { apres[x] -= apport.part[x]; });
+  const net = gainCollab(s, pi, hote, st) + utilite(s, pi, apres) - utilite(s, pi, av);
+  return net > (niveau(s) === 'apprenti' ? 3 : 1);
+}
+
+function propositionCollab(s, pi) {
+  const p = s.players[pi];
+  if (niveau(s) === 'apprenti' || s.tradesThisTurn > 0 || s.trade || !collabLibre(p) || p.ferms.length >= p.nferm) return null;
+  const plan = planBrassage(s, pi);
+  const seuil = plan ? plan.val : 0;
+  let best = null;
+  for (const st of STYLES) {
+    const r = RECETTES[st];
+    if (r.ferm > restantes(s) - 1 || (r.exige && !a(p, r.exige))) continue;
+    for (let w = 0; w < s.players.length; w++) {
+      const q = s.players[w];
+      if (w === pi || !q.offersOn || !collabLibre(q) || (!q.ai && !s.opts.aiOffersToHumans)) continue;
+      if (q.rep > p.rep + 10) continue; // pas d'aide au meneur
+      const ap = apportParDefaut(s, pi, w, st);
+      if (!ap || (q.ai && !accepteCollab(s, w, pi, st, ap))) continue;
+      const val = (gainCollab(s, pi, pi, st) - coutMatieres(ap.hote)) / duree(st) + rnd(s, pi, `col${st}${w}`) * 0.3;
+      if (val > seuil + 0.5 && (best === null || val > best.val)) best = { st, w, ap, val };
+    }
+  }
+  return best && { type: 'proposeCollab', style: best.st, with: best.w, apport: best.ap };
+}
+
+function reponseCollab(s, pi) {
+  const t = s.trade;
+  if (accepteCollab(s, pi, t.from, t.style, t.apport)) return { type: 'respondTrade', accept: true };
+  if (niveau(s) !== 'apprenti' && collabLibre(s.players[pi])) {
+    // contre-proposition : une matière de moins de mon côté, si l'hôte en a
+    const H = s.players[t.from];
+    for (const x of RES) {
+      if (!t.apport.part[x] || H.res[x] - t.apport.hote[x] < 1 || total(t.apport.part) < 2) continue;
+      const ap = { hote: { ...t.apport.hote, [x]: t.apport.hote[x] + 1 }, part: { ...t.apport.part, [x]: t.apport.part[x] - 1 } };
+      if (accepteCollab(s, pi, t.from, t.style, ap)) return { type: 'respondTrade', counter: { apport: ap } };
+    }
+  }
+  return { type: 'respondTrade', accept: false };
+}
+
 /* ---------- décision ---------- */
 
 export function aiAction(s, pi) {
@@ -257,6 +325,7 @@ export function aiAction(s, pi) {
 
   // Réponse à une offre
   const rt = has('respondTrade');
+  if (rt && s.trade?.kind === 'collab' && s.trade.from !== pi) return reponseCollab(s, pi);
   if (rt && s.trade && s.trade.from !== pi) {
     const t = s.trade;
     if (rt.canAccept && accepteEchange(s, pi, t.from, t.give, t.get)) return { type: 'respondTrade', accept: true };
@@ -300,6 +369,13 @@ export function aiAction(s, pi) {
   if (s.cur !== pi || s.pending) return null;
 
   // Mon offre en cours : conclure dès qu'une réponse convient, sinon attendre les réponses, sinon retirer
+  if (s.trade?.from === pi && s.trade.kind === 'collab') {
+    const t = s.trade, r = t.resp[t.to[0]];
+    if (!r) return null; // réponse en attente
+    if (r.s === 'accept') return { type: 'concludeTrade', with: t.to[0] };
+    if (r.s === 'counter' && RES.every((x) => p.res[x] >= r.apport.hote[x]) && gainCollab(s, pi, pi, t.style) - coutMatieres(r.apport.hote) > 1) return { type: 'concludeTrade', with: t.to[0] };
+    return { type: 'cancelTrade' };
+  }
   if (s.trade?.from === pi) {
     const t = s.trade;
     const ok = Object.entries(t.resp).filter(([, r]) => r.s !== 'refuse');
@@ -327,6 +403,8 @@ export function aiAction(s, pi) {
   if (!dejaTournee) { const t = meilleureTournee(s, pi); if (t) return { type: 'tournee', client: t.client }; }
   // 6. Brasser (en achetant ce qui manque, ou en négociant)
   if (p.ferms.length < p.nferm) {
+    const col = propositionCollab(s, pi);
+    if (col) return col;
     const plan = planBrassage(s, pi);
     if (plan) {
       if (total(plan.achats) === 1 && !dejaTournee) { const prop = proposition(s, pi); if (prop) return prop; }

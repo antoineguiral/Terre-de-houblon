@@ -38,6 +38,8 @@ La partie se joue en douze saisons : printemps, été, automne, hiver, trois foi
 
 On retourne la carte de la saison. Il y en a trois par saison, mélangées ; sur trois ans, chacune sort exactement une fois. On sait donc toujours ce qui peut encore arriver.
 
+La **frise des saisons**, au-dessus du plateau, montre les douze saisons de la partie : les cartes déjà sorties, la saison en cours, et pour chaque saison à venir les cartes qui peuvent encore tomber, avec leurs styles en demande et leurs événements.
+
 La carte indique :
 
 - la **météo**, qui modifie la production d'un type de terroir ;
@@ -58,7 +60,7 @@ Chaque brasserie a aussi un puits : **+1 Eau** chaque saison. Avec un Labo : +1 
 
 La levure, elle, ne pousse pas dans les champs. On la **récupère à la fin de chaque fermentation** (1 Levure par brassin terminé), on l'achète au Marché, ou on l'entretient au Labo.
 
-Au même moment, les **brassins dont la fermentation est finie arrivent en stock**.
+Au même moment, les **brassins dont la fermentation est finie arrivent en stock**, et **le Marché se réapprovisionne** (voir *Acheter au Marché*).
 
 ### 3. L'événement
 
@@ -81,6 +83,18 @@ Pendant ton tour, tu fais autant d'actions que tu veux, dans l'ordre que tu veux
 ### Acheter au Marché
 
 Prix fixes : Malt 2, Houblon 2, Levure 3, Eau 1, Malt torréfié 5.
+
+Mais **le Marché n'a qu'un stock limité**, renouvelé au début de chaque saison. Ce qui n'est pas vendu dans la saison disparaît : il n'y a pas de report.
+
+| Matière | 2 joueurs | 3 joueurs | 4 joueurs |
+|---|---|---|---|
+| Malt | 4 | 5 | 6 |
+| Houblon | 2 | 3 | 4 |
+| Levure | 2 | 3 | 4 |
+| Eau | 4 | 5 | 6 |
+| Malt torréfié | 1 | 2 | 2 |
+
+Premier arrivé, premier servi : celui qui joue avant toi peut tout acheter. Comme le moins réputé joue en premier, c'est lui qui a le premier choix.
 
 ### Brasser
 
@@ -140,9 +154,21 @@ Si tu l'as construite : jusqu'à 2 unités par saison, au prix de base +1, sans 
 | Camion | 8 | tournées à 1 Argent par case ; 2 unités par client et par saison |
 | Salle de dégustation | 10 | vend 2 unités par saison ; 1 Réputation chaque hiver |
 
+### Brasser en collaboration
+
+Pendant ton tour, tu peux proposer une **collab** à une autre brasserie : une bière brassée à deux, chez toi.
+
+- Tu choisis le style et tu répartis la recette : qui apporte quelles matières. Chacun doit en apporter au moins une.
+- Le brassin occupe **un de tes fermenteurs**, avec ta cuve. Si le style demande un équipement (la Lager et sa Chambre froide), c'est le tien qui compte : une collab permet à ton partenaire de brasser un style qu'il ne pourrait pas faire seul.
+- L'autre accepte, refuse ou fait une contre-proposition sur la répartition, comme pour un échange. L'offre reste ouverte jusqu'à la fin de ton tour.
+- Au brassage, **chacun gagne 1 Réputation**, plus le bonus de première fois si c'est un style qu'il n'avait jamais brassé (et le style compte pour sa diversité).
+- Une collab donne **1 unité de plus** que ta cuve. À la fin de la fermentation, les unités se partagent en deux, l'unité impaire allant à celui qui prête le fermenteur. La part de ton partenaire arrive directement dans son stock.
+- Si un événement abîme le brassin, la perte se fait avant le partage.
+- Chaque brasserie participe à **une collab par saison au plus**, qu'elle reçoive ou qu'elle prête son fermenteur.
+
 ### Négocier
 
-À tout moment de ton tour, tu peux proposer un échange aux autres brasseries : matières, bière, Argent, dans les deux sens. Chacun accepte, refuse ou fait une contre-proposition, et tu choisis avec qui conclure. Une seule offre ouverte à la fois.
+À tout moment de ton tour, tu peux proposer un échange aux autres brasseries : matières, bière, Argent, dans les deux sens. Chacun accepte, refuse ou fait une contre-proposition, et tu choisis avec qui conclure. Une seule offre ouverte à la fois, échange ou collab.
 
 ## Fin de partie et décompte
 
@@ -158,6 +184,8 @@ Après le tour de l'hiver de la troisième année, chacun additionne :
 
 - **Place ta brasserie là où les trois terroirs se touchent.** Un seul type manquant, et tu passeras ta vie à acheter au Marché.
 - **Le Marché est une soupape, pas un débouché.** Deux Blondes vendues d'affilée rapportent 3 puis 2. La réputation vient des clients.
-- **Regarde le calendrier.** Les cartes restantes te disent quels styles seront en demande et quelles foires arrivent. Une bière de garde brassée au printemps est prête pour le Marché de Noël.
+- **Regarde le calendrier.** La frise te dit quels styles seront en demande et quelles foires arrivent. Une bière de garde brassée au printemps est prête pour le Marché de Noël.
+- **Le Malt torréfié se fait rare au Marché.** Sans Touraille, achète-le tôt, ou propose une collab à celui qui en a une.
+- **Une collab rapporte aux deux.** Choisis bien ton partenaire : aider le meneur à brasser un style de plus peut lui donner la partie.
 - **Agrandis la cuve tôt.** Passer de 2 à 3 unités par brassin, c'est 50 % de bière en plus pour la même recette.
 - **Ne finis pas le dernier hiver avec un fermenteur plein.** Ce qui n'est pas en stock à la fin ne vaut rien.

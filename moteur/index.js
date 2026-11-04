@@ -6,6 +6,7 @@ export {
   VERSION, createGame, applyAction, legalActions, waitingFor, deciders, viewFor,
   saisonIdx, annee, carteCourante, unites, cuveUnites, a, clientIds, clientKind, clientPos, distance, coutTournee, limiteLivraison,
   enDemande, prixMarche, valeurLivraison, peutBrasser, coutRecette, ameliorationsPossibles, pointsDiversite, score, avoirs,
+  collabLibre, stockMarche, lireApport, apportParDefaut,
 } from './regles.js';
 export { aiAction, NIVEAUX } from './ia.js';
 
