@@ -1,0 +1,12 @@
+{
+  "name": "terres-de-houblon",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "simulation": "node outils/simulation.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}
