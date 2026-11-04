@@ -1,0 +1,15 @@
+{
+  "name": "terres-de-houblon-serveur",
+  "private": true,
+  "type": "module",
+  "main": "serveur.js",
+  "scripts": {
+    "start": "node serveur.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "ws": "^8.22.1"
+  }
+}
