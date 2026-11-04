@@ -1,6 +1,6 @@
 const { chromium } = require('playwright');
 const OUT = process.env.CAPTURES || require('node:os').tmpdir();
-const URL = 'http://localhost:8642/';
+const URL = process.env.URL || 'http://localhost:8642/';
 // Une interaction possible sur la page, ou false s'il n'y a rien à faire
 async function step(page, c) {
   const bump = (k) => (c[k] = (c[k] || 0) + 1);
@@ -72,7 +72,7 @@ async function step(page, c) {
   await bob.waitForSelector('#jeu:not([hidden])');
   const ca = {}, cb = {};
   let reloaded = false, it = 0, fini = 0;
-  for (; it < 6000 && fini < 2; it++) {
+  for (; it < +(process.env.MAX_IT || 6000) && fini < 2; it++) {
     fini = 0;
     for (const [p, c, who] of [[alice, ca, 'alice'], [bob, cb, 'bob']]) {
       let r;

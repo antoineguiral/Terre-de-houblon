@@ -9,4 +9,4 @@ systemctl restart terres-de-houblon
 sleep 2
 systemctl is-active terres-de-houblon
 curl -fsS http://127.0.0.1:3210/sante && echo
-git log --oneline -1
+runuser -u houblon -- git log --oneline -1
