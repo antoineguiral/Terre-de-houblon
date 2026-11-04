@@ -1,6 +1,6 @@
 // Outils communs aux tests du serveur.
 
-import { legalActions, RES } from '../moteur/index.js';
+import { legalActions } from '../moteur/index.js';
 import { CONFIG } from '../serveur/config.js';
 
 export const TEST_CONFIG = { ...CONFIG, aiPace: { direct: 0.001, differe: 0.001 }, origins: ['http://test.local'], maxMessagesPerSecond: 1000 };
@@ -29,26 +29,19 @@ export function fakeClock() {
   };
 }
 
-// Joueur automatique qui ne voit que sa vue : refuse les échanges, construit ce qu'il peut, sinon passe
+// Joueur automatique qui ne voit que sa vue : refuse les échanges, brasse et livre ce qu'il peut, sinon passe
 export function botAction(view, me) {
   const L = legalActions(view, me);
-  const has = (type, f = () => true) => L.find((a) => a.type === type && f(a));
+  const has = (type) => L.find((a) => a.type === type);
   if (has('respondTrade') && view.trade?.from !== me) return { type: 'respondTrade', accept: false };
-  const d = has('discard');
-  if (d) {
-    const res = { ...view.players[me].res }, sel = {};
-    for (let k = 0; k < d.count; k++) { const r = RES.reduce((a, b) => (res[b] > res[a] ? b : a)); res[r]--; sel[r] = (sel[r] || 0) + 1; }
-    return { type: 'discard', res: sel };
-  }
-  const mr = has('moveRobber'); if (mr) return { type: 'moveRobber', hex: mr.targets[0] };
-  const st = has('steal'); if (st) return { type: 'steal', victim: st.targets[0] };
+  const pl = has('placer'); if (pl) return { type: 'placer', hex: pl.targets[0] };
+  const tf = has('tournee'); if (tf?.free) return { type: 'tournee', client: tf.targets[0].client };
+  const ev = has('evenement'); if (ev) return { type: 'evenement', ferm: ev.targets[0] };
+  const cc = has('concours'); if (cc) return { type: 'concours', style: cc.styles[0] };
   if (view.trade?.from === me) return { type: 'cancelTrade' };
-  if (has('roll')) return { type: 'roll' };
-  for (const what of ['settle', 'city', 'road']) {
-    const b = has('build', (a) => a.what === what);
-    if (b && b.targets.length) return { type: 'build', what, at: b.targets[0] };
-  }
-  if (has('buyDev')) return { type: 'buyDev' };
+  const liv = has('livrer'); if (liv) return { type: 'livrer', client: liv.targets[0].client, style: liv.targets[0].styles[0] };
+  const br = has('brasser'); if (br) return { type: 'brasser', style: br.styles[0] };
   if (has('endTurn')) return { type: 'endTurn' };
+  const v = has('vendre'); if (v) return { type: 'vendre', style: v.styles[0], n: 1 };
   return null;
 }

@@ -2,7 +2,7 @@
 //
 // Messages client → serveur (JSON, `ref` facultatif, renvoyé dans la réponse) :
 //   { t: 'hello', jeton }                          reprendre sa place
-//   { t: 'creer', nom, humains, mode, delai }      créer une partie (mode : direct | differe, délai en secondes)
+//   { t: 'creer', nom, humains, mode, delai, niveau } créer une partie (mode : direct | differe, délai en secondes, niveau des IA)
 //   { t: 'rejoindre', code, nom }                  prendre une place libre
 //   { t: 'demarrer' }                              lancer la partie (créateur)
 //   { t: 'action', action }                        jouer (action du moteur)
@@ -60,9 +60,9 @@ export function demarrerServeur(opts = {}) {
     const s = p && salle(p.code);
     if (s && s.meta.sieges[p.siege]?.email) s.definirEmail(p.siege, '');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.end(`<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Terres de Houblon</title>
+    res.end(`<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Brassins</title>
 <body style="margin:0;background:#211915;color:#f2e6d0;font-family:system-ui,sans-serif;padding:40px 16px"><div style="max-width:480px;margin:0 auto">
-<h1 style="font-family:Georgia,serif;color:#d38b46;font-weight:400">Terres de Houblon</h1>
+<h1 style="font-family:Georgia,serif;color:#d38b46;font-weight:400">Brassins</h1>
 <p>${s ? `C'est noté : tu ne recevras plus de messages pour la partie ${s.code}.` : 'Ce lien ne correspond à aucune partie.'}</p>
 <p><a style="color:#d38b46" href="${config.publicUrl}">Revenir au jeu</a></p></div></body></html>`);
   }
@@ -78,7 +78,7 @@ export function demarrerServeur(opts = {}) {
       return;
     }
     res.statusCode = 404;
-    res.end('Terres de Houblon : rien ici.\n');
+    res.end('Brassins : rien ici.\n');
   });
 
   const wss = new WebSocketServer({
@@ -200,7 +200,7 @@ export function demarrerServeur(opts = {}) {
   return new Promise((resolve) => {
     server.listen(config.port, config.host, () => {
       const port = server.address().port;
-      log(`Terres de Houblon écoute sur ${config.host}:${port}`);
+      log(`Brassins écoute sur ${config.host}:${port}`);
       resolve({
         port, salles, base,
         async fermer() {

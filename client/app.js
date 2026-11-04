@@ -15,20 +15,21 @@ const store = {
   get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* stockage indisponible */ } },
 };
-const places = () => store.get('tdh-places', []);
+const places = () => store.get('brassins-places', []);
 function addPlace(p) {
   const l = places().filter((x) => x.jeton !== p.jeton);
   l.unshift({ ...p, ajout: Date.now() });
-  store.set('tdh-places', l.slice(0, 60));
+  store.set('brassins-places', l.slice(0, 60));
 }
-const dropPlaces = (keep) => store.set('tdh-places', places().filter((x) => keep(x)));
+const dropPlaces = (keep) => store.set('brassins-places', places().filter((x) => keep(x)));
 
 let mode = null, solo = null, conn = null, current = null, last = null, offset = 0;
 const home = { erreur: '', parties: null, code: '', mode: 'direct' };
+const soloOpts = () => store.get('brassins-solo-opts', { adversaires: 3, niveau: 'compagnon' });
 
 const ui = createUi({
   send: (a) => (mode === 'solo' ? solo.send(a) : sendAction(a)),
-  onNewGame: () => solo?.newGame(),
+  onNewGame: () => solo?.newGame(soloOpts()),
   onHome: () => go('#accueil'),
 });
 
@@ -132,7 +133,7 @@ function show(which) {
 }
 
 function renderHome() {
-  renderAccueil($('#accueil'), { nom: store.get('tdh-nom', ''), email: store.get('tdh-email', ''), parties: home.parties, erreur: home.erreur, code: home.code, mode: home.mode });
+  renderAccueil($('#accueil'), { nom: store.get('brassins-nom', ''), email: store.get('brassins-email', ''), parties: home.parties, erreur: home.erreur, code: home.code, mode: home.mode, solo: soloOpts() });
 }
 function refreshParties() {
   if (!places().length) { home.parties = null; return; }
@@ -168,7 +169,7 @@ function openSolo() {
   ui.reset();
   if (!solo) solo = startSolo(ui);
   show('jeu');
-  solo.start();
+  solo.start(soloOpts());
 }
 
 function openHome(code) {
@@ -204,8 +205,8 @@ function entrer(r, nom, email, errId) {
     if (el) el.textContent = r.error;
     return;
   }
-  store.set('tdh-nom', nom);
-  if (email) store.set('tdh-email', email);
+  store.set('brassins-nom', nom);
+  if (email) store.set('brassins-email', email);
   addPlace({ jeton: r.jeton, code: r.code });
   go(`#p=${encodeURIComponent(r.jeton)}`);
 }
@@ -214,14 +215,17 @@ async function onHomeClick(e) {
   const b = e.target.closest('[data-h]');
   if (!b || b.disabled) return;
   const h = b.dataset.h;
-  if (h === 'solo') return go('#solo');
+  if (h === 'solo') {
+    store.set('brassins-solo-opts', { adversaires: +$('#sAdv').value, niveau: $('#sNiv').value });
+    return go('#solo');
+  }
   if (h === 'ouvrir') return go(`#p=${encodeURIComponent(b.dataset.j)}`);
   if (h === 'creer') {
     const nom = $('#fNom').value.trim();
     const m = document.querySelector('input[name=fMode]:checked').value;
     const email = m === 'differe' ? $('#fMail').value.trim() : '';
     b.disabled = true;
-    const r = await getConn().send({ t: 'creer', nom, humains: +$('#fHum').value, mode: m, delai: +$('#fDelai').value, email });
+    const r = await getConn().send({ t: 'creer', nom, humains: +$('#fHum').value, mode: m, delai: +$('#fDelai').value, email, niveau: $('#fNiv').value });
     b.disabled = false;
     return entrer(r, nom, email, 'fErr');
   }
@@ -249,7 +253,7 @@ async function onHomeClick(e) {
     const msg = $(`${zone} #mEmailMsg`);
     msg.className = r.t === 'ok' ? 'okmsg' : 'err';
     msg.textContent = r.t === 'ok' ? (email ? 'Adresse enregistrée.' : 'Plus de messages pour cette partie.') : r.error;
-    if (r.t === 'ok' && email) store.set('tdh-email', email);
+    if (r.t === 'ok' && email) store.set('brassins-email', email);
     return;
   }
   if (h === 'copier') {

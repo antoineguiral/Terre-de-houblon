@@ -1,12 +1,13 @@
 // Point d'entrée du moteur, identique dans le navigateur (import ES) et dans Node.
 
 export * from './constantes.js';
-export { TOPO } from './plateau.js';
+export { TOPO, distClient, hexDist } from './plateau.js';
 export {
-  VERSION, createGame, applyAction, legalActions, waitingFor, viewFor,
-  vp, rate, roadLen, validSettle, validRoad, validCity, playableDev, canAfford, deckCount, robberVictims,
+  VERSION, createGame, applyAction, legalActions, waitingFor, deciders, viewFor,
+  saisonIdx, annee, carteCourante, unites, cuveUnites, a, clientIds, clientKind, clientPos, distance, coutTournee, limiteLivraison,
+  enDemande, prixMarche, valeurLivraison, peutBrasser, coutRecette, ameliorationsPossibles, pointsDiversite, score, avoirs,
 } from './regles.js';
-export { aiAction } from './ia.js';
+export { aiAction, NIVEAUX } from './ia.js';
 
 import { applyAction, waitingFor } from './regles.js';
 import { aiAction } from './ia.js';

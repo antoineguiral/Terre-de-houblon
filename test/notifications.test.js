@@ -82,12 +82,12 @@ describe('notifications e-mail', () => {
     salle.demarrer(0);
     for (let h = 0; h < 2000 && salle.statut !== 'fini'; h++) clock.advance(3600 * 1000);
     assert.equal(salle.statut, 'fini');
-    const tours = mails.filter((m) => /À toi|installer|défausse/.test(m.subject));
+    const tours = mails.filter((m) => /À toi|installer|décider/.test(m.subject));
     assert.ok(tours.length >= 2, `messages de tour (${tours.length})`);
     const parTour = new Map();
     tours.forEach((m) => { const k = m.subject; parTour.set(k, (parTour.get(k) || 0) + 1); });
     assert.ok([...parTour.values()].every((n) => n === 1), 'jamais deux fois le même message');
-    assert.match(mails.at(-1).subject, /remport/);
+    assert.match(mails.at(-1).subject, /emporte/);
   });
 
   test('désinscription par le lien, en GET comme en POST', async () => {

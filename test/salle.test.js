@@ -63,13 +63,15 @@ describe('salle', () => {
     const { deps, clock, tours } = setup();
     const { salle } = Salle.creer({ nom: 'Lent', humains: 1, mode: 'direct', delai: 60 }, deps);
     salle.demarrer(0);
+    // les IA qui se placent avant l'humain jouent d'abord
+    for (let n = 0; n < 100 && !waitingFor(salle.etat).includes(0); n++) clock.advance(100);
     assert.deepEqual(tours, [0]);
     const deadline = salle.meta.echeances[0];
-    assert.equal(deadline, clock.now() + 60000);
-    clock.advance(59000);
-    assert.equal(salle.etat.verts.filter((v) => v.o === 0).length, 0);
-    clock.advance(2000);
-    assert.equal(salle.etat.verts.filter((v) => v.o === 0).length, 1, 'l’IA a posé la microbrasserie');
+    assert.ok(deadline > clock.now() + 59000 && deadline <= clock.now() + 60000, 'échéance à 60 s');
+    clock.advance(58000);
+    assert.equal(salle.etat.players[0].hex, null);
+    clock.advance(3000);
+    assert.notEqual(salle.etat.players[0].hex, null, 'l’IA a placé la brasserie');
     assert.equal(salle.meta.sieges[0].retards, 1);
     assert.equal(salle.isAi(0), false);
     clock.advance(61000);
@@ -97,13 +99,10 @@ describe('salle', () => {
     const { deps, clock } = setup();
     const { salle } = Salle.creer({ nom: 'Négociant', humains: 1, mode: 'direct', delai: 600 }, deps);
     salle.demarrer(0);
-    playHuman(salle, clock, 0, () => salle.etat.phase === 'main' && salle.etat.cur === 0 && !salle.etat.rolled);
-    assert.equal(salle.agir(0, { type: 'roll' }).ok, true);
-    clock.advance(10);
-    if (salle.etat.pending) playHuman(salle, clock, 0, () => !salle.etat.pending);
+    playHuman(salle, clock, 0, () => salle.etat.phase === 'main' && salle.etat.cur === 0 && !salle.etat.pending);
     const r = salle.etat.players[0].res;
     const give = Object.keys(r).find((k) => r[k] > 0);
-    const get = ['fut', 'eau', 'lev', 'malt', 'houb'].find((k) => k !== give);
+    const get = ['malt', 'houb', 'lev', 'eau', 'torr'].find((k) => k !== give);
     assert.equal(salle.agir(0, { type: 'proposeTrade', give: { [give]: 1 }, get: { [get]: 9 } }).ok, true);
     clock.advance(1000);
     assert.ok(salle.etat.trade, 'offre ouverte, les IA ont répondu');
@@ -115,7 +114,8 @@ describe('salle', () => {
 
   test('l’état et les places sont sauvegardés à chaque action', () => {
     const { deps, base, clock } = setup();
-    const { salle, jeton } = Salle.creer({ nom: 'Archiviste', humains: 2, mode: 'differe' }, deps);
+    const { salle, jeton } = Salle.creer({ nom: 'Archiviste', humains: 2, mode: 'differe', niveau: 'maitre' }, deps);
+    assert.equal(salle.meta.niveau, 'maitre');
     salle.demarrer(0);
     playHuman(salle, clock, 0, () => salle.etat.turn >= 3);
     const row = base.partie(salle.code);
@@ -123,5 +123,14 @@ describe('salle', () => {
     assert.deepEqual(row.etat, salle.etat);
     assert.deepEqual(row.meta, salle.meta);
     assert.equal(base.place(jeton).code, salle.code);
+    assert.equal(salle.etat.opts.niveau, 'maitre');
+  });
+
+  test('résumé : saison en cours pour la liste « mes parties »', () => {
+    const { deps, clock } = setup();
+    const { salle } = Salle.creer({ nom: 'Liste', humains: 1, mode: 'direct', delai: 60 }, deps);
+    salle.demarrer(0);
+    playHuman(salle, clock, 0, () => salle.etat.phase === 'main');
+    assert.match(salle.resume(0).saison, /^Printemps an 1$/);
   });
 });

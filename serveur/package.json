@@ -1,5 +1,5 @@
 {
-  "name": "terres-de-houblon-serveur",
+  "name": "brassins-serveur",
   "private": true,
   "type": "module",
   "main": "serveur.js",

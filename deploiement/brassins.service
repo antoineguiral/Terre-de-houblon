@@ -1,22 +1,22 @@
-# /etc/systemd/system/terres-de-houblon.service
+# /etc/systemd/system/brassins.service
 [Unit]
-Description=Terres de Houblon : serveur de jeu
+Description=Brassins : serveur de jeu
 After=network.target
 
 [Service]
 Type=simple
 User=houblon
 Group=houblon
-WorkingDirectory=/srv/terres-de-houblon/serveur
-EnvironmentFile=/etc/terres-de-houblon.env
+WorkingDirectory=/srv/brassins/serveur
+EnvironmentFile=/etc/brassins.env
 Environment=NODE_ENV=production TZ=Europe/Paris NODE_NO_WARNINGS=1
 # Node 22 installé par apt (le Node de /usr/local/bin reste celui des autres sites)
 ExecStart=/usr/bin/node serveur.js
 Restart=always
 RestartSec=3
 TimeoutStopSec=10
-# La base vit dans /var/lib/terres-de-houblon, créé par systemd pour l'utilisateur houblon
-StateDirectory=terres-de-houblon
+# La base vit dans /var/lib/brassins, créé par systemd pour l'utilisateur houblon
+StateDirectory=brassins
 StateDirectoryMode=0750
 NoNewPrivileges=true
 ProtectSystem=strict

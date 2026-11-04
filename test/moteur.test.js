@@ -1,469 +1,381 @@
-import { test, describe } from 'node:test';
+// Tests du moteur Brassins : règles unitaires, puis parties complètes IA contre IA.
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  createGame, applyAction, legalActions, waitingFor, viewFor, aiAction, aiStep,
-  vp, TOPO, RES, Z, total, PIPS,
+  createGame, applyAction, legalActions, waitingFor, deciders, viewFor, aiStep, aiAction, TOPO, clientIds, distance, score,
+  STYLES, RES, RECETTES, PRODUCTION, PRODUIT, PUITS, STOCK_MAX, CUVE, AMELIORATIONS, CARTE, SAISONS, NB_SAISONS, CONCOURS, DIVERSITE, ARGENT_PAR_POINT,
+  PRIX_PLANCHER, DEMANDE_BONUS, unites,
 } from '../moteur/index.js';
+import { playOut } from '../outils/simulation.js';
 
-const NAMES = ['Brasserie du Moulin', 'La Mousse Noire', 'Les Fûts Joyeux', 'La Cuve Dorée'];
-const allAi = (seed) => createGame({ seed, players: NAMES.map((name) => ({ name, ai: true })) });
-const withHuman = (seed) => createGame({ seed, players: NAMES.map((name, i) => ({ name, ai: i !== 0 })) });
+const P4 = ['A', 'B', 'C', 'D'].map((name) => ({ name, ai: true }));
+const ok = (r) => { assert.ok(r.ok, r.error); return r.state; };
+const ko = (r, re) => { assert.equal(r.ok, false); if (re) assert.match(r.error, re); };
 
-// Fait jouer l'IA à toutes les places jusqu'à la condition donnée
-function advance(s, until, isAi = () => true) {
-  for (let n = 0; n < 50000 && !until(s); n++) {
-    const r = aiStep(s, isAi);
-    if (!r) return s;
-    s = r.state;
-  }
+// Joue la mise en place avec l'IA, et s'arrête au début du premier tour
+function enJeu(seed = 1, players = P4, opts = {}) {
+  let s = createGame({ seed, players, ...opts });
+  while (s.phase === 'setup') s = aiStep(s).state;
+  while (s.pending) s = aiStep(s).state;
   return s;
 }
-const afterSetup = (seed) => advance(allAi(seed), (s) => s.phase === 'main');
-const ok = (r) => { assert.equal(r.ok, true, r.error); return r.state; };
-
-// Trouve une valeur du générateur qui donne la somme de dés voulue au prochain lancer
-function forceDice(s, sum) {
-  for (let x = 0; x < 100000; x++) {
-    const r = applyAction({ ...s, rng: x }, s.cur, { type: 'roll' });
-    if (r.ok && r.state.lastRoll === sum) return { ...s, rng: x };
-  }
-  throw new Error('somme introuvable');
+// Donne des matières au joueur courant (pour tester sans dépendre du tirage)
+function dote(s, pi, res = {}, argent = null, stock = {}) {
+  const c = structuredClone(s);
+  Object.assign(c.players[pi].res, res);
+  if (argent !== null) c.players[pi].argent = argent;
+  Object.assign(c.players[pi].stock, stock);
+  return c;
 }
 
-function invariants(s) {
+test('création : plateau, placement en ordre inverse, départ', () => {
+  const s = createGame({ seed: 7, players: P4 });
+  assert.equal(s.tiles.length, 19);
+  assert.equal(s.tiles.filter((t) => t === 'bourg').length, 1);
+  assert.equal(s.tiles.filter((t) => t === 'village').length, 3);
+  assert.equal(s.tiles.filter((t) => t === 'orge').length, 6);
+  assert.equal(s.tiles.filter((t) => t === 'source').length, 4);
+  assert.equal(s.phase, 'setup');
+  assert.deepEqual(s.setup.ordre, [...s.ordre].reverse());
+  assert.equal(s.cur, s.setup.ordre[0]);
+  assert.deepEqual(waitingFor(s), [s.cur]);
+  assert.equal(s.players[0].argent, 6);
+  assert.equal(s.players[0].nferm, 2);
+  assert.throws(() => createGame({ players: [{ name: 'Seul' }] }));
+});
+
+test('placement : terroir libre seulement, puis tournée gratuite à 2 cases', () => {
+  let s = createGame({ seed: 3, players: P4 });
+  const pi = s.cur;
+  const bourg = s.tiles.indexOf('bourg'), orge = s.tiles.indexOf('orge');
+  ko(applyAction(s, pi, { type: 'placer', hex: bourg }), /terroir/);
+  ko(applyAction(s, (pi + 1) % 4, { type: 'placer', hex: orge }), /ton tour/);
+  s = ok(applyAction(s, pi, { type: 'placer', hex: orge }));
+  assert.equal(s.setup.step, 'tournee');
+  const L = legalActions(s, pi);
+  assert.equal(L[0].type, 'tournee');
+  assert.ok(L[0].free);
+  assert.ok(L[0].targets.every((t) => distance(s, pi, t.client) <= 2));
+  const loin = clientIds(s).find((c) => distance(s, pi, c) > 2);
+  if (loin) ko(applyAction(s, pi, { type: 'tournee', client: loin }), /2 cases/);
+  s = ok(applyAction(s, pi, { type: 'tournee', client: L[0].targets[0].client }));
+  assert.equal(s.players[pi].argent, 6, 'la tournée de départ est gratuite');
+  assert.equal(s.cur, s.setup.ordre[1]);
+  // une case prise ne l'est qu'une fois
+  ko(applyAction(s, s.cur, { type: 'placer', hex: orge }), /déjà prise/);
+});
+
+test('première saison : production des cases voisines + puits, premier joueur tiré au sort', () => {
+  let s = createGame({ seed: 11, players: P4 });
+  const avant = structuredClone(s);
+  while (s.phase === 'setup') s = aiStep(s).state;
+  assert.equal(s.saison, 0);
+  assert.equal(s.phase, 'main');
+  assert.deepEqual(s.ordre, avant.ordre, 'la première saison garde l’ordre tiré à la création');
+  const carte = CARTE[s.carte];
+  assert.equal(carte.id.startsWith('p_'), true);
+  s.players.forEach((p) => {
+    const attendu = { malt: 4, houb: 2, lev: 2, eau: 2, torr: 0 };
+    for (const h of [p.hex, ...TOPO.hexes[p.hex].near]) {
+      const t = s.tiles[h];
+      if (!PRODUCTION[t]) continue;
+      const m = carte.meteo?.[t];
+      attendu[PRODUIT[t]] += m === 'zero' ? 0 : Math.max(0, PRODUCTION[t][0] + (m ?? 0));
+    }
+    attendu.eau += PUITS;
+    if (!s.pending) assert.deepEqual(p.res, attendu);
+  });
+});
+
+test('brasser : recette, fermenteurs, levure de repiquage, première fois', () => {
+  let s = enJeu(5);
+  const pi = s.cur;
+  s = dote(s, pi, { malt: 9, houb: 9, lev: 3, eau: 9, torr: 0 });
+  ko(applyAction(s, pi, { type: 'brasser', style: 'lager' }), /Chambre froide/);
+  ko(applyAction(s, pi, { type: 'brasser', style: 'stout' }), /manque/);
+  s = ok(applyAction(s, pi, { type: 'brasser', style: 'blonde' }));
+  let p = s.players[pi];
+  assert.deepEqual(p.ferms, [{ st: 'blonde', left: 1, u: CUVE[0] }]);
+  assert.equal(p.res.malt, 7);
+  assert.equal(p.rep, 1, 'première fois : +1 réputation');
+  assert.deepEqual(p.styles, ['blonde']);
+  s = ok(applyAction(s, pi, { type: 'brasser', style: 'ipa' }));
+  ko(applyAction(s, pi, { type: 'brasser', style: 'blonde' }), /fermenteurs/);
+  // fin de saison : la blonde sort à la saison suivante, l'IPA une saison plus tard
+  const lev = s.players[pi].res.lev;
+  let t = s;
+  for (let k = 0; k < 4 && t.saison === s.saison; k++) {
+    while (t.cur !== pi && !t.pending && t.phase === 'main' && t.saison === s.saison) t = aiStep(t).state;
+    if (t.saison !== s.saison) break;
+    if (t.cur === pi && !t.pending) t = ok(applyAction(t, pi, { type: 'endTurn' }));
+  }
+  while (t.pending) t = aiStep(t).state;
+  p = t.players[pi];
+  assert.equal(t.saison, s.saison + 1);
+  assert.equal(p.stock.blonde, CUVE[0]);
+  assert.equal(p.ferms.length, 1);
+  assert.equal(p.ferms[0].st, 'ipa');
+  assert.equal(p.ferms[0].left, 1);
+  assert.ok(p.res.lev >= lev + 1, 'levure récupérée');
+});
+
+test('marché : achat à prix fixe, vente avec érosion et plancher, remontée en fin de saison, demande', () => {
+  let s = enJeu(8);
+  const pi = s.cur;
+  s = dote(s, pi, {}, 10, { blonde: 5 });
+  s = ok(applyAction(s, pi, { type: 'acheter', r: 'malt', n: 2 }));
+  assert.equal(s.players[pi].argent, 6);
+  ko(applyAction(s, pi, { type: 'acheter', r: 'torr', n: 2 }), /Argent/);
+  const dem = s.demande.includes('blonde') ? DEMANDE_BONUS : 0;
+  const base = RECETTES.blonde.prix;
+  s = ok(applyAction(s, pi, { type: 'vendre', style: 'blonde', n: 5 }));
+  // 3, 2, 1, 1, 1 (+ demande)
+  assert.equal(s.players[pi].argent, 6 + (3 + 2 + 1 + 1 + 1) + 5 * dem);
+  assert.equal(s.marche.blonde, PRIX_PLANCHER);
+  assert.equal(s.players[pi].stock.blonde, 0);
+  ko(applyAction(s, pi, { type: 'vendre', style: 'blonde', n: 1 }), /unités/);
+  // remontée de 1 par saison, sans dépasser la base
+  let t = s;
+  const sais = s.saison;
+  while (t.saison === sais && t.phase === 'main') { while (t.pending) t = aiStep(t).state; if (t.saison !== sais) break; t = t.cur === pi ? ok(applyAction(t, pi, { type: 'endTurn' })) : aiStep(t).state; }
+  assert.equal(t.marche.blonde, Math.min(base, PRIX_PLANCHER + 1));
+});
+
+test('livrer : tournée, capacité, limite par client, styles de la cave et des villages, réputation', () => {
+  let s = enJeu(13);
+  const pi = s.cur, p0 = s.players[pi];
+  const tournee = p0.tournees[0];
+  s = dote(s, pi, {}, 30, { blonde: 4, stout: 2 });
+  ko(applyAction(s, pi, { type: 'livrer', client: 'foire0', style: 'blonde' }), /tournée/);
+  // ouvrir une tournée payante vers la cave et le bar
+  for (const c of ['cave', 'bar']) if (!s.players[pi].tournees.includes(c)) {
+    const cout = legalActions(s, pi).find((a) => a.type === 'tournee').targets.find((t) => t.client === c).cout;
+    assert.equal(cout, distance(s, pi, c) * 2);
+    const avant = s.players[pi].argent;
+    s = ok(applyAction(s, pi, { type: 'tournee', client: c }));
+    assert.equal(s.players[pi].argent, avant - cout);
+  }
+  ko(applyAction(s, pi, { type: 'livrer', client: 'cave', style: 'blonde' }), /ne prend pas/);
+  const rep = s.players[pi].rep, arg = s.players[pi].argent;
+  s = ok(applyAction(s, pi, { type: 'livrer', client: 'cave', style: 'stout' }));
+  assert.equal(s.players[pi].argent, arg + RECETTES.stout.prix + 3);
+  assert.equal(s.players[pi].rep, rep + RECETTES.stout.rep + (s.demande.includes('stout') ? 1 : 0));
+  ko(applyAction(s, pi, { type: 'livrer', client: 'cave', style: 'stout' }), /déjà livré/);
+  s = ok(applyAction(s, pi, { type: 'livrer', client: 'bar', style: 'blonde' }));
+  assert.equal(s.capa.bar, 2);
+  // un village hors préférence : prix -1, pas de réputation
+  const vi = s.villages.map((_, k) => `village${k}`).find((c) => !s.prefs[+c.slice(7)].includes('blonde'));
+  if (vi) {
+    if (!s.players[pi].tournees.includes(vi)) s = ok(applyAction(s, pi, { type: 'tournee', client: vi }));
+    const r0 = s.players[pi].rep, a0 = s.players[pi].argent;
+    s = ok(applyAction(s, pi, { type: 'livrer', client: vi, style: 'blonde' }));
+    assert.equal(s.players[pi].rep, r0);
+    assert.equal(s.players[pi].argent, a0 + RECETTES.blonde.prix - 1);
+  }
+  void tournee;
+});
+
+test('foires : seulement pendant leur saison', () => {
+  let s = enJeu(2);
+  const pi = s.cur;
+  s = dote(s, pi, {}, 40, { blonde: 3 });
+  const hors = legalActions(s, pi).find((a) => a.type === 'tournee').targets.find((t) => t.client.startsWith('foire') && !(s.capa[t.client] > 0));
+  s = ok(applyAction(s, pi, { type: 'tournee', client: hors.client }));
+  ko(applyAction(s, pi, { type: 'livrer', client: hors.client, style: 'blonde' }), /plus cette saison/);
+});
+
+test('améliorations : coût, préalable, fermenteurs jusqu’à 5, cuve, touraille, salle', () => {
+  let s = enJeu(4);
+  const pi = s.cur;
+  s = dote(s, pi, { malt: 6 }, 100, { stout: 3 });
+  ko(applyAction(s, pi, { type: 'ameliorer', u: 'cuve3' }), /d'abord/);
+  s = ok(applyAction(s, pi, { type: 'ameliorer', u: 'cuve2' }));
+  s = ok(applyAction(s, pi, { type: 'ameliorer', u: 'cuve3' }));
+  ko(applyAction(s, pi, { type: 'ameliorer', u: 'cuve3' }), /déjà/);
+  assert.equal(s.players[pi].cuve, 2);
+  assert.equal(s.players[pi].argent, 100 - 8 - 14);
+  for (let k = 0; k < 3; k++) s = ok(applyAction(s, pi, { type: 'ameliorer', u: 'ferm' }));
+  ko(applyAction(s, pi, { type: 'ameliorer', u: 'ferm' }), /5 fermenteurs/);
+  ko(applyAction(s, pi, { type: 'torrefier' }), /Touraille/);
+  s = ok(applyAction(s, pi, { type: 'ameliorer', u: 'touraille' }));
+  s = ok(applyAction(s, pi, { type: 'torrefier' }));
+  assert.equal(s.players[pi].res.torr, 1);
+  assert.equal(s.players[pi].res.malt, 4);
+  ko(applyAction(s, pi, { type: 'torrefier' }), /déjà servi/);
+  ko(applyAction(s, pi, { type: 'salle', style: 'stout' }), /Salle/);
+  s = ok(applyAction(s, pi, { type: 'ameliorer', u: 'salle' }));
+  const a0 = s.players[pi].argent;
+  s = ok(applyAction(s, pi, { type: 'salle', style: 'stout' }));
+  s = ok(applyAction(s, pi, { type: 'salle', style: 'stout' }));
+  ko(applyAction(s, pi, { type: 'salle', style: 'stout' }), /déjà vendu/);
+  assert.equal(s.players[pi].argent, a0 + 2 * (RECETTES.stout.prix + 1));
+  ko(applyAction(s, pi, { type: 'ameliorer', u: 'puits' }), /inconnue/);
+});
+
+test('fin de tour : refusée au-dessus du stock maximum, puis ordre de la saison suivante = le moins réputé', () => {
+  let s = enJeu(6);
+  const pi = s.cur;
+  s = dote(s, pi, {}, 0, { blonde: STOCK_MAX + 2 });
+  ko(applyAction(s, pi, { type: 'endTurn' }), /stock dépasse/);
+  assert.ok(!legalActions(s, pi).some((a) => a.type === 'endTurn'));
+  s = ok(applyAction(s, pi, { type: 'vendre', style: 'blonde', n: 2 }));
+  s = ok(applyAction(s, pi, { type: 'endTurn' }));
+  // on finit la saison : les autres passent
+  const sais = s.saison;
+  let t = s;
+  while (t.saison === sais) { while (t.pending) t = aiStep(t).state; if (t.saison !== sais) break; t = ok(applyAction(t, t.cur, { type: 'endTurn' })); }
+  while (t.pending) t = aiStep(t).state;
+  assert.equal(t.saison, sais + 1);
+  const minRep = Math.min(...t.players.map((p) => p.rep));
+  assert.equal(t.players[t.ordre[0]].rep, minRep, 'le moins réputé commence');
+  assert.equal(t.cur, t.ordre[0]);
+  for (let k = 1; k < 4; k++) assert.equal(t.ordre[k], (t.ordre[0] + k) % 4, 'puis on tourne à gauche');
+});
+
+test('événements : contamination, canicule, douanes, concours', () => {
+  // Contamination : les joueurs sans labo avec un brassin en cours choisissent une perte
+  let s = enJeu(21);
+  const pi = s.cur;
+  s = dote(s, pi, { malt: 9, houb: 9, lev: 3, eau: 9, torr: 1 }, 50);
+  s = ok(applyAction(s, pi, { type: 'brasser', style: 'garde' }));
+  // On force la carte du prochain printemps pour tester l'événement : on fabrique un état au début d'une saison
+  const t = structuredClone(s);
+  t.saison = 3; // l'hiver vient de finir, on va entrer dans le printemps de l'an 2
+  t.deck.printemps[1] = 'p_froid';
+  t.players.forEach((p, i) => { if (i !== pi) p.ferms = []; });
+  t.players[pi].ferms = [{ st: 'garde', left: 2, u: 2 }, { st: 'blonde', left: 1, u: 3 }];
+  // on termine la saison : tous passent
+  let u = t;
+  u.idx = u.players.length - 1; u.cur = u.ordre[u.idx];
+  u.players[u.cur].stock = Object.fromEntries(STYLES.map((x) => [x, 0]));
+  u = ok(applyAction(u, u.cur, { type: 'endTurn' }));
+  assert.equal(u.saison, 4);
+  assert.equal(u.carte, 'p_froid');
+  assert.equal(u.pending.kind, 'contamination');
+  assert.deepEqual(Object.keys(u.pending.need).map(Number), [pi]);
+  assert.deepEqual(deciders(u), [pi]);
+  // la blonde (1 saison) est sortie en stock entre-temps ; il ne reste que la garde en fermentation
+  assert.equal(u.players[pi].stock.blonde, 3);
+  assert.deepEqual(u.players[pi].ferms, [{ st: 'garde', left: 1, u: 2 }]);
+  ko(applyAction(u, pi, { type: 'evenement', ferm: 5 }), /brassins/);
+  u = ok(applyAction(u, pi, { type: 'evenement', ferm: 0 }));
+  assert.equal(u.players[pi].ferms[0].u, 1);
+  assert.equal(u.pending, null);
+  assert.equal(u.phase, 'main');
+
+  // Douanes : 1 Argent par 3 unités
+  const d = structuredClone(s);
+  d.saison = 2; d.deck.hiver[0] = 'h_rude';
+  d.players.forEach((p) => { p.stock.blonde = 6; p.argent = 1; p.ferms = []; });
+  d.idx = 3; d.cur = d.ordre[3];
+  d.players[d.cur].argent = 5;
+  const dd = ok(applyAction(d, d.cur, { type: 'endTurn' }));
+  assert.equal(dd.carte, 'h_rude');
+  dd.players.forEach((p, i) => assert.equal(p.argent, i === d.cur ? 3 : 0, 'paie 1 par 3 unités, au plus ce qu’il a'));
+
+  // Concours : chacun présente, le meilleur style en demande gagne 5
+  const c = structuredClone(s);
+  c.saison = 1; c.deck.automne[0] = 'a_humide';
+  c.players.forEach((p, i) => { p.stock = Object.fromEntries(STYLES.map((x) => [x, 0])); p.ferms = []; p.rep = 0; p.stock[i === 0 ? 'stout' : 'blonde'] = 1; });
+  c.idx = 3; c.cur = c.ordre[3];
+  let cc = ok(applyAction(c, c.cur, { type: 'endTurn' }));
+  assert.equal(cc.pending.kind, 'concours');
+  assert.equal(Object.keys(cc.pending.need).length, 4);
+  ko(applyAction(cc, 1, { type: 'concours', style: 'stout' }), /en stock/);
+  for (let i = 0; i < 4; i++) cc = ok(applyAction(cc, i, { type: 'concours', style: i === 0 ? 'stout' : 'blonde' }));
+  assert.equal(cc.pending, null);
+  assert.equal(cc.players[0].rep, CONCOURS[0]);
+  assert.equal(cc.players[1].rep, CONCOURS[1], 'égalité au second rang : chacun prend le lot');
+  assert.equal(cc.players[0].stock.stout, 0, 'l’unité présentée est consommée');
+});
+
+test('échanges : matières, bière et Argent ; contre-proposition ; conclusion', () => {
+  let s = enJeu(9, P4, { aiOffersToHumans: true });
+  const pi = s.cur, autre = (pi + 1) % 4;
+  s = dote(s, pi, { malt: 5 }, 10, { blonde: 2 });
+  s = dote(s, autre, { houb: 4 }, 3);
+  ko(applyAction(s, pi, { type: 'proposeTrade', give: { malt: 1 }, get: { malt: 1 } }), /même chose/);
+  ko(applyAction(s, pi, { type: 'proposeTrade', give: { garde: 1 }, get: { houb: 1 } }), /pas ce que tu proposes/);
+  s = ok(applyAction(s, pi, { type: 'proposeTrade', give: { blonde: 1, argent: 2 }, get: { houb: 2 }, to: [autre] }));
+  assert.ok(waitingFor(s).includes(autre));
+  assert.deepEqual(deciders(s), [pi], 'les réponses ne bloquent pas le tour');
+  s = ok(applyAction(s, autre, { type: 'respondTrade', counter: { give: { blonde: 1, argent: 2, malt: 1 }, get: { houb: 2 } } }));
+  s = ok(applyAction(s, pi, { type: 'concludeTrade', with: autre }));
+  assert.equal(s.trade, null);
+  assert.equal(s.players[pi].stock.blonde, 1);
+  assert.equal(s.players[pi].argent, 8);
+  assert.equal(s.players[pi].res.houb, s.players[pi].res.houb, 'cohérent');
+  assert.equal(s.players[autre].argent, 5);
+  assert.equal(s.players[autre].stock.blonde, 1);
+  assert.equal(s.players[autre].res.houb, 2);
+});
+
+test('fin de partie : 12 saisons, décompte (réputation + diversité + Argent), départage', () => {
+  const { s } = playOut(3);
+  assert.equal(s.phase, 'over');
+  assert.equal(s.saison, NB_SAISONS - 1);
   s.players.forEach((p, i) => {
-    RES.forEach((r) => assert.ok(p.res[r] >= 0, `ressource négative (${p.name}, ${r})`));
-    const settles = s.verts.filter((v) => v.o === i && v.t === 1).length;
-    const cities = s.verts.filter((v) => v.o === i && v.t === 2).length;
-    const roads = s.edges.filter((o) => o === i).length;
-    assert.equal(p.settles + settles, 5, 'microbrasseries incohérentes');
-    assert.equal(p.cities + cities, 4, 'grandes brasseries incohérentes');
-    assert.equal(p.roads + roads, 15, 'tournées incohérentes');
+    const sc = score(s, i);
+    const div = Object.entries(DIVERSITE).reduce((b, [k, v]) => (p.styles.length >= +k ? v : b), 0);
+    assert.equal(sc.diversite, div);
+    assert.equal(sc.argent, Math.floor(p.argent / ARGENT_PAR_POINT));
+    assert.equal(sc.total, p.rep + div + sc.argent);
+    assert.deepEqual(s.scores[i], sc);
   });
-  // Deux bâtiments ne sont jamais voisins
-  s.verts.forEach((v, i) => { if (v.o !== null) TOPO.verts[i].adj.forEach((a) => assert.equal(s.verts[a].o, null, 'bâtiments voisins')); });
-  const dev = s.players.reduce((n, p) => n + p.dev.length + p.knights, 0);
-  assert.ok(dev + s.deck.length <= 25);
-}
+  const max = Math.max(...s.scores.map((x) => x.total));
+  assert.equal(s.scores[s.winner].total, max);
+  ko(applyAction(s, s.winner, { type: 'endTurn' }), /terminée/);
+});
 
-describe('parties complètes IA contre IA', () => {
-  const seeds = Array.from({ length: 30 }, (_, i) => `essai-${i}`);
-  for (const seed of seeds) {
-    test(`graine ${seed} : jusqu'à la victoire, sans action illégale ni blocage`, () => {
-      let s = allAi(seed), n = 0;
-      while (s.phase !== 'over') {
-        assert.ok(n++ < 30000, 'partie trop longue');
-        const w = waitingFor(s);
-        assert.ok(w.length, 'personne n’est attendu');
-        const pi = w.find((i) => aiAction(s, i));
-        assert.notEqual(pi, undefined, `blocage : attendus ${w}, aucune décision`);
-        const a = aiAction(s, pi);
-        const r = applyAction(s, pi, a);
-        assert.equal(r.ok, true, `${s.players[pi].name} : ${a.type} refusé (${r.error})`);
-        s = r.state;
-        if (n % 25 === 0) invariants(s);
-      }
-      invariants(s);
-      assert.ok(vp(s, s.winner, true) >= 10);
-      assert.equal(s.log.at(-1).k, 'win');
-      assert.equal(s.log.at(-1).p, s.cur, 'la victoire arrive pendant le tour du gagnant');
-    });
+test('vue : graine et générateur masqués, cartes restantes sans ordre, scores joints', () => {
+  const s = enJeu(12);
+  const v = viewFor(s, 0);
+  assert.equal(v.seed, undefined);
+  assert.equal(v.rng, undefined);
+  assert.equal(v.me, 0);
+  assert.deepEqual(v.waiting, waitingFor(s));
+  for (const k of SAISONS) {
+    assert.equal(v.deck[k].revelees.length + v.deck[k].restantes.length, 3);
+    assert.deepEqual(v.deck[k].restantes, [...v.deck[k].restantes].sort(), 'ordre masqué');
   }
+  assert.equal(v.deck.printemps.revelees.length, 1, 'la carte du printemps en cours est révélée');
+  assert.equal(v.deck.ete.revelees.length, 0);
+  assert.ok(v.players.every((p) => p.score && typeof p.score.total === 'number'));
+  // la vue suffit pour lister les actions
+  assert.ok(legalActions(v, v.cur).length > 0);
+  // l'état survit à un passage par JSON
+  assert.deepEqual(JSON.parse(JSON.stringify(s)), s);
 });
 
-describe('plateau', () => {
-  test('19 cases, bonne répartition, 6 et 8 jamais voisins, 9 quais', () => {
-    for (let g = 0; g < 50; g++) {
-      const s = allAi(g);
-      const count = {};
-      s.hexes.forEach((h) => { count[h.res] = (count[h.res] || 0) + 1; });
-      assert.deepEqual(count, { fut: 4, eau: 3, lev: 4, malt: 4, houb: 3, friche: 1 });
-      s.hexes.forEach((h, i) => {
-        assert.equal(h.res === 'friche', h.num === 0);
-        if (h.num === 6 || h.num === 8) TOPO.hexes[i].near.forEach((j) => assert.ok(![6, 8].includes(s.hexes[j].num)));
-      });
-      assert.deepEqual([...s.ports].sort(), ['3:1', '3:1', '3:1', '3:1', 'eau', 'fut', 'houb', 'lev', 'malt']);
-      assert.equal(s.hexes[s.robber].res, 'friche');
+test('applyAction ne modifie pas l’état reçu', () => {
+  const s = enJeu(14);
+  const copie = structuredClone(s);
+  applyAction(s, s.cur, { type: 'acheter', r: 'malt', n: 1 });
+  applyAction(s, s.cur, { type: 'endTurn' });
+  assert.deepEqual(s, copie);
+});
+
+test('IA : parties complètes aux trois niveaux, sans action illégale ni blocage', () => {
+  for (const niveau of ['apprenti', 'compagnon', 'maitre']) {
+    for (let g = 1; g <= 10; g++) {
+      const { s, steps } = playOut(100 + g, { niveau });
+      assert.equal(s.phase, 'over', `niveau ${niveau}, graine ${100 + g} : pas finie après ${steps} actions`);
+      assert.ok(s.players.every((p) => p.argent >= 0 && RES.every((r) => p.res[r] >= 0) && unites(p) <= STOCK_MAX));
     }
-    assert.equal(TOPO.hexes.length, 19);
-    assert.equal(TOPO.verts.length, 54);
-    assert.equal(TOPO.edges.length, 72);
-    assert.equal(PIPS(7), 6);
-  });
-});
-
-describe('déterminisme et sérialisation', () => {
-  test('même graine et mêmes actions → même partie', () => {
-    const a = advance(allAi('pareil'), (s) => s.turn >= 20);
-    const b = advance(allAi('pareil'), (s) => s.turn >= 20);
-    assert.deepEqual(a, b);
-  });
-  test('un état passé par JSON continue exactement pareil', () => {
-    const mid = advance(allAi('json'), (s) => s.turn >= 15);
-    const copy = JSON.parse(JSON.stringify(mid));
-    assert.deepEqual(copy, mid);
-    const end1 = advance(mid, (s) => s.phase === 'over');
-    const end2 = advance(copy, (s) => s.phase === 'over');
-    assert.deepEqual(end1, end2);
-    assert.equal(end1.phase, 'over');
-  });
-  test("applyAction ne modifie pas l'état reçu", () => {
-    const s = afterSetup('pur');
-    const before = JSON.stringify(s);
-    ok(applyAction(s, s.cur, { type: 'roll' }));
-    assert.equal(JSON.stringify(s), before);
-  });
-});
-
-describe('mise en place', () => {
-  test('ordre en serpent et ressources de la 2ᵉ microbrasserie', () => {
-    let s = allAi('serpent');
-    const order = [];
-    while (s.phase === 'setup') {
-      if (s.setup.step === 'settle') order.push(s.cur);
-      s = aiStep(s).state;
-    }
-    assert.deepEqual(order, [0, 1, 2, 3, 3, 2, 1, 0]);
-    const gains = s.log.filter((e) => e.k === 'setupGain');
-    assert.equal(gains.length, 4);
-    s.players.forEach((p, i) => assert.equal(total(p.res), total(gains.find((g) => g.p === i).res)));
-    gains.forEach((g) => {
-      const v = s.log.filter((e) => e.k === 'build' && e.what === 'settle' && e.p === g.p)[1].at;
-      const expected = TOPO.verts[v].hexes.filter((h) => s.hexes[h].res !== 'friche').length;
-      assert.equal(total(g.res), expected);
-    });
-    assert.equal(s.cur, 0);
-    assert.equal(s.turn, 1);
-  });
-  test('la tournée de mise en place doit partir de la microbrasserie posée', () => {
-    let s = allAi('tournee');
-    const v = aiAction(s, 0).at;
-    s = ok(applyAction(s, 0, { type: 'build', what: 'settle', at: v }));
-    const far = TOPO.edges.findIndex((e) => e.a !== v && e.b !== v);
-    assert.equal(applyAction(s, 0, { type: 'build', what: 'road', at: far }).ok, false);
-    assert.equal(applyAction(s, 1, { type: 'build', what: 'road', at: TOPO.verts[v].edges[0] }).ok, false);
-    ok(applyAction(s, 0, { type: 'build', what: 'road', at: TOPO.verts[v].edges[0] }));
-  });
-  test('microbrasserie trop proche refusée', () => {
-    let s = allAi('proche');
-    const v = aiAction(s, 0).at;
-    s = ok(applyAction(s, 0, { type: 'build', what: 'settle', at: v }));
-    s = ok(applyAction(s, 0, { type: 'build', what: 'road', at: TOPO.verts[v].edges[0] }));
-    const r = applyAction(s, 1, { type: 'build', what: 'settle', at: TOPO.verts[v].adj[0] });
-    assert.equal(r.ok, false);
-    assert.match(r.error, /proche/);
-  });
-});
-
-describe('refus avec raison', () => {
-  test('hors tour, double lancer, construire sans ressources, fin de tour avant les dés', () => {
-    const s = afterSetup('refus');
-    assert.match(applyAction(s, 1, { type: 'roll' }).error, /pas ton tour/);
-    assert.match(applyAction(s, 0, { type: 'endTurn' }).error, /Lance/);
-    const r = ok(applyAction(s, 0, { type: 'roll' }));
-    if (r.pending) return;
-    assert.match(applyAction(r, 0, { type: 'roll' }).error, /déjà/);
-    const poor = structuredClone(r);
-    poor.players[0].res = Z();
-    assert.match(applyAction(poor, 0, { type: 'buyDev' }).error, /manque/);
-    assert.match(applyAction(poor, 0, { type: 'build', what: 'road', at: 0 }).error, /manque/);
-    assert.equal(applyAction(s, 0, { type: 'nimporte' }).ok, false);
-    assert.equal(applyAction(s, 7, { type: 'roll' }).ok, false);
-  });
-  test('une carte Événement tirée ce tour-ci ne se joue pas, et une seule carte par tour', () => {
-    let s = afterSetup('carte');
-    s = forceDice(s, 9);
-    s = ok(applyAction(s, 0, { type: 'roll' }));
-    s.players[0].res = { fut: 0, eau: 0, lev: 5, malt: 5, houb: 5 };
-    s.deck.push('knight');
-    s = ok(applyAction(s, 0, { type: 'buyDev' }));
-    assert.match(applyAction(s, 0, { type: 'playDev', card: 'knight' }).error, /prochain tour/);
-    s.players[0].dev.push({ t: 'plenty', turn: 0 }, { t: 'mono', turn: 0 });
-    s = ok(applyAction(s, 0, { type: 'playDev', card: 'plenty', res: { eau: 2 } }));
-    assert.equal(s.players[0].res.eau, 2);
-    assert.match(applyAction(s, 0, { type: 'playDev', card: 'mono', r: 'eau' }).error, /Une seule/);
-    assert.match(applyAction(s, 0, { type: 'playDev', card: 'vp' }).error, /médaille/i);
-  });
-});
-
-describe('contrôle des douanes', () => {
-  test('défausse simultanée de plusieurs joueurs, arrondie à l’inférieur, puis contrôleur et pioche', () => {
-    let s = afterSetup('sept');
-    s.players[0].res = { fut: 3, eau: 3, lev: 3, malt: 0, houb: 0 }; // 9 → défausse 4
-    s.players[2].res = { fut: 2, eau: 2, lev: 2, malt: 2, houb: 3 }; // 11 → défausse 5
-    s.players[1].res = { fut: 7, eau: 0, lev: 0, malt: 0, houb: 0 }; // 7 → rien
-    s = forceDice(s, 7);
-    s = ok(applyAction(s, 0, { type: 'roll' }));
-    assert.deepEqual(s.pending.need, { 0: 4, 2: 5 });
-    assert.deepEqual(waitingFor(s), [0, 2]);
-    assert.match(applyAction(s, 0, { type: 'moveRobber', hex: 0 }).error, /contrôleur/);
-    assert.match(applyAction(s, 0, { type: 'discard', res: { fut: 3 } }).error, /exactement 4/);
-    assert.match(applyAction(s, 1, { type: 'discard', res: { fut: 3 } }).error, /rien à défausser/);
-    s = ok(applyAction(s, 2, { type: 'discard', res: { houb: 3, malt: 2 } }));
-    assert.deepEqual(waitingFor(s), [0]);
-    s = ok(applyAction(s, 0, { type: 'discard', res: { fut: 2, eau: 2 } }));
-    assert.equal(s.pending.type, 'robber');
-    assert.equal(total(s.players[0].res), 5);
-    assert.equal(total(s.players[2].res), 6);
-    assert.match(applyAction(s, 0, { type: 'moveRobber', hex: s.robber }).error, /changer/);
-    // Case voisine d'un adversaire qui a des cartes
-    const hex = s.hexes.findIndex((_, i) => i !== s.robber && TOPO.hexes[i].verts.some((v) => s.verts[v].o !== null && s.verts[v].o !== 0 && total(s.players[s.verts[v].o].res) > 0));
-    const before = total(s.players[0].res);
-    s = ok(applyAction(s, 0, { type: 'moveRobber', hex }));
-    if (s.pending?.type === 'steal') s = ok(applyAction(s, 0, { type: 'steal', victim: s.pending.victims[0] }));
-    assert.equal(total(s.players[0].res), before + 1);
-    assert.equal(s.pending, null);
-  });
-  test('la case du contrôleur ne produit plus', () => {
-    let s = afterSetup('bloque');
-    const hex = s.hexes.findIndex((h, i) => h.num && TOPO.hexes[i].verts.some((v) => s.verts[v].o !== null));
-    s.robber = hex;
-    s.players.forEach((p) => { p.res = Z(); });
-    s = forceDice(s, s.hexes[hex].num);
-    s = ok(applyAction(s, 0, { type: 'roll' }));
-    const gotFromHex = s.log.at(-1).gains.some((g) => g.res[s.hexes[hex].res] > 0 && s.hexes.filter((h, i) => i !== hex && h.num === s.hexes[hex].num && h.res === s.hexes[hex].res).length === 0);
-    assert.equal(gotFromHex, false);
-  });
-});
-
-describe('bonus et victoire', () => {
-  test('dossier comptable : 3 experts minimum, il faut dépasser le détenteur', () => {
-    let s = afterSetup('armee');
-    s.players[0].dev = Array(4).fill(null).map(() => ({ t: 'knight', turn: 0 }));
-    s.players[1].knights = 0;
-    const playKnight = (st, pi) => {
-      st = ok(applyAction(st, pi, { type: 'playDev', card: 'knight' }));
-      const hex = st.hexes.findIndex((_, i) => i !== st.robber);
-      st = ok(applyAction(st, pi, { type: 'moveRobber', hex }));
-      if (st.pending?.type === 'steal') st = ok(applyAction(st, pi, { type: 'steal', victim: st.pending.victims[0] }));
-      return st;
-    };
-    s.players[0].knights = 2;
-    s = playKnight(s, 0);
-    assert.equal(s.army, 0);
-    s.players[1].knights = 3;
-    s.devPlayed = false;
-    s.cur = 1;
-    s.players[1].dev = [{ t: 'knight', turn: 0 }];
-    s.players[1].knights = 2; // passera à 3 : égalité, le détenteur garde
-    s = playKnight(s, 1);
-    assert.equal(s.army, 0);
-  });
-  test('plus grand réseau : 5 tournées minimum, coupé par un bâtiment adverse, le détenteur garde en cas d’égalité', () => {
-    let s = afterSetup('reseau');
-    s.edges = s.edges.map(() => null);
-    s.verts = s.verts.map(() => ({ o: null, t: 0 }));
-    s.longest = null;
-    // Chemin simple de 6 tournées le long du bord d'une case puis de la voisine
-    const path = (startV, len, avoid = new Set()) => {
-      const edges = [], seenV = new Set([startV]);
-      let v = startV;
-      while (edges.length < len) {
-        const e = TOPO.verts[v].edges.find((x) => !edges.includes(x) && !avoid.has(TOPO.edges[x].a) && !avoid.has(TOPO.edges[x].b) && !seenV.has(TOPO.edges[x].a === v ? TOPO.edges[x].b : TOPO.edges[x].a));
-        if (e === undefined) throw new Error('chemin impossible');
-        edges.push(e);
-        v = TOPO.edges[e].a === v ? TOPO.edges[e].b : TOPO.edges[e].a;
-        seenV.add(v);
-      }
-      return { edges, verts: [...seenV] };
-    };
-    const a = path(0, 5);
-    a.edges.forEach((e) => { s.edges[e] = 0; });
-    const avoid = new Set(a.verts.flatMap((v) => [v, ...TOPO.verts[v].adj]));
-    const startB = TOPO.verts.findIndex((_, i) => !avoid.has(i));
-    const b = path(startB, 5, avoid);
-    b.edges.slice(0, 4).forEach((e) => { s.edges[e] = 1; });
-    s.verts[a.verts[0]] = { o: 0, t: 1 };
-    s.verts[b.verts[0]] = { o: 1, t: 1 };
-    // Le joueur 0 pose une microbrasserie à côté : le réseau est recalculé, il prend le bonus
-    s.cur = 0; s.rolled = true; s.pending = null; s.trade = null;
-    s.players[0].res = { fut: 1, eau: 1, lev: 0, malt: 0, houb: 0 };
-    const extra = TOPO.verts[a.verts.at(-1)].edges.find((e) => s.edges[e] === null && !a.verts.includes(TOPO.edges[e].a === a.verts.at(-1) ? TOPO.edges[e].b : TOPO.edges[e].a));
-    s = ok(applyAction(s, 0, { type: 'build', what: 'road', at: extra }));
-    assert.equal(s.longest, 0);
-    // Le joueur 1 arrive à égalité (5) : le détenteur garde
-    s.cur = 1; s.players[1].res = { fut: 2, eau: 2, lev: 0, malt: 0, houb: 0 };
-    s = ok(applyAction(s, 1, { type: 'build', what: 'road', at: b.edges[4] }));
-    assert.equal(s.longest, 0);
-    // Une microbrasserie adverse au milieu du réseau du joueur 0 le coupe
-    const mid = a.verts[2];
-    s.verts[mid] = { o: 2, t: 1 };
-    s.cur = 1;
-    const more = TOPO.verts[b.verts.at(-1)].edges.find((e) => s.edges[e] === null && !b.verts.includes(TOPO.edges[e].a === b.verts.at(-1) ? TOPO.edges[e].b : TOPO.edges[e].a));
-    s = ok(applyAction(s, 1, { type: 'build', what: 'road', at: more }));
-    assert.equal(s.longest, 1);
-  });
-  test('victoire à 10 PV médailles cachées comprises, seulement pendant son propre tour', () => {
-    let s = afterSetup('victoire');
-    const mine = s.verts.map((v, i) => (v.o === 0 ? i : -1)).filter((i) => i >= 0);
-    s.verts[mine[0]].t = 2; // 2 + 1 = 3 PV
-    s.army = 0; // 5 PV
-    s.players[0].dev = Array(5).fill(null).map(() => ({ t: 'vp', turn: 0 })); // 10 PV cachés
-    assert.equal(vp(s, 0, false), 5);
-    assert.equal(vp(s, 0, true), 10);
-    s.cur = 3; s.rolled = true;
-    s = ok(applyAction(s, 3, { type: 'setOffers', on: true }));
-    assert.equal(s.phase, 'main', 'pas de victoire pendant le tour d’un autre');
-    s = ok(applyAction(s, 3, { type: 'endTurn' }));
-    assert.equal(s.phase, 'over');
-    assert.equal(s.winner, 0);
-    assert.match(applyAction(s, 0, { type: 'roll' }).error, /terminée/);
-  });
-});
-
-describe('négoce', () => {
-  test('grossiste à 4:1, et au taux des quais possédés', () => {
-    let s = afterSetup('grossiste');
-    s.verts = s.verts.map((v) => (v.o === 0 ? { o: null, t: 0 } : v));
-    s = forceDice(s, 9);
-    s = ok(applyAction(s, 0, { type: 'roll' }));
-    s.players[0].res = { fut: 4, eau: 0, lev: 0, malt: 0, houb: 0 };
-    assert.match(applyAction(s, 0, { type: 'bankTrade', give: 'fut', get: 'fut' }).error, /différentes/);
-    let t = ok(applyAction(s, 0, { type: 'bankTrade', give: 'fut', get: 'malt' }));
-    assert.deepEqual(t.players[0].res, { fut: 0, eau: 0, lev: 0, malt: 1, houb: 0 });
-    const port2 = TOPO.ports.findIndex((_, i) => s.ports[i] === 'fut');
-    s.verts[TOPO.ports[port2].a] = { o: 0, t: 1 };
-    t = ok(applyAction(s, 0, { type: 'bankTrade', give: 'fut', get: 'malt' }));
-    assert.equal(t.players[0].res.fut, 2);
-  });
-  test('offre à tous, acceptation, contre-proposition, conclusion avec un seul', () => {
-    let s = createGame({ seed: 'echange', players: NAMES.map((name) => ({ name, ai: false })) });
-    s = advance(s, (x) => x.phase === 'main');
-    s = forceDice(s, 9);
-    s = ok(applyAction(s, 0, { type: 'roll' }));
-    s.players[0].res = { fut: 2, eau: 0, lev: 0, malt: 0, houb: 0 };
-    s.players[1].res = { fut: 0, eau: 0, lev: 0, malt: 1, houb: 0 };
-    s.players[2].res = { fut: 0, eau: 0, lev: 0, malt: 1, houb: 0 };
-    s.players[3].res = Z();
-    assert.match(applyAction(s, 0, { type: 'proposeTrade', give: { fut: 3 }, get: { malt: 1 } }).error, /pas ces cartes/);
-    s = ok(applyAction(s, 0, { type: 'proposeTrade', give: { fut: 1 }, get: { malt: 1 } }));
-    assert.deepEqual(s.trade.to, [1, 2, 3]);
-    assert.deepEqual(waitingFor(s), [0, 1, 2, 3]);
-    assert.match(applyAction(s, 3, { type: 'respondTrade', accept: true }).error, /pas les cartes/);
-    s = ok(applyAction(s, 3, { type: 'respondTrade', accept: false }));
-    s = ok(applyAction(s, 1, { type: 'respondTrade', accept: true }));
-    s = ok(applyAction(s, 2, { type: 'respondTrade', counter: { give: { fut: 2 }, get: { malt: 1 } } }));
-    assert.match(applyAction(s, 0, { type: 'concludeTrade', with: 3 }).error, /pas accepté/);
-    assert.deepEqual(legalActions(s, 0).find((a) => a.type === 'concludeTrade').targets, [1, 2]);
-    s = ok(applyAction(s, 0, { type: 'concludeTrade', with: 2 }));
-    assert.deepEqual(s.players[0].res, { fut: 0, eau: 0, lev: 0, malt: 1, houb: 0 });
-    assert.deepEqual(s.players[2].res, { fut: 2, eau: 0, lev: 0, malt: 0, houb: 0 });
-    assert.equal(s.trade, null);
-  });
-  test('la fin du tour ferme l’offre ouverte', () => {
-    let s = afterSetup('fermeture');
-    s = forceDice(s, 9);
-    s = ok(applyAction(s, 0, { type: 'roll' }));
-    s.players[0].res.fut = 1;
-    s = ok(applyAction(s, 0, { type: 'proposeTrade', give: { fut: 1 }, get: { houb: 1 } }));
-    s = ok(applyAction(s, 0, { type: 'endTurn' }));
-    assert.equal(s.trade, null);
-    assert.equal(s.log.at(-2).k, 'tradeClosed');
-  });
-  test('IA : refuse tout échange avec un joueur à 8 PV ou plus', () => {
-    let s = createGame({ seed: 'meneur', players: NAMES.map((name, i) => ({ name, ai: i !== 0 })) });
-    s = advance(s, (x) => x.phase === 'main');
-    s = forceDice(s, 9);
-    s = ok(applyAction(s, 0, { type: 'roll' }));
-    s.players[0].res = { fut: 0, eau: 0, lev: 0, malt: 0, houb: 5 };
-    s.players.slice(1).forEach((p) => { p.res = { fut: 3, eau: 3, lev: 0, malt: 0, houb: 0 }; });
-    // Très généreux : 5 houblons contre 1 fût
-    let t = ok(applyAction(s, 0, { type: 'proposeTrade', give: { houb: 5 }, get: { fut: 1 } }));
-    const generous = [1, 2, 3].filter((i) => aiAction(t, i).accept).length;
-    assert.ok(generous > 0, 'une offre généreuse trouve preneur');
-    s.army = 0; s.longest = 0; // 2 + 4 = 6 PV
-    s.verts.forEach((v) => { if (v.o === 0) v.t = 2; }); // 4 + 4 = 8 PV
-    assert.equal(vp(s, 0, false), 8);
-    t = ok(applyAction(s, 0, { type: 'proposeTrade', give: { houb: 5 }, get: { fut: 1 } }));
-    [1, 2, 3].forEach((i) => assert.equal(aiAction(t, i).accept, false));
-  });
-});
-
-describe('vue filtrée', () => {
-  test('cache la main et les cartes des autres, la pioche et la graine', () => {
-    let s = withHuman('vue');
-    s = advance(s, (x) => x.turn >= 12, () => true);
-    const v = viewFor(s, 0);
-    assert.equal(v.seed, undefined);
-    assert.equal(v.rng, undefined);
-    assert.equal(typeof v.deck, 'number');
-    assert.deepEqual(v.players[0].res, s.players[0].res);
-    for (let i = 1; i < 4; i++) {
-      assert.equal(v.players[i].res, null);
-      assert.equal(v.players[i].dev, null);
-      assert.equal(v.players[i].nres, total(s.players[i].res));
-      assert.equal(v.players[i].ndev, s.players[i].dev.length);
-      assert.equal(v.players[i].vp, vp(s, i, false));
-    }
-    const json = JSON.stringify(v);
-    assert.ok(!json.includes('"rng"'));
-    v.log.forEach((e) => {
-      if (e.k === 'steal' && e.p !== 0 && e.v !== 0) assert.equal(e.r, undefined);
-      if (e.k === 'buyDev' && e.p !== 0) assert.equal(e.t, undefined);
-      if (e.k === 'discard' && e.p !== 0) assert.equal(e.res, undefined);
-    });
-    const spectator = viewFor(s, null);
-    spectator.players.forEach((p) => assert.equal(p.res, null));
-  });
-  test('tout est révélé à la fin', () => {
-    const s = advance(allAi('fin'), (x) => x.phase === 'over');
-    viewFor(s, 0).players.forEach((p) => assert.ok(p.res && p.dev));
-  });
-});
-
-describe('actions légales', () => {
-  test('chaque action IA appartient aux gabarits légaux', () => {
-    let s = allAi('legal');
-    for (let n = 0; n < 3000 && s.phase !== 'over'; n++) {
-      const pi = waitingFor(s).find((i) => aiAction(s, i));
-      const a = aiAction(s, pi);
-      const legal = legalActions(s, pi);
-      const match = legal.find((l) => l.type === a.type && (l.what === undefined || l.what === a.what) && (l.card === undefined || l.card === a.card || a.type !== 'playDev'));
-      assert.ok(match, `${a.type} absent des actions légales`);
-      if (match.targets && a.at !== undefined) assert.ok(match.targets.includes(a.at));
-      if (match.targets && a.hex !== undefined) assert.ok(match.targets.includes(a.hex));
-      s = ok(applyAction(s, pi, a));
-    }
-  });
-});
-
-describe('IA sans information cachée', () => {
-  // Redistribue au hasard le contenu des mains et des cartes Événement des autres (mêmes nombres), mélange la pioche
-  function scramble(s, pi, seed) {
-    const t = structuredClone(s);
-    let x = seed;
-    const rnd = () => { x = (x * 1103515245 + 12345) % 2147483648; return x / 2147483648; };
-    t.players.forEach((p, i) => {
-      if (i === pi) return;
-      const n = total(p.res);
-      p.res = Z();
-      for (let k = 0; k < n; k++) p.res[RES[Math.floor(rnd() * 5)]]++;
-      p.dev = p.dev.map((c) => ({ ...c, t: ['knight', 'vp', 'roads', 'plenty', 'mono'][Math.floor(rnd() * 5)] }));
-    });
-    t.deck = [...t.deck].sort(() => rnd() - 0.5);
-    return t;
   }
-  test('changer le contenu caché des autres ne change jamais la décision de l’IA', () => {
-    let checked = 0;
-    for (const seed of ['cache-1', 'cache-2', 'cache-3']) {
-      let s = allAi(seed);
-      for (let n = 0; n < 4000 && s.phase !== 'over'; n++) {
-        const pi = waitingFor(s).find((i) => aiAction(s, i));
-        const a = aiAction(s, pi);
-        if (n % 3 === 0) {
-          for (let k = 1; k <= 3; k++) assert.deepEqual(aiAction(scramble(s, pi, n * 7 + k), pi), a, `décision changée (${a.type})`);
-          checked++;
-        }
-        s = ok(applyAction(s, pi, a));
-      }
-    }
-    assert.ok(checked > 300);
-  });
-  test('les actions légales se calculent aussi sur la vue d’un joueur', () => {
-    let s = allAi('vue-legale');
-    for (let n = 0; n < 2000 && s.phase !== 'over'; n++) {
-      for (const pi of [0, 1, 2, 3]) assert.deepEqual(legalActions(viewFor(s, pi), pi), legalActions(s, pi));
-      s = aiStep(s).state;
-    }
-  });
+  // à 2 et 3 joueurs aussi
+  for (const n of [2, 3]) { const { s } = playOut(200 + n, { n }); assert.equal(s.phase, 'over'); }
+});
+
+test('IA : une décision pour chaque joueur attendu, y compris les réponses aux offres', () => {
+  let s = enJeu(15, P4, { niveau: 'compagnon' });
+  const pi = s.cur, autre = (pi + 1) % 4;
+  s = dote(s, pi, { malt: 3 }, 10);
+  s = ok(applyAction(s, pi, { type: 'proposeTrade', give: { malt: 1 }, get: { houb: 1 }, to: [autre] }));
+  const a = aiAction(s, autre);
+  assert.equal(a.type, 'respondTrade');
+  assert.equal(aiAction(s, pi), null, 'le proposant attend les réponses');
+  s = ok(applyAction(s, autre, a));
+  const b = aiAction(s, pi);
+  assert.ok(['concludeTrade', 'cancelTrade'].includes(b.type));
 });

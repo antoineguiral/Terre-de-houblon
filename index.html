@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Terres de Houblon</title>
+<title>Brassins</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
@@ -49,11 +49,6 @@ h1{font-family:var(--font-display);font-weight:400;font-size:clamp(28px,4.2vw,42
 .vp{font-family:var(--font-display);font-size:22px;line-height:1;text-align:right;font-variant-numeric:tabular-nums;min-width:38px}
 .vp small{font-family:var(--font-num);font-size:11px;color:var(--muted);margin-left:2px}
 .turnrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.dice{display:flex;gap:8px}
-.die{width:42px;height:42px;border-radius:7px;background:#efe3c8;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:6px;box-shadow:inset 0 -3px 0 rgba(0,0,0,.18)}
-.die i{width:7px;height:7px;border-radius:50%;background:#2a1d15;place-self:center;visibility:hidden}
-.die i.on{visibility:visible}
-.die.seven{background:#e7b9a7}
 .btn{font:600 14px/1.1 var(--font-body);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:9px 12px;cursor:pointer;min-height:38px}
 .btn:hover:not(:disabled){border-color:var(--copper)}
 .btn:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--copper);outline-offset:2px}
@@ -61,10 +56,10 @@ h1{font-family:var(--font-display);font-weight:400;font-size:clamp(28px,4.2vw,42
 .btn.primary{background:var(--copper);color:var(--dark);border-color:var(--copper)}
 .btn.ghost{background:transparent}
 .grow{flex:1}
-.hand{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.hand{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px}
 .res{border-radius:5px;padding:6px 4px 5px;display:flex;flex-direction:column;align-items:center;gap:0;background:var(--rc);color:var(--rt);box-shadow:inset 0 -3px 0 rgba(0,0,0,.2)}
 .res b{font-family:var(--font-display);font-weight:400;font-size:24px;line-height:1.1;font-variant-numeric:tabular-nums}
-.res span{font-family:var(--font-num);font-size:12px;font-weight:600;letter-spacing:.03em;white-space:nowrap}
+.res span{font-family:var(--font-num);font-size:11px;font-weight:600;letter-spacing:.02em;white-space:nowrap}
 .res.zero{opacity:.45}
 .build{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 10px;align-items:center}
 .bname{display:flex;flex-direction:column;min-width:0}
@@ -116,6 +111,49 @@ details.card summary{cursor:pointer;font-family:var(--font-num);font-weight:600;
 .prow .btn{padding:4px;min-height:32px}
 .mrow{display:flex;gap:8px;flex-wrap:wrap}
 .score{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:8px;align-items:center}
+/* saison, brasserie, marché, clients */
+.season{display:flex;flex-direction:column;gap:5px}
+.season b{font-family:var(--font-display);font-weight:400;font-size:20px;color:var(--copper);line-height:1.1}
+.cardname{font-weight:600}
+.season small,.sub2{color:var(--muted);font-size:12.5px}
+.dem{color:var(--copper);font-weight:600}
+.evt{color:#f0a487;font-weight:600;cursor:help}
+.calrow{display:flex;gap:3px;margin:4px 0}
+.cal{flex:1;text-align:center;font:600 11px var(--font-num);padding:3px 0;border-radius:3px;background:var(--panel2);color:var(--muted);cursor:help}
+.cal.past{opacity:.45}
+.cal.now{background:var(--copper);color:var(--dark)}
+.turninfo{display:flex;flex-direction:column;min-width:0;flex:1}
+.turninfo b{font-weight:600}
+.turninfo small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub2{font-family:var(--font-num);font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:11.5px;margin-top:4px}
+.ferms{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+.ferm{border-radius:5px;padding:5px 4px;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;background:var(--rc);color:var(--rt);text-align:center;box-shadow:inset 0 -3px 0 rgba(0,0,0,.2)}
+.ferm b{font-size:12px;font-weight:600;line-height:1.1}
+.ferm span{font-family:var(--font-num);font-size:11px}
+.ferm.empty{background:var(--panel2);color:var(--muted);border:1px dashed var(--line);box-shadow:none;font-size:12px}
+.ferm.none{background:transparent;color:var(--line);border:1px dashed var(--line);box-shadow:none}
+.stock{display:flex;gap:5px;flex-wrap:wrap}
+.stk{font-size:13px;padding:3px 8px;border-radius:4px;background:var(--rc);color:var(--rt);font-weight:500}
+.stk b{font-family:var(--font-display);font-weight:400}
+.eq{font-size:12.5px;padding:2px 7px;border-radius:4px;background:var(--panel2);border:1px solid var(--line)}
+.buyrow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+.btn.buy{padding:6px 4px;display:flex;align-items:center;justify-content:center;gap:4px;font-variant-numeric:tabular-nums}
+.sellgrid{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px 8px;align-items:center}
+.sellgrid.with-salle{grid-template-columns:minmax(0,1fr) auto auto auto}
+.pr{font-family:var(--font-display);font-size:17px;font-variant-numeric:tabular-nums;text-align:right}
+.pr small{font-family:var(--font-num);font-size:11px;color:var(--muted)}
+.sellgrid .btn{padding:6px 8px;min-height:30px;font-size:13px}
+.client{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border:1px solid var(--line);border-radius:5px;background:var(--panel2)}
+.client b{font-weight:600}
+.client small{color:var(--muted);font-size:12px}
+.btn.mini2{padding:5px 8px;min-height:28px;font-size:12.5px}
+.btn.mini2 small{color:inherit;opacity:.75;font-weight:500}
+.bname.owned{opacity:.55}
+.cst.sty{width:auto;padding:0 4px;min-width:18px}
+.scores{display:grid;grid-template-columns:14px minmax(0,1fr) repeat(4,auto);gap:6px 10px;align-items:center;font-variant-numeric:tabular-nums}
+.scores>span:nth-child(-n+6){font-family:var(--font-num);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.cpick circle{fill:rgba(242,230,208,.22);stroke:var(--ink);stroke-width:2.5;cursor:pointer;animation:pulse 1.2s ease-in-out infinite}
+.cpick:hover circle{fill:var(--copper)}
 /* accueil, salle d'attente, partie en réseau */
 .topacts{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .netstat{font-size:13px;color:var(--muted)}
@@ -164,7 +202,7 @@ input.code{text-transform:uppercase;letter-spacing:.2em;font-family:var(--font-n
 .hpick{fill:rgba(242,230,208,.08);stroke:var(--ink);stroke-width:3;stroke-dasharray:8 6;cursor:pointer}
 .hpick:hover{fill:rgba(211,139,70,.3)}
 @keyframes pulse{50%{opacity:.55}}
-@media (prefers-reduced-motion:reduce){.spot,.espot{animation:none}}
+@media (prefers-reduced-motion:reduce){.spot,.espot,.cpick circle{animation:none}}
 </style>
 </head>
 <body>
@@ -172,8 +210,8 @@ input.code{text-transform:uppercase;letter-spacing:.2em;font-family:var(--font-n
 <div class="app">
   <header class="top">
     <div class="brand">
-      <h1>Terres de Houblon</h1>
-      <p class="sub">Récolte, brasse, livre. Premier à 10 points de réputation.</p>
+      <h1>Brassins</h1>
+      <p class="sub">Brasse, fais fermenter, livre. Trois ans pour bâtir ta réputation.</p>
     </div>
     <div class="topacts">
       <span id="netstat" class="netstat" hidden></span>
@@ -190,20 +228,24 @@ input.code{text-transform:uppercase;letter-spacing:.2em;font-family:var(--font-n
       <div id="hint" class="hint" aria-live="polite"></div>
     </section>
     <aside class="side">
+      <div class="card"><h2>Saison</h2><div id="saison"></div></div>
       <div class="card"><h2>Brasseries</h2><div id="players"></div></div>
       <div class="card"><h2>Ton tour</h2><div class="turnrow" id="turn"></div><div id="chrono" class="chrono" hidden></div></div>
-      <div class="card"><h2>Tes ressources</h2><div class="hand" id="hand"></div></div>
-      <div class="card"><h2>Construire</h2><div class="build" id="build"></div></div>
-      <div class="card"><h2>Cartes Événement</h2><div class="devs" id="devs"></div></div>
-      <div class="card"><h2>Négoce</h2><div class="tradewrap" id="trade"></div></div>
+      <div class="card"><h2>Ta brasserie</h2><div id="brasserie" class="tsec"></div></div>
+      <div class="card"><h2>Brasser</h2><div class="build" id="brasser"></div></div>
+      <div class="card"><h2>Clients et tournées</h2><div id="clients" class="tsec"></div></div>
+      <div class="card"><h2>Marché du Bourg</h2><div id="marche" class="tsec"></div></div>
+      <div class="card"><h2>S'équiper</h2><div class="build" id="ameliorer"></div></div>
+      <div class="card"><h2>Négoce avec les autres brasseries</h2><div class="tsec" id="trade"></div></div>
       <details class="card">
         <summary>Règles en bref</summary>
         <div class="rules">
-          <p>Chaque case produit sa ressource quand son numéro sort aux dés : Tonnellerie → Fût, Source → Eau, Labo → Levure, Champ d'orge → Malt, Houblonnière → Houblon.</p>
-          <p>Une microbrasserie touche 1 carte, une grande brasserie 2. Deux bâtiments ne peuvent pas être voisins directs.</p>
-          <p>Sur un 7, contrôle des douanes : qui a plus de 7 cartes en défausse la moitié, puis le lanceur déplace le contrôleur (la case ne produit plus) et pioche 1 carte chez un voisin.</p>
-          <p>Négoce avec le grossiste à 4 contre 1, ou 3:1 et 2:1 si tu possèdes un quai de chargement (cercles sur la côte).</p>
-          <p>Bonus de 2 points : plus grand réseau de livraison (5 tournées d'affilée minimum) et meilleur dossier comptable (3 experts-comptables joués minimum).</p>
+          <p><b>Le but.</b> Trois ans, douze saisons. À la fin, réputation + bonus de diversité (3 styles +2, 5 styles +5, 7 styles +9) + 1 point par 8 Argent.</p>
+          <p><b>Les terroirs.</b> Ta case et ses six voisines produisent selon la saison : orge en été et automne, houblon surtout en automne, eau au printemps. Chaque brasserie a un puits (+1 Eau). La levure revient à la fin de chaque fermentation.</p>
+          <p><b>Brasser.</b> Une recette, un fermenteur libre, une durée de fermentation. Le brassin arrive en stock au début de la saison où il est prêt. La première fois qu'on brasse un style : +1 Réputation.</p>
+          <p><b>Vendre.</b> Au Marché, sans limite, mais chaque unité vendue baisse le prix de 1. Aux clients, il faut une tournée (2 Argent par case de distance) : ils paient plus et donnent la réputation. Les foires n'achètent que pendant leur saison.</p>
+          <p><b>Saisons.</b> Chaque carte donne la météo, deux styles en demande (+2 au Marché, +1 Réputation chez les clients), parfois un événement. Sur trois ans, chaque carte sort une fois.</p>
+          <p><b>Ordre.</b> Le moins réputé joue en premier. On ne peut pas finir son tour avec plus de 6 unités en stock.</p>
         </div>
       </details>
       <div class="card" id="notif" hidden><h2>Prévenir par e-mail</h2><div id="notifBody" class="tsec"></div></div>

@@ -6,9 +6,9 @@ async function step(page, c) {
   const bump = (k) => (c[k] = (c[k] || 0) + 1);
   if (await page.locator('#modal:not([hidden])').count()) {
     const box = page.locator('#modalBox'), title = (await box.locator('h2').textContent()) || '';
-    if (/saison/.test(title)) { bump('victoire vue'); return 'fini'; }
-    if (/Contrôle/.test(title)) { bump('défausse'); while (await box.locator('[data-ok]:disabled').count()) await box.locator('[data-p]:not(:disabled)').first().click(); await box.locator('[data-ok]').click(); return true; }
-    if (/piocher/.test(title)) { bump('pioche'); await box.locator('[data-v]').first().click(); return true; }
+    if (/emporte/.test(title)) { bump('fin vue'); return 'fini'; }
+    if (/Contamination|Canicule/.test(title)) { bump('perte'); await box.locator('[data-ferm]').first().click(); return true; }
+    if (/Concours/.test(title)) { bump('concours'); await box.locator('[data-style]').first().click(); return true; }
     if (/Offre de/.test(title)) { bump('offre reçue'); const acc = box.locator('[data-y]:not(:disabled)'); try { if (await acc.count() && c['offre reçue'] % 2) { await acc.click({ timeout: 1500 }); bump('offre acceptée'); } else await box.locator('[data-n]').click({ timeout: 1500 }); } catch { bump('offre disparue'); } return true; }
     if (/Réponses/.test(title)) {
       const k = box.locator('[data-k]:not([data-k="-1"])');
@@ -16,24 +16,26 @@ async function step(page, c) {
       if (/Fermer|Annuler/.test(await box.locator('[data-k="-1"]').textContent())) { await box.locator('[data-k="-1"]').click(); return true; }
       return false; // on attend les réponses
     }
-    if (/Livraison|exclusivité/.test(title)) { const okb = box.locator('[data-ok]'); if (await okb.count()) { while (await box.locator('[data-ok]:disabled').count()) await box.locator('[data-p]:not(:disabled)').first().click(); await okb.click(); } else await box.locator('[data-r]').first().click(); return true; }
     if (/Contre-proposition/.test(title)) { await box.locator('[data-cback]').click(); return true; }
     throw new Error('fenêtre inconnue : ' + title);
   }
-  const spot = page.locator('#board .spot, #board .espot, #board .hpick');
+  const spot = page.locator('#board .hpick, #board .cpick');
   if (await spot.count()) { bump('plateau'); await spot.first().dispatchEvent('click'); return true; }
-  const play = page.locator('[data-act="play"]:not(:disabled)');
-  if (await play.count()) { bump('carte jouée'); await play.first().click(); return true; }
-  if (await page.locator('[data-act="roll"]:not(:disabled)').count()) { bump('lancer'); await page.locator('[data-act="roll"]').click(); return true; }
-  for (const k of ['city', 'settle', 'road']) { const b = page.locator(`[data-act="${k}"]:not(:disabled)`); if (await b.count()) { bump('construction'); await b.click(); return true; } }
-  if (await page.locator('[data-act="dev"]:not(:disabled)').count()) { bump('carte tirée'); await page.locator('[data-act="dev"]').click(); return true; }
-  if ((c.lancer || 0) % 6 === 3 && c.dernierePropo !== c.lancer && await page.locator('[data-act="og"][data-d="1"]:not(:disabled)').count()) {
-    c.dernierePropo = c.lancer;
+  if (!(await page.locator('[data-act="end"]:not(:disabled)').count()) && !(await page.locator('[data-act="vendre"]:not(:disabled)').count())) return false;
+  const click = async (sel, k) => { const b = page.locator(`${sel}:not(:disabled)`); if (await b.count()) { bump(k); await b.first().click(); return true; } return false; };
+  if (await click('[data-act="livrer"]', 'livraison')) return true;
+  if (await click('[data-act="ameliorer"]', 'amélioration')) return true;
+  if (await click('[data-act="brasser"]', 'brassin')) return true;
+  const stock = (await page.locator('#brasserie .stk b').allTextContents()).reduce((n, t) => n + +t, 0);
+  if (stock > 4 && await click('[data-act="vendre"]', 'vente')) return true;
+  bump('tours');
+  if (c.tours % 5 === 3 && c.dernierePropo !== c.tours && await page.locator('[data-act="og"][data-d="1"]:not(:disabled)').count()) {
+    c.dernierePropo = c.tours;
     await page.locator('[data-act="og"][data-d="1"]:not(:disabled)').first().click();
-    await page.locator('[data-act="ow"][data-d="1"]').last().click();
+    await page.locator('[data-act="ow"][data-d="1"]:not(:disabled)').last().click();
     if (await page.locator('[data-act="propose"]:not(:disabled)').count()) { bump('proposition'); await page.locator('[data-act="propose"]').click(); return true; }
   }
-  if (await page.locator('[data-act="end"]:not(:disabled)').count()) { bump('fin de tour'); await page.locator('[data-act="end"]').click(); return true; }
+  if (await click('[data-act="end"]', 'fin de tour')) return true;
   return false;
 }
 (async () => {
@@ -83,7 +85,7 @@ async function step(page, c) {
       }
       if (r === 'fini') fini++;
     }
-    if (!reloaded && (cb.lancer || 0) >= 4) {
+    if (!reloaded && (cb.tours || 0) >= 4) {
       reloaded = true;
       await bob.screenshot({ path: OUT + '/m-bob-milieu.png' });
       const before = await bob.locator('#players').textContent();

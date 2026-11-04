@@ -1,4 +1,4 @@
-// Configuration par variables d'environnement (fichier /etc/terres-de-houblon.env en production).
+// Configuration par variables d'environnement (fichier /etc/brassins.env en production).
 
 const list = (v, d) => (v ? v.split(',').map((x) => x.trim()).filter(Boolean) : d);
 

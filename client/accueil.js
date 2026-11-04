@@ -1,6 +1,7 @@
 // Écrans hors plateau : accueil (jouer seul, créer, rejoindre, mes parties) et salle d'attente.
 
 import { PCOL } from './rendu.js';
+import { NIVEAUX } from '../moteur/index.js';
 
 export const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const MODES = { direct: 'En direct', differe: 'En différé' };
@@ -26,7 +27,7 @@ function ligneParte(p, now) {
   const autres = p.joueurs.filter((_, i) => i !== p.siege).join(', ');
   let st, detail;
   if (p.statut === 'salle') { st = "Salle d'attente"; detail = 'En attente du lancement'; }
-  else if (p.statut === 'fini') { st = p.gagnant === p.siege ? 'Gagnée' : 'Terminée'; detail = p.gagnant !== null ? `${esc(p.joueurs[p.gagnant])} a remporté la saison` : 'Partie terminée'; }
+  else if (p.statut === 'fini') { st = p.gagnant === p.siege ? 'Gagnée' : 'Terminée'; detail = p.gagnant !== null ? `${esc(p.joueurs[p.gagnant])} a la brasserie la plus réputée` : 'Partie terminée'; }
   else if (p.aMoi) { st = 'À toi'; detail = p.echeance ? `Il te reste ${duree(p.echeance - now)}` : 'À toi de jouer'; }
   else { st = 'En cours'; detail = `Tour ${p.tour}`; }
   return `<button class="grow2 ${p.aMoi ? 'mine' : ''}" data-h="ouvrir" data-j="${esc(p.jeton)}">
@@ -38,7 +39,9 @@ function ligneParte(p, now) {
 export const champEmail = (id, value, label = 'E-mail (facultatif)') => `<label class="field">${label}<input type="email" id="${id}" maxlength="200" autocomplete="email" value="${esc(value)}" placeholder="toi@exemple.fr"></label>`;
 const AIDE_MAIL = '<p class="hintsmall">En différé, on te prévient par e-mail quand c’est ton tour. Un lien dans chaque message permet d’arrêter.</p>';
 
-export function renderAccueil(el, { nom, email, parties, erreur, code, mode }) {
+export const niveauOptions = (sel = 'compagnon') => Object.entries(NIVEAUX).map(([k, n]) => `<option value="${k}" ${k === sel ? 'selected' : ''}>${n.nom} · ${n.txt}</option>`).join('');
+
+export function renderAccueil(el, { nom, email, parties, erreur, code, mode, solo }) {
   const now = Date.now();
   const rang = (p) => (p.aMoi ? 0 : p.statut === 'jeu' ? 1 : p.statut === 'salle' ? 2 : 3);
   const liste = parties ? [...parties].sort((a, b) => rang(a) - rang(b)) : null;
@@ -49,7 +52,11 @@ export function renderAccueil(el, { nom, email, parties, erreur, code, mode }) {
     ${liste && liste.length ? `<div class="card wide"><h2>Mes parties</h2><div class="glist">${[...actives, ...finies].map((p) => ligneParte(p, now)).join('')}</div></div>` : ''}
     <div class="card">
       <h2>Jouer seul</h2>
-      <p>Contre trois brasseries gérées par l'ordinateur, sans connexion.</p>
+      <p>Contre des brasseries gérées par l'ordinateur, sans connexion. La partie en cours est gardée dans ce navigateur.</p>
+      <div class="row2">
+        <label class="field">Adversaires<select id="sAdv">${[1, 2, 3].map((n) => `<option value="${n}" ${n === solo.adversaires ? 'selected' : ''}>${n} brasserie${n > 1 ? 's' : ''}</option>`).join('')}</select></label>
+        <label class="field">Niveau<select id="sNiv">${niveauOptions(solo.niveau)}</select></label>
+      </div>
       <button class="btn primary" data-h="solo">Jouer seul</button>
     </div>
     <div class="card">
@@ -69,6 +76,10 @@ export function renderAccueil(el, { nom, email, parties, erreur, code, mode }) {
       <div class="row2">
         <label class="field">Ta brasserie<input type="text" id="fNom" maxlength="28" value="${esc(nom)}" placeholder="Nom de ta brasserie"></label>
         <label class="field">Joueurs humains<select id="fHum">${[1, 2, 3, 4].map((n) => `<option value="${n}" ${n === 2 ? 'selected' : ''}>${n} ${n > 1 ? 'joueurs' : 'joueur'} · ${4 - n} IA</option>`).join('')}</select></label>
+      </div>
+      <div class="row2">
+        <label class="field">Niveau des IA<select id="fNiv">${niveauOptions('compagnon')}</select></label>
+        <span></span>
       </div>
       <div class="row2">
         <div class="field">Rythme<div class="seg" role="radiogroup">

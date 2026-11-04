@@ -1,19 +1,19 @@
 // Mode solo : la partie tourne entièrement dans le navigateur, sans serveur, avec le même moteur.
-// Place 0 = le joueur, places 1 à 3 = l'IA. La partie est gardée dans le navigateur entre deux visites.
+// Place 0 = le joueur, les autres = l'IA. La partie est gardée dans le navigateur entre deux visites.
 
 import { VERSION, createGame, applyAction, viewFor, aiStep, waitingFor } from '../moteur/index.js';
 
-const KEY = 'tdh-solo';
+const KEY = 'brassins-solo';
 const AI_NAMES = ['Brasserie du Moulin', 'La Mousse Noire', 'Les Fûts Joyeux'];
 const isAi = (i) => i !== 0;
 
-// Rythme des IA, comme dans la version d'origine (ms avant l'action suivante)
+// Rythme des IA (ms avant l'action suivante)
 function delayAfter(action, state) {
-  if (state.phase === 'setup') return action.what === 'settle' ? 300 : 550;
-  if (action.type === 'roll') return 650;
+  if (state.phase === 'setup') return 500;
   if (action.type === 'respondTrade') return 250;
-  if (action.type === 'endTurn') return 600;
-  return 480;
+  if (action.type === 'endTurn') return 650;
+  if (action.type === 'acheter') return 200;
+  return 420;
 }
 
 const randomSeed = () => Array.from(crypto.getRandomValues(new Uint32Array(2)), (n) => n.toString(36)).join('');
@@ -29,7 +29,11 @@ function save(state) {
 }
 
 export function startSolo(ui) {
-  const fresh = () => createGame({ seed: randomSeed(), players: [{ name: 'Toi', ai: false }, ...AI_NAMES.map((name) => ({ name, ai: true }))] });
+  let opts = { adversaires: 3, niveau: 'compagnon' };
+  const fresh = () => createGame({
+    seed: randomSeed(), niveau: opts.niveau,
+    players: [{ name: 'Toi', ai: false }, ...AI_NAMES.slice(0, opts.adversaires).map((name) => ({ name, ai: true }))],
+  });
   let state = load() ?? fresh();
   let timer = null;
 
@@ -60,7 +64,8 @@ export function startSolo(ui) {
     return r;
   }
 
-  function newGame() {
+  function newGame(o) {
+    if (o) opts = { ...opts, ...o };
     clearTimeout(timer);
     timer = null;
     state = fresh();
@@ -71,7 +76,16 @@ export function startSolo(ui) {
 
   return {
     send, newGame,
-    start() { kick(600); show(); },
+    // o : options de la partie ; si elles diffèrent de la partie sauvegardée, on en commence une nouvelle
+    start(o) {
+      if (o) {
+        const same = state.players.length === o.adversaires + 1 && state.opts.niveau === o.niveau;
+        if (!same || state.phase === 'over') return newGame(o);
+        opts = { ...opts, ...o };
+      }
+      kick(600); show();
+    },
     stop() { clearTimeout(timer); timer = null; },
+    options: () => ({ ...opts }),
   };
 }

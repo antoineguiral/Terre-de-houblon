@@ -1,4 +1,4 @@
-// Une salle = une partie sur le serveur. Le serveur est l'arbitre : il détient l'état, tire les dés
+// Une salle = une partie sur le serveur. Le serveur est l'arbitre : il détient l'état, fait tourner les saisons
 // (par le moteur), fait jouer l'IA, surveille les délais et envoie à chacun sa vue.
 //
 // Places (meta.sieges[i].type) :
@@ -9,7 +9,7 @@
 // deux délais de suite, jusqu'à son retour ; en différé pour le reste de son tour.
 
 import { randomBytes } from 'node:crypto';
-import { createGame, applyAction, viewFor, aiStep, aiAction, waitingFor } from '../moteur/index.js';
+import { createGame, applyAction, viewFor, aiStep, aiAction, waitingFor, deciders, NIVEAUX, SAISONS } from '../moteur/index.js';
 import { CONFIG as DEFAULT_CONFIG } from './config.js';
 import { emailValide } from './notifications.js';
 
@@ -33,21 +33,16 @@ function readEmail(e) {
 }
 
 // Joueurs dont une décision fait avancer la partie (les réponses d'échange sont bornées à part)
-function decideurs(s) {
-  if (s.phase === 'over') return [];
-  const p = s.pending;
-  if (p?.type === 'discard') return Object.keys(p.need).map(Number);
-  if (p) return [p.p];
-  return [s.cur];
-}
+const decideurs = deciders;
 
 function delayAfter(action, state) {
-  if (state.phase === 'setup') return action.what === 'settle' ? 300 : 550;
-  if (action.type === 'roll') return 650;
+  if (state.phase === 'setup') return 500;
   if (action.type === 'respondTrade') return 250;
-  if (action.type === 'endTurn') return 600;
-  return 480;
+  if (action.type === 'endTurn') return 650;
+  if (action.type === 'acheter') return 200;
+  return 420;
 }
+const SAISON_NOM = { printemps: 'Printemps', ete: 'Été', automne: 'Automne', hiver: 'Hiver' };
 
 export class Salle {
   // deps : { base, now, setTimeout, clearTimeout, onTour(salle, siege), log }
@@ -64,7 +59,7 @@ export class Salle {
 
   get config() { return this.deps.config ?? DEFAULT_CONFIG; }
 
-  static creer({ nom, humains, mode, delai, email }, deps) {
+  static creer({ nom, humains, mode, delai, email, niveau }, deps) {
     nom = cleanName(nom);
     if (!nom) return { error: 'Donne un nom à ta brasserie.' };
     const em = readEmail(email);
@@ -72,13 +67,14 @@ export class Salle {
     humains = Math.round(+humains);
     if (!(humains >= 1 && humains <= 4)) return { error: 'De 1 à 4 places humaines.' };
     if (!['direct', 'differe'].includes(mode)) return { error: 'Mode inconnu.' };
+    niveau = NIVEAUX[niveau] ? niveau : 'compagnon';
     const CONFIG = deps.config ?? DEFAULT_CONFIG;
     const b = CONFIG.delays[mode];
     delai = Math.round(+delai || b.def);
     delai = Math.min(b.max, Math.max(b.min, delai));
     const code = nouveauCode(deps.base.codeExiste);
     const sieges = [0, 1, 2, 3].map((i) => (i === 0 ? { type: 'humain', nom, email: em.email } : i < humains ? { type: 'ouvert', nom: null } : { type: 'ia', nom: null }));
-    const meta = { v: 1, mode, delai, humains, hote: 0, sieges, echeances: {}, echange: null, cree: deps.now() };
+    const meta = { v: 1, mode, delai, humains, niveau, hote: 0, sieges, echeances: {}, echange: null, cree: deps.now() };
     deps.base.creerPartie(code, 'salle', meta, null);
     const jeton = nouveauJeton();
     deps.base.ajouterPlace(jeton, code, 0);
@@ -119,7 +115,7 @@ export class Salle {
     const used = new Set(this.meta.sieges.map((s) => s.nom).filter(Boolean));
     const free = AI_NAMES.filter((n) => !used.has(n));
     const players = this.meta.sieges.map((s) => (s.type === 'humain' ? { name: s.nom, ai: false } : { name: free.shift(), ai: true }));
-    this.etat = createGame({ seed: nouveauJeton(), players, aiOffersToHumans: this.meta.mode === 'direct' });
+    this.etat = createGame({ seed: nouveauJeton(), players, aiOffersToHumans: this.meta.mode === 'direct', niveau: this.meta.niveau ?? 'compagnon' });
     this.statut = 'jeu';
     this.changed();
     return { ok: true };
@@ -270,6 +266,7 @@ export class Salle {
       statut: this.statut,
       mode: m.mode,
       delai: m.delai,
+      niveau: m.niveau ?? 'compagnon',
       siege,
       hote: siege === m.hote,
       email: m.sieges[siege]?.email ?? null,
@@ -299,6 +296,7 @@ export class Salle {
       aMoi: this.statut === 'jeu' && mine,
       echeance: this.meta.echeances[siege] ?? null,
       tour: s?.turn ?? 0,
+      saison: s && s.saison >= 0 ? `${SAISON_NOM[SAISONS[s.saison % 4]]} an ${Math.floor(s.saison / 4) + 1}` : null,
       joueurs: this.meta.sieges.map((x, i) => (s ? s.players[i].name : x.nom || (x.type === 'ouvert' ? 'Place libre' : 'IA'))),
       gagnant: s?.winner ?? null,
       maj: this.deps.now(),

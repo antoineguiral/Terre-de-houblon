@@ -1,2 +1,2 @@
-# /etc/cron.d/terres-de-houblon : sauvegarde quotidienne de la base, 14 jours gardés
-30 3 * * * houblon /usr/bin/node /srv/terres-de-houblon/outils/sauvegarde.js /var/lib/terres-de-houblon/parties.sqlite /var/backups/terres-de-houblon 14 2>&1 | logger -t houblon-sauvegarde
+# /etc/cron.d/brassins : sauvegarde quotidienne de la base, 14 jours gardés
+30 3 * * * houblon /usr/bin/node /srv/brassins/outils/sauvegarde.js /var/lib/brassins/parties.sqlite /var/backups/brassins 14 2>&1 | logger -t brassins-sauvegarde

@@ -20,7 +20,7 @@ export function dateLimite(ms) {
 }
 
 // Envoi par l'API Brevo. Renvoie { ok } ou { ok: false, error }.
-export function envoyeurBrevo({ apiKey, from, fromName = 'Terres de Houblon' }) {
+export function envoyeurBrevo({ apiKey, from, fromName = 'Brassins' }) {
   return async ({ to, subject, html, text, unsubscribe }) => {
     const r = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
@@ -30,7 +30,7 @@ export function envoyeurBrevo({ apiKey, from, fromName = 'Terres de Houblon' }) 
         to: [{ email: to }],
         subject, htmlContent: html, textContent: text,
         headers: { 'List-Unsubscribe': `<${unsubscribe}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' },
-        tags: ['terres-de-houblon'],
+        tags: ['brassins'],
       }),
     });
     if (r.ok) return { ok: true };
@@ -41,7 +41,7 @@ export function envoyeurBrevo({ apiKey, from, fromName = 'Terres de Houblon' }) 
 function gabarit({ titre, lignes, bouton, lien, desabo, code }) {
   const html = `<!doctype html><html lang="fr"><body style="margin:0;background:#211915;padding:24px 12px;font-family:Helvetica,Arial,sans-serif;color:#f2e6d0">
   <div style="max-width:520px;margin:0 auto;background:#2c221c;border:1px solid #4b3b30;border-radius:8px;padding:24px">
-    <div style="font-family:Georgia,serif;font-size:26px;color:#d38b46;margin-bottom:6px">Terres de Houblon</div>
+    <div style="font-family:Georgia,serif;font-size:26px;color:#d38b46;margin-bottom:6px">Brassins</div>
     <h1 style="font-size:20px;margin:0 0 14px;color:#f2e6d0">${esc(titre)}</h1>
     ${lignes.map((l) => `<p style="margin:0 0 12px;font-size:15px;line-height:1.5">${l}</p>`).join('')}
     <p style="margin:20px 0"><a href="${esc(lien)}" style="background:#d38b46;color:#1a120d;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:5px;display:inline-block">${esc(bouton)}</a></p>
@@ -81,19 +81,23 @@ export function creerNotifier({ publicUrl, envoyer, base, now, setTimeout, clear
   function messageTour(salle, siege) {
     const s = salle.etat, nom = s.players[siege].name, echeance = salle.meta.echeances[siege];
     const limite = echeance ? `Tu as jusqu'à ${dateLimite(echeance)} ; ensuite, l'ordinateur jouera ce tour à ta place.` : '';
-    const need = s.pending?.type === 'discard' ? s.pending.need[siege] : null;
-    if (need) {
-      return { sujet: `Contrôle des douanes : défausse ${need} cartes (partie ${salle.code})`, titre: 'Contrôle des douanes !', bouton: 'Défausser mes cartes',
-        lignes: [`${esc(nom)}, un 7 est sorti et tu as trop de cartes en main : tu dois en défausser ${need}.`, limite] };
+    const evt = s.pending?.need?.[siege] ? s.pending.kind : null;
+    if (evt) {
+      const EVT = { contamination: ['Contamination', 'une levure sauvage s’est invitée : choisis le brassin qui perd 1 unité'], canicule: ['Canicule', 'il fait trop chaud : choisis le brassin qui perd 1 unité'], concours: ['Concours régional', 'présente une unité de ton stock'] };
+      const [titre, txt] = EVT[evt];
+      return { sujet: `${titre} : à toi de décider (partie ${salle.code})`, titre, bouton: 'Décider',
+        lignes: [`${esc(nom)}, ${txt}.`, limite] };
     }
     if (s.phase === 'setup') {
-      return { sujet: `À toi de t'installer (partie ${salle.code})`, titre: 'La saison commence', bouton: 'Placer ma microbrasserie',
-        lignes: [`${esc(nom)}, c'est à toi de choisir l'emplacement de ta microbrasserie.`, limite] };
+      return { sujet: `À toi de t'installer (partie ${salle.code})`, titre: 'La partie commence', bouton: 'Installer ma brasserie',
+        lignes: [`${esc(nom)}, c'est à toi de choisir l'emplacement de ta brasserie et ta première tournée.`, limite] };
     }
+    const SAISON_NOM = ['Printemps', 'Été', 'Automne', 'Hiver'];
+    const saison = `${SAISON_NOM[s.saison % 4]} an ${Math.floor(s.saison / 4) + 1}`;
     const prev = s.log.filter((e) => e.k === 'endTurn').at(-1);
     const avant = prev && prev.p !== siege ? `${esc(s.players[prev.p].name)} a passé la main : ` : '';
-    return { sujet: `À toi de jouer (partie ${salle.code}, tour ${s.turn})`, titre: 'À toi de jouer', bouton: 'Jouer mon tour',
-      lignes: [`${avant}c'est ton tour, ${esc(nom)}.`, limite] };
+    return { sujet: `À toi de jouer (partie ${salle.code}, ${saison})`, titre: 'À toi de jouer', bouton: 'Jouer mon tour',
+      lignes: [`${avant}c'est ton tour, ${esc(nom)}, ${saison.toLowerCase()}.`, limite] };
   }
 
   function doitPrevenir(salle, siege) {
@@ -128,10 +132,10 @@ export function creerNotifier({ publicUrl, envoyer, base, now, setTimeout, clear
       salle.meta.sieges.forEach((seat, i) => {
         if (seat.type !== 'humain' || !seat.email || [...salle.sockets].some((c) => c.siege === i)) return;
         poster(salle, i, {
-          sujet: w === i ? `Tu remportes la saison (partie ${salle.code})` : `${s.players[w].name} remporte la saison (partie ${salle.code})`,
-          titre: w === i ? 'Tu remportes la saison !' : `${s.players[w].name} remporte la saison`,
-          bouton: 'Voir le plateau final',
-          lignes: [w === i ? 'Ta brasserie est la plus réputée du terroir.' : `Sa brasserie est la plus réputée du terroir. Ta brasserie, ${esc(s.players[i].name)}, finit la saison avec ses points sur le plateau.`],
+          sujet: w === i ? `Tu l'emportes (partie ${salle.code})` : `${s.players[w].name} l'emporte (partie ${salle.code})`,
+          titre: w === i ? 'Trois ans ont passé : tu l’emportes !' : `${s.players[w].name} l'emporte`,
+          bouton: 'Voir le décompte',
+          lignes: [w === i ? 'Ta brasserie est la plus réputée du terroir.' : `Sa brasserie est la plus réputée du terroir. Ta brasserie, ${esc(s.players[i].name)}, finit avec ${s.scores[i].total} points.`],
         });
       });
     },

@@ -1,294 +1,344 @@
 // IA des brasseries gérées par l'ordinateur : lit l'état et renvoie une action, sans rien modifier.
 //
 //   aiAction(state, playerId) → action à jouer, ou null s'il n'y a rien à décider pour ce joueur
-//                                (ou s'il attend la réponse d'un autre, ex. à son offre d'échange).
+//
+// Trois niveaux (state.opts.niveau) :
+//   apprenti  : brasse ce qu'il peut, vend au Marché, s'équipe peu, ne négocie pas ;
+//   compagnon : raisonne par saison (valeur d'un brassin ramenée à sa durée), s'équipe selon le temps qui reste,
+//               ouvre des tournées, négocie quand il lui manque une matière ;
+//   maître    : en plus, anticipe les cartes qui peuvent encore sortir (styles en demande, foires) et garde
+//               ses meilleures bières pour les clients qui paient la réputation.
 //
 // Le hasard de l'IA vient d'un générateur dérivé de l'état : la même position donne toujours la même décision.
-// L'IA ne lit que ce qu'un joueur à sa place voit : sa propre main, le plateau, le nombre de cartes des autres.
-// Elle ne connaît ni le contenu des mains adverses, ni leurs cartes Événement, ni la pioche.
+// Tout ce qu'elle lit est public (l'état de Brassins l'est presque entièrement).
 
-import { RES, COST, PIPS, Z, total } from './constantes.js';
-import { local, next, shuffle } from './alea.js';
-import { TOPO, otherEnd } from './plateau.js';
 import {
-  validSettle, validRoad, validCity, canAfford, rate, vp, playableDev, portOf, robberVictims,
+  SAISONS, NB_SAISONS, RES, STYLES, ITEMS, RECETTES, ACHAT, AMELIORATIONS, CLIENTS, FOIRES, STOCK_MAX, FERMENTEURS_MAX, CUVE,
+  TOURAILLE_MALT, TOURAILLE_PAR_SAISON, SALLE_UNITES, CARTE, DEMANDE_BONUS, PRODUCTION, PRODUIT, Z, ZI, total,
+} from './constantes.js';
+import { local, next } from './alea.js';
+import { TOPO, distClient } from './plateau.js';
+import {
+  saisonIdx, annee, unites, cuveUnites, a, clientIds, clientKind, clientPos, distance, coutTournee, limiteLivraison, enDemande, prixMarche,
+  valeurLivraison, peutBrasser, ameliorationsPossibles, avoirs, legalActions,
 } from './regles.js';
 
-const settleOK = (s, v) => s.verts[v].o === null && TOPO.verts[v].adj.every((a) => s.verts[a].o === null);
-const missing = (res, c) => Object.entries(c).reduce((m, [r, n]) => m + Math.max(0, n - res[r]), 0);
-// Nombre de cartes `r` attendu chez le joueur i, d'après ce qui est public : ses bâtiments et son nombre de cartes.
-function estimate(s, i, r) {
-  const w = Z();
-  s.verts.forEach((v, vi) => {
-    if (v.o !== i) return;
-    TOPO.verts[vi].hexes.forEach((h) => { const t = s.hexes[h]; if (t.res !== 'friche') w[t.res] += PIPS(t.num) * v.t; });
-  });
-  const n = total(s.players[i].res), tw = total(w);
-  return tw ? (n * w[r]) / tw : n / RES.length;
-}
-const expectedOthers = (s, pi, r) => s.players.reduce((n, _, i) => n + (i === pi ? 0 : estimate(s, i, r)), 0);
-const isHuman = (s, i) => !s.players[i].ai;
+export const NIVEAUX = {
+  apprenti: { nom: 'Apprenti', txt: 'Brasse ce qu’il peut et vend au Marché.' },
+  compagnon: { nom: 'Compagnon', txt: 'Gère sa brasserie avec méthode et négocie.' },
+  maitre: { nom: 'Maître brasseur', txt: 'Anticipe les saisons et vise les clients qui comptent.' },
+};
 
-function production(s, pi) {
-  const out = new Set();
-  s.verts.forEach((v, i) => { if (v.o === pi) TOPO.verts[i].hexes.forEach((h) => out.add(s.hexes[h].res)); });
-  return out;
-}
+const restantes = (s) => NB_SAISONS - s.saison; // saisons restantes, celle-ci comprise
+const niveau = (s) => s.opts?.niveau ?? 'compagnon';
+const W = (s) => ({ apprenti: 1.0, compagnon: 2.4, maitre: 2.8 }[niveau(s)]); // poids d'un point de réputation en Argent
+const rnd = (s, pi, k) => next(local(`${s.seed ?? s.seq}:${s.seq}:${pi}:${k}`));
 
-export function vScore(s, pi, v, bonusNew) {
-  const seen = new Set(), prod = bonusNew ? production(s, pi) : null;
-  let n = 0;
-  for (const h of TOPO.verts[v].hexes) {
-    const t = s.hexes[h];
-    if (t.res === 'friche') continue;
-    n += PIPS(t.num) * (t.res === 'malt' || t.res === 'houb' ? 1.1 : 1);
-    if (!seen.has(t.res)) { seen.add(t.res); n += 0.8; if (prod && !prod.has(t.res)) n += 1.5; }
+// Production annuelle potentielle d'une case de brasserie, et ses atouts
+function valeurCase(s, hex, pi) {
+  let prod = 0;
+  const kinds = new Set();
+  for (const h of [hex, ...TOPO.hexes[hex].near]) {
+    const t = s.tiles[h];
+    if (!PRODUCTION[t]) continue;
+    kinds.add(t);
+    prod += PRODUCTION[t].reduce((x, y) => x + y, 0) * (t === 'source' ? 0.5 : 1);
   }
-  const port = portOf(s, v);
-  if (port) n += port === '3:1' ? 1 : 0.6;
-  return n;
+  let v = prod + 2 * kinds.size;
+  // proximité des clients
+  for (const c of clientIds(s)) v += (clientKind(c) === 'foire' ? 0.5 : 1) / (1 + distClient(hex, clientPos(s, c)));
+  return v;
 }
 
-function bestSettle(s, pi, setup, rnd) {
-  let best = null, bs = -1;
-  validSettle(s, pi, setup).forEach((v) => { const n = vScore(s, pi, v, true) + rnd() * 0.4; if (n > bs) { bs = n; best = v; } });
+/* ---------- styles en demande, maintenant et plus tard ---------- */
+
+// Probabilité qu'un style soit en demande à une saison future (cartes restantes de cette saison)
+function pDemande(s, st, t) {
+  if (t === s.saison) return enDemande(s, st) ? 1 : 0;
+  const j = t % 4, k = SAISONS[j];
+  // cartes de cette saison déjà révélées : une par année passée, plus celle de cette année si la saison est passée ou en cours
+  const nRev = annee(s) + (j <= saisonIdx(s) ? 1 : 0);
+  const pool = Array.isArray(s.deck[k]) ? s.deck[k].slice(nRev) : s.deck[k].restantes;
+  if (!pool.length) return 0;
+  return pool.filter((id) => CARTE[id].demande.includes(st)).length / pool.length;
+}
+
+/* ---------- brassage ---------- */
+
+// Valeur d'une unité d'un style pour ce joueur, selon ce qu'il pourra en faire
+function valeurUnite(s, pi, st, quand) {
+  const p = s.players[pi], r = RECETTES[st], w = W(s);
+  let best = r.prix * 0.8; // Marché, prix érodé
+  for (const c of p.tournees) {
+    const kind = clientKind(c);
+    if (kind === 'foire' && FOIRES[+c.slice(5)].saison !== quand % 4) continue;
+    const v = valeurLivraison({ ...s, demande: [] , saison: quand }, c, st);
+    if (v) best = Math.max(best, v.argent + w * v.rep);
+  }
+  if (niveau(s) === 'maitre' && quand < NB_SAISONS) best += pDemande(s, st, quand) * (DEMANDE_BONUS + w) * 0.6;
   return best;
 }
 
-function setupRoad(s, pi, v, rnd) {
-  let best = null, bs = -1;
-  TOPO.verts[v].edges.forEach((e) => {
-    if (s.edges[e] !== null) return;
-    const o = otherEnd(e, v);
-    const n = Math.max(0, ...TOPO.verts[o].adj.filter((a) => a !== v && settleOK(s, a)).map((a) => vScore(s, pi, a, true))) + rnd() * 0.3;
-    if (n > bs) { bs = n; best = e; }
-  });
+// Plan de brassage : style, matières à acheter, valeur nette
+function planBrassage(s, pi) {
+  const p = s.players[pi], rem = restantes(s), lvl = niveau(s);
+  let best = null;
+  for (const st of STYLES) {
+    const r = RECETTES[st];
+    if (r.ferm > rem - 1) continue; // doit être en stock avant la fin
+    if (r.exige && !a(p, r.exige)) continue;
+    const achats = Z();
+    let cout = 0, torrefier = 0;
+    for (const x of RES) {
+      let miss = Math.max(0, r[x] - p.res[x]);
+      if (x === 'torr' && miss && a(p, 'touraille') && p.torr < TOURAILLE_PAR_SAISON && p.res.malt - r.malt >= TOURAILLE_MALT) { torrefier = 1; miss--; }
+      achats[x] = miss;
+      cout += miss * ACHAT[x];
+    }
+    if (lvl === 'apprenti' && cout > 0) continue; // l'apprenti n'achète pas pour brasser
+    const reserve = lvl === 'apprenti' ? 0 : 2;
+    if (cout > p.argent - reserve) continue;
+    const quand = s.saison + r.ferm;
+    let val = cuveUnites(p) * valeurUnite(s, pi, st, quand) - cout - 0.6 * RES.reduce((n, x) => n + r[x], 0);
+    if (!p.styles.includes(st)) val += 2 + W(s);
+    val = val / Math.pow(r.ferm, 0.65);
+    val += rnd(s, pi, 'brew' + st) * (lvl === 'apprenti' ? 3 : 0.5);
+    if (best === null || val > best.val) best = { st, achats, cout, torrefier, val };
+  }
   return best;
 }
 
-// Première tournée à tracer vers le meilleur emplacement libre à 3 tournées au plus.
-export function roadTarget(s, pi) {
-  const start = new Set();
-  s.edges.forEach((o, i) => {
-    if (o !== pi) return;
-    [TOPO.edges[i].a, TOPO.edges[i].b].forEach((v) => { const ow = s.verts[v].o; if (ow === null || ow === pi) start.add(v); });
-  });
-  s.verts.forEach((v, i) => { if (v.o === pi) start.add(i); });
-  const dist = new Map(), first = new Map(), q = [...start];
-  start.forEach((v) => dist.set(v, 0));
-  while (q.length) {
-    const v = q.shift(), d = dist.get(v);
-    if (d >= 3) continue;
-    for (const e of TOPO.verts[v].edges) {
-      if (s.edges[e] !== null) continue;
-      const o = otherEnd(e, v);
-      if (dist.has(o)) continue;
-      const ow = s.verts[o].o;
-      if (ow !== null && ow !== pi) continue;
-      dist.set(o, d + 1);
-      first.set(o, d === 0 ? e : first.get(v));
-      q.push(o);
+/* ---------- ventes ---------- */
+
+function meilleureLivraison(s, pi) {
+  const p = s.players[pi], w = W(s);
+  let best = null;
+  for (const c of p.tournees) {
+    if (!(s.capa[c] > 0) || (p.livr[c] ?? 0) >= limiteLivraison(p)) continue;
+    for (const st of STYLES) {
+      if (p.stock[st] < 1) continue;
+      const v = valeurLivraison(s, c, st);
+      if (!v) continue;
+      const val = v.argent + w * v.rep;
+      if (best === null || val > best.val) best = { client: c, style: st, val };
     }
   }
-  let best = null, bs = -1e9;
-  dist.forEach((d, v) => { if (d < 1 || !settleOK(s, v)) return; const n = vScore(s, pi, v, true) - d * 2; if (n > bs) { bs = n; best = v; } });
-  return best === null ? null : first.get(best);
-}
-
-function robberHex(s, pi, rnd) {
-  let best = null, bs = -1;
-  s.hexes.forEach((h, i) => {
-    if (i === s.robber) return;
-    let n = 0, mine = false;
-    TOPO.hexes[i].verts.forEach((v) => {
-      const o = s.verts[v].o;
-      if (o === null) return;
-      if (o === pi) mine = true;
-      else n += s.verts[v].t * PIPS(h.num) * (1 + vp(s, o, false) / 4 + (isHuman(s, o) ? 0.15 : 0));
-    });
-    if (mine) n -= 100;
-    n += rnd() * 0.5;
-    if (n > bs) { bs = n; best = i; }
-  });
   return best;
 }
 
-export function aiGoal(s, pi) {
-  const p = s.players[pi], o = [];
-  if (p.cities > 0 && validCity(s, pi).length) o.push(['city', missing(p.res, COST.city) - 0.5]);
-  if (p.settles > 0 && validSettle(s, pi, false).length) o.push(['settle', missing(p.res, COST.settle) - 0.7]);
-  else if (p.settles > 0 && p.roads > 0 && roadTarget(s, pi) !== null) o.push(['road', missing(p.res, COST.road) + 0.5]);
-  if (s.deck.length) o.push(['dev', missing(p.res, COST.dev) + 1]);
-  o.sort((a, b) => a[1] - b[1]);
-  return o.length ? o[0][0] : null;
+// Unités à garder pour les clients des prochaines saisons
+function reserveStock(s, pi) {
+  const p = s.players[pi];
+  if (niveau(s) === 'apprenti') return 0;
+  if (restantes(s) <= 1) return 0;
+  const capProchaine = p.tournees.reduce((n, c) => n + (clientKind(c) === 'foire' ? (FOIRES[+c.slice(5)].saison === (s.saison + 1) % 4 ? limiteLivraison(p) : 0) : limiteLivraison(p)), 0);
+  return Math.min(capProchaine, STOCK_MAX - 2);
 }
 
-function goalsFor(s, pi) {
-  const p = s.players[pi], g = [];
-  if (p.cities > 0 && validCity(s, pi).length) g.push('city');
-  if (p.settles > 0 && validSettle(s, pi, false).length) g.push('settle');
-  else if (p.settles > 0 && p.roads > 0 && roadTarget(s, pi) !== null) g.push('road');
-  if (s.deck.length) g.push('dev');
-  return g;
+function venteMarche(s, pi, force) {
+  const p = s.players[pi];
+  const arrivent = p.ferms.filter((f) => f.left <= 1).reduce((n, f) => n + f.u, 0);
+  const keep = force ? 0 : Math.min(reserveStock(s, pi), Math.max(0, STOCK_MAX - arrivent));
+  if (unites(p) <= keep) return null;
+  // le style le mieux payé maintenant, en gardant de préférence ceux qui valent plus chez un client
+  let best = null;
+  for (const st of STYLES) {
+    if (p.stock[st] < 1) continue;
+    const prix = prixMarche(s, st);
+    const val = prix - 0.3 * (valeurUnite(s, pi, st, s.saison + 1) - prix);
+    if (best === null || val > best.val) best = { st, prix, val };
+  }
+  if (!best) return null;
+  if (!force && best.prix < 2 && unites(p) + arrivent <= STOCK_MAX) return null;
+  return { type: 'vendre', style: best.st, n: 1 };
 }
-function util(res, goal, goals) {
-  let u = 0.35 * total(res);
-  if (goal) u -= 2 * missing(res, COST[goal]);
-  goals.forEach((g) => { if (g !== goal) u -= 0.5 * missing(res, COST[g]); });
+
+/* ---------- investissements ---------- */
+
+function meilleureAmelioration(s, pi) {
+  const p = s.players[pi], rem = restantes(s) - 1, lvl = niveau(s), w = W(s);
+  if (rem < 2) return null;
+  const reserve = 6;
+  const busy = p.ferms.length >= p.nferm;
+  const uv = 4 + 0.8 * w, bps = Math.min(2, p.nferm / 1.8);
+  const achatsTorr = s.log.filter((e) => e.k === 'acheter' && e.p === pi && e.r === 'torr').length;
+  const lost = s.log.filter((e) => e.k === 'perte' && e.p === pi).length;
+  let best = null;
+  for (const u of ameliorationsPossibles(s, p)) {
+    const cout = AMELIORATIONS[u].cout;
+    if (cout > p.argent - reserve) continue;
+    if (lvl === 'apprenti' && !['ferm', 'cuve2', 'cuve3'].includes(u)) continue;
+    const gain = {
+      cuve2: rem * bps * uv * 0.8, cuve3: rem * bps * uv * 0.8,
+      ferm: rem * (busy ? 0.55 * (cuveUnites(p) * uv - 6) : 0.3),
+      touraille: rem * 1.0 + achatsTorr * 1.5,
+      froide: rem * 1.0 + lost * 1.5,
+      labo: rem * 1.3,
+      camion: rem * (0.4 + 0.4 * p.tournees.length),
+      salle: rem * (SALLE_UNITES * 2.4 / 2) + Math.floor(rem / 4) * w,
+    }[u];
+    if (gain - cout > 0 && (best === null || gain - cout > best.val)) best = { u, val: gain - cout };
+  }
+  return best;
+}
+
+function meilleureTournee(s, pi) {
+  const p = s.players[pi], rem = restantes(s), w = W(s), lvl = niveau(s);
+  if (lvl === 'apprenti' && p.argent < 10) return null;
+  let best = null;
+  for (const c of clientIds(s)) {
+    if (p.tournees.includes(c)) continue;
+    const cout = coutTournee(s, pi, c);
+    if (cout > p.argent - 2) continue;
+    const kind = clientKind(c);
+    let val;
+    if (kind === 'foire') {
+      const f = FOIRES[+c.slice(5)];
+      const uses = Array.from({ length: rem }, (_, k) => s.saison + k).filter((t) => t % 4 === f.saison && (t > s.saison || unites(p) > 0)).length;
+      val = uses * limiteLivraison(p) * (CLIENTS.foire.bonus + w * (1.5 + CLIENTS.foire.rep));
+    } else val = (rem - 1) * limiteLivraison(p) * (CLIENTS[kind].bonus + w * (kind === 'village' ? 1.2 : kind === 'cave' ? 1.8 : 1.5)) * (kind === 'cave' ? 0.6 : 1);
+    if (val - cout <= 0) continue;
+    if (best === null || val / cout > best.ratio) best = { client: c, cout, ratio: val / cout };
+  }
+  return best;
+}
+
+/* ---------- échanges ---------- */
+
+// Utilité d'un ensemble d'avoirs : matières vers le prochain brassin, bière, Argent
+function utilite(s, pi, av) {
+  const p = s.players[pi];
+  let u = av.argent;
+  for (const r of RES) u += av[r] * ACHAT[r] * 0.6;
+  for (const st of STYLES) u += av[st] * valeurUnite(s, pi, st, s.saison) * 0.9;
+  // bonus si le prochain brassin devient possible
+  const plan = planBrassage(s, pi);
+  if (plan) {
+    const r = RECETTES[plan.st];
+    const manqueAvant = RES.reduce((n, x) => n + Math.max(0, r[x] - p.res[x]), 0);
+    const manqueApres = RES.reduce((n, x) => n + Math.max(0, r[x] - av[x]), 0);
+    u += (manqueAvant - manqueApres) * 2.5;
+  }
   return u;
 }
+function accepteEchange(s, pi, from, recoit, donne) {
+  if (niveau(s) === 'apprenti') return false;
+  const p = s.players[pi], av = avoirs(p);
+  if (ITEMS.some((k) => av[k] < (donne[k] ?? 0))) return false;
+  const scoreFrom = s.players[from].rep, mien = p.rep;
+  if (scoreFrom > mien + 12 && restantes(s) <= 4) return false; // ne pas aider le leader en fin de partie
+  const apres = { ...av };
+  ITEMS.forEach((k) => { apres[k] += (recoit[k] ?? 0) - (donne[k] ?? 0); });
+  return utilite(s, pi, apres) - utilite(s, pi, av) > 0.3;
+}
 
-// pi reçoit `inc` et donne `out` au joueur `from`. Réticente face à 7 PV, refus net à 8 PV et plus.
-export function aiAccepts(s, pi, from, inc, out) {
+function proposition(s, pi) {
   const p = s.players[pi];
-  if (RES.some((r) => p.res[r] < out[r])) return false;
-  const lead = vp(s, from, false);
-  if (lead >= 8) return false;
-  const goal = aiGoal(s, pi), goals = goalsFor(s, pi), after = { ...p.res };
-  RES.forEach((r) => { after[r] += inc[r] - out[r]; });
-  return util(after, goal, goals) - util(p.res, goal, goals) > (lead >= 7 ? 1.2 : 0.25);
-}
-
-function want(s, pi, n, rnd) {
-  const p = s.players[pi], sel = Z(), g = aiGoal(s, pi), c = g ? COST[g] : {};
-  for (let k = 0; k < n; k++) {
-    const r = RES.find((x) => (c[x] || 0) > p.res[x] + sel[x]) || RES[Math.floor(rnd() * 5)];
-    sel[r]++;
-  }
-  return sel;
-}
-
-const robberHurts = (s, pi) => TOPO.hexes[s.robber].verts.some((v) => s.verts[v].o === pi);
-
-function respond(s, pi) {
-  const t = s.trade;
-  if (RES.some((r) => s.players[pi].res[r] < t.get[r])) return { type: 'respondTrade', accept: false };
-  if (aiAccepts(s, pi, t.from, t.give, t.get)) return { type: 'respondTrade', accept: true };
-  if (isHuman(s, t.from)) {
-    // Contre-proposition : une carte de plus, d'une ressource que le proposant ne demande pas
-    for (const r of RES) {
-      if (!t.get[r]) {
-        const g = { ...t.give };
-        g[r]++;
-        if (aiAccepts(s, pi, t.from, g, t.get)) return { type: 'respondTrade', counter: { give: g, get: { ...t.get } } };
-      }
-    }
-  }
-  return { type: 'respondTrade', accept: false };
-}
-
-// Suite de l'offre ouverte par l'IA : conclure avec le premier qui accepte, sinon annuler quand tout le monde a répondu.
-function followOwnTrade(s, pi) {
-  const t = s.trade;
-  for (const w of t.to) {
-    const r = t.resp[w];
-    if (!r) continue;
-    if (r.s === 'accept') return { type: 'concludeTrade', with: w };
-    if (r.s === 'counter' && canAfford(s.players[pi].res, r.give) && aiAccepts(s, pi, w, r.get, r.give)) return { type: 'concludeTrade', with: w };
-  }
-  if (t.to.every((w) => t.resp[w])) return { type: 'cancelTrade' };
-  return null;
-}
-
-function seekTrade(s, pi, cost, rnd) {
-  const p = s.players[pi];
-  const need = RES.filter((r) => p.res[r] < (cost[r] || 0));
-  if (!need.length) return null;
-  const spare = RES.filter((r) => p.res[r] > (cost[r] || 0)).sort((a, b) => p.res[b] - p.res[a]);
+  if (niveau(s) === 'apprenti' || s.tradesThisTurn > 0 || s.trade) return null;
+  const plan = planBrassage(s, pi);
+  if (!plan || total(plan.achats) !== 1) return null; // il manque exactement une matière
+  const need = RES.find((x) => plan.achats[x] > 0);
+  const spare = RES.filter((x) => x !== need && p.res[x] - RECETTES[plan.st][x] >= 2).sort((x, y) => p.res[y] - p.res[x]);
   if (!spare.length) return null;
-  const give = Z(), get = Z();
-  give[spare[0]] = 1; get[need[0]] = 1;
-  const to = s.players.map((_, i) => i).filter((i) => {
-    // Seulement ceux qui ont probablement la ressource, d'après ce qui est public (bâtiments, nombre de cartes)
-    if (i === pi || !s.players[i].offersOn || estimate(s, i, need[0]) < 0.75) return false;
-    if (isHuman(s, i)) return s.opts.aiOffersToHumans && vp(s, i, false) < 8;
-    return true;
-  });
+  const to = s.players.map((_, i) => i).filter((i) => i !== pi && s.players[i].offersOn && (s.players[i].ai || s.opts.aiOffersToHumans) && s.players[i].res[need] > 0);
   if (!to.length) return null;
-  return { type: 'proposeTrade', give, get, to: shuffle({ rng: Math.floor(rnd() * 2 ** 32) }, to) };
+  const give = ZI(), get = ZI();
+  give[spare[0]] = 1; get[need] = 1;
+  return { type: 'proposeTrade', give, get, to };
 }
 
-function bankTrade(s, pi, cost) {
-  const p = s.players[pi];
-  const need = RES.filter((r) => p.res[r] < (cost[r] || 0));
-  if (!need.length) return null;
-  for (const g of RES) {
-    const n = rate(s, pi, g);
-    if (p.res[g] - (cost[g] || 0) >= n) return { type: 'bankTrade', give: g, get: need[0] };
-  }
-  return null;
-}
-
-const MAX_TURN_ACTIONS = 40;
-
-function mainStep(s, pi, rnd) {
-  const p = s.players[pi];
-  const pl = s.devPlayed ? [] : playableDev(s, pi);
-  if (pl.length) {
-    const army = s.army === null ? null : s.players[s.army];
-    const c = pl.find((c) => c.t === 'knight' && (robberHurts(s, pi) || (p.knights + 1 >= 3 && s.army !== pi && (army === null || army.knights < p.knights + 1))))
-      || pl.find((c) => c.t === 'plenty')
-      || pl.find((c) => c.t === 'mono' && RES.some((r) => expectedOthers(s, pi, r) >= 3))
-      || pl.find((c) => c.t === 'roads' && p.roads > 0 && roadTarget(s, pi) !== null);
-    if (c) {
-      if (c.t === 'plenty') return { type: 'playDev', card: 'plenty', res: want(s, pi, 2, rnd) };
-      if (c.t === 'mono') return { type: 'playDev', card: 'mono', r: RES.reduce((a, b) => (expectedOthers(s, pi, b) > expectedOthers(s, pi, a) ? b : a)) };
-      return { type: 'playDev', card: c.t };
-    }
-  }
-  const cities = validCity(s, pi);
-  if (p.cities > 0 && cities.length && canAfford(p.res, COST.city)) {
-    return { type: 'build', what: 'city', at: cities.reduce((a, b) => (vScore(s, pi, b) > vScore(s, pi, a) ? b : a)) };
-  }
-  if (p.settles > 0 && validSettle(s, pi, false).length && canAfford(p.res, COST.settle)) {
-    return { type: 'build', what: 'settle', at: bestSettle(s, pi, false, rnd) };
-  }
-  const goal = aiGoal(s, pi);
-  if (goal === 'road' && p.roads > 0 && canAfford(p.res, COST.road)) {
-    const e = roadTarget(s, pi);
-    if (e !== null) return { type: 'build', what: 'road', at: e };
-  }
-  if (s.deck.length && canAfford(p.res, COST.dev) && (goal === 'dev' || total(p.res) > 7)) return { type: 'buyDev' };
-  if (goal && !s.tradesThisTurn) { const a = seekTrade(s, pi, COST[goal], rnd); if (a) return a; }
-  if (goal) { const a = bankTrade(s, pi, COST[goal]); if (a) return a; }
-  return { type: 'endTurn' };
-}
+/* ---------- décision ---------- */
 
 export function aiAction(s, pi) {
   if (s.phase === 'over') return null;
-  const rnd = (() => { const g = local(`${s.rng}:${s.seq}:${pi}`); return () => next(g); })();
-  const pend = s.pending, p = s.players[pi];
+  const p = s.players[pi];
+  const L = legalActions(s, pi);
+  const has = (type) => L.find((x) => x.type === type);
 
-  if (pend?.type === 'discard' && pend.need[pi] !== undefined) {
-    const res = { ...p.res }, sel = Z();
-    for (let k = 0; k < pend.need[pi]; k++) { const r = RES.reduce((a, b) => (res[b] > res[a] ? b : a)); res[r]--; sel[r]++; }
-    return { type: 'discard', res: sel };
-  }
-  if (pend && pend.p === pi) {
-    if (pend.type === 'robber') return { type: 'moveRobber', hex: robberHex(s, pi, rnd) };
-    if (pend.type === 'steal') {
-      const score = (i) => vp(s, i, false) + (isHuman(s, i) ? 0.5 : 0);
-      return { type: 'steal', victim: pend.victims.reduce((a, b) => (score(b) > score(a) ? b : a)) };
+  // Réponse à une offre
+  const rt = has('respondTrade');
+  if (rt && s.trade && s.trade.from !== pi) {
+    const t = s.trade;
+    if (rt.canAccept && accepteEchange(s, pi, t.from, t.give, t.get)) return { type: 'respondTrade', accept: true };
+    // contre-proposition : la même chose, avec une matière de plus de l'autre côté
+    if (niveau(s) !== 'apprenti') {
+      for (const x of RES) {
+        if (!s.players[t.from].res[x] || t.get[x]) continue;
+        const give = { ...t.give, [x]: (t.give[x] ?? 0) + 1 };
+        if (rt.canAccept && accepteEchange(s, pi, t.from, give, t.get)) return { type: 'respondTrade', counter: { give, get: t.get } };
+      }
     }
-    if (pend.type === 'roads') {
-      const valid = validRoad(s, pi), e = roadTarget(s, pi);
-      return { type: 'build', what: 'road', at: e !== null && valid.includes(e) ? e : valid[0] };
+    return { type: 'respondTrade', accept: false };
+  }
+
+  // Mise en place
+  const pl = has('placer');
+  if (pl) {
+    let best = null;
+    for (const h of pl.targets) { const v = valeurCase(s, h, pi) + rnd(s, pi, 'h' + h) * 0.5; if (best === null || v > best.v) best = { h, v }; }
+    return { type: 'placer', hex: best.h };
+  }
+  const tf = has('tournee');
+  if (tf?.free) {
+    const pref = (c) => { const k = clientKind(c.client); return k === 'bar' ? 3 : k === 'village' ? 2 : k === 'cave' ? 1 : 0; };
+    const best = [...tf.targets].sort((x, y) => pref(y) - pref(x))[0];
+    return { type: 'tournee', client: best.client };
+  }
+
+  // Événements de saison
+  const ev = has('evenement');
+  if (ev) {
+    const idx = ev.targets.reduce((b, i) => (b === null || p.ferms[i].u * RECETTES[p.ferms[i].st].prix < p.ferms[b].u * RECETTES[p.ferms[b].st].prix ? i : b), null);
+    return { type: 'evenement', ferm: idx };
+  }
+  const cc = has('concours');
+  if (cc) {
+    const st = cc.styles.reduce((b, x) => (b === null || RECETTES[x].rep + enDemande(s, x) > RECETTES[b].rep + enDemande(s, b) ? x : b), null);
+    return { type: 'concours', style: st };
+  }
+
+  if (s.cur !== pi || s.pending) return null;
+
+  // Mon offre en cours : conclure dès qu'une réponse convient, sinon attendre les réponses, sinon retirer
+  if (s.trade?.from === pi) {
+    const t = s.trade;
+    const ok = Object.entries(t.resp).filter(([, r]) => r.s !== 'refuse');
+    for (const [k, r] of ok) {
+      const give = r.s === 'counter' ? r.give : t.give, get = r.s === 'counter' ? r.get : t.get;
+      if (r.s === 'accept' || accepteEchange(s, pi, +k, get, give)) return { type: 'concludeTrade', with: +k };
+    }
+    if (Object.keys(t.resp).length < t.to.length) return null; // réponses en attente
+    return { type: 'cancelTrade' };
+  }
+
+  // 1. Livrer les clients
+  const liv = meilleureLivraison(s, pi);
+  if (liv) return { type: 'livrer', client: liv.client, style: liv.style };
+  // 2. Salle de dégustation
+  const sa = has('salle');
+  if (sa) return { type: 'salle', style: sa.styles.reduce((b, x) => (RECETTES[x].prix > RECETTES[b].prix ? x : b)) };
+  // 3. Stock qui déborde : vendre
+  if (unites(p) > STOCK_MAX) return venteMarche(s, pi, true);
+  // 4. S'équiper
+  const am = meilleureAmelioration(s, pi);
+  if (am) return { type: 'ameliorer', u: am.u };
+  // 5. Ouvrir une tournée (une par tour)
+  const dejaTournee = s.log.some((e) => e.k === 'tournee' && e.p === pi && e.turn === s.turn && e.cout > 0);
+  if (!dejaTournee) { const t = meilleureTournee(s, pi); if (t) return { type: 'tournee', client: t.client }; }
+  // 6. Brasser (en achetant ce qui manque, ou en négociant)
+  if (p.ferms.length < p.nferm) {
+    const plan = planBrassage(s, pi);
+    if (plan) {
+      if (total(plan.achats) === 1 && !dejaTournee) { const prop = proposition(s, pi); if (prop) return prop; }
+      if (plan.torrefier && has('torrefier')) return { type: 'torrefier' };
+      const x = RES.find((r) => plan.achats[r] > 0);
+      if (x) return { type: 'acheter', r: x, n: plan.achats[x] };
+      if (peutBrasser(s, p, plan.st)) return { type: 'brasser', style: plan.st };
     }
   }
-  if (s.trade && s.trade.to.includes(pi) && !s.trade.resp[pi]) return respond(s, pi);
-  if (pend || s.cur !== pi) return null;
-
-  if (s.phase === 'setup') {
-    if (s.setup.step === 'settle') return { type: 'build', what: 'settle', at: bestSettle(s, pi, true, rnd) };
-    return { type: 'build', what: 'road', at: setupRoad(s, pi, s.setup.last, rnd) };
-  }
-
-  if (s.trade?.from === pi) return followOwnTrade(s, pi);
-  if (!s.rolled) {
-    const kn = s.devPlayed ? null : playableDev(s, pi).find((c) => c.t === 'knight');
-    if (kn && robberHurts(s, pi)) return { type: 'playDev', card: 'knight' };
-    return { type: 'roll' };
-  }
-  if (s.turnActions >= MAX_TURN_ACTIONS) return { type: 'endTurn' };
-  return mainStep(s, pi, rnd);
+  // 7. Vendre le surplus au Marché
+  const v = venteMarche(s, pi, false);
+  if (v) return v;
+  if (has('endTurn')) return { type: 'endTurn' };
+  return venteMarche(s, pi, true);
 }

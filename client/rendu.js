@@ -1,44 +1,53 @@
 // Affichage et interactions. Tout se déduit de la vue du joueur (viewFor) et de ses actions légales :
 // le même code sert au mode solo et au jeu en réseau.
 //
-//   const ui = createUi({ send, onNewGame });   send(action) → { ok, error } (ou une promesse)
-//   ui.update(view, { busy, rejouer })           busy : l'adversaire joue ; rejouer : proposer une nouvelle partie à la fin
+//   const ui = createUi({ send, onNewGame, onHome });   send(action) → { ok, error } (ou une promesse)
+//   ui.update(view, { busy, rejouer })                   busy : l'adversaire joue ; rejouer : proposer une nouvelle partie à la fin
 
-import { RES, COST, TOPO, PIPS, Z, total, legalActions, rate } from '../moteur/index.js';
-import { RN, RI, TILE, DEV, fmt, logLines } from './textes.js';
+import {
+  RES, STYLES, ITEMS, RECETTES, ACHAT, AMELIORATIONS, CLIENTS, FOIRES, CARTE, SAISONS, NB_SAISONS, STOCK_MAX, FERMENTEURS_MAX, CUVE,
+  TOURAILLE_MALT, SALLE_UNITES, SALLE_BONUS, DEMANDE_BONUS, PRODUCTION, PRODUIT, PUITS, TOPO, ZI, total, legalActions, saisonIdx, unites,
+  clientIds, clientKind, clientPos, coutTournee, limiteLivraison, prixMarche, valeurLivraison, cuveUnites, pointsDiversite,
+} from '../moteur/index.js';
+import { RN, RI, SN, SI, TILE, SAISON_NOM, EVT, nomClient, nomSaison, meteoTexte, fmt, logLines, nomItem } from './textes.js';
 
-export const RCOL = { fut: '#8b5b33', eau: '#3d86aa', lev: '#d2c9a8', malt: '#d8af40', houb: '#5d9638', friche: '#76685a' };
-export const RTXT = { fut: '#f6eadb', eau: '#f2f8fb', lev: '#2a1d15', malt: '#2a1d15', houb: '#f1f7ea', friche: '#f2e6d0' };
+export const RCOL = { malt: '#d8af40', houb: '#5d9638', lev: '#d2c9a8', eau: '#3d86aa', torr: '#4a2d1c', argent: '#d38b46' };
+export const RTXT = { malt: '#2a1d15', houb: '#f1f7ea', lev: '#2a1d15', eau: '#f2f8fb', torr: '#f6eadb', argent: '#1a120d' };
+export const SCOL = { blonde: '#e8c15a', blanche: '#f1e8d2', ipa: '#d98b3a', ambree: '#b5582e', stout: '#2b1b14', lager: '#f3d58a', garde: '#8a4b2a' };
+export const STXT = { blonde: '#2a1d15', blanche: '#2a1d15', ipa: '#1a120d', ambree: '#f6eadb', stout: '#f6eadb', lager: '#2a1d15', garde: '#f6eadb' };
+export const TCOL = { orge: '#d8af40', houb: '#5d9638', source: '#3d86aa', bourg: '#8f7f6d', village: '#b07a4a' };
 export const PCOL = ['#d9473a', '#4b87d6', '#e6ad2e', '#ece4d4'];
 
 const $ = (s) => document.querySelector(s);
-const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const ICON = {
-  fut: '<g fill="rgba(0,0,0,.35)"><ellipse rx="10" ry="12"/></g><g stroke="rgba(255,240,220,.55)" stroke-width="2" fill="none"><path d="M-9,-5H9M-9,5H9"/></g>',
-  eau: '<path fill="rgba(255,255,255,.55)" d="M0,-12C6,-4 9,0 9,4A9,9 0 0 1 -9,4C-9,0 -6,-4 0,-12Z"/>',
-  lev: '<g fill="rgba(60,45,30,.45)"><circle cx="-6" cy="3" r="6"/><circle cx="6" cy="1" r="5"/><circle cx="1" cy="-8" r="4"/></g>',
-  malt: '<g stroke="rgba(60,40,10,.55)" stroke-width="2" fill="rgba(60,40,10,.4)"><path d="M0,13V-12" fill="none"/><ellipse cx="-4" cy="-6" rx="2.6" ry="4.5" transform="rotate(-30 -4 -6)"/><ellipse cx="4" cy="-6" rx="2.6" ry="4.5" transform="rotate(30 4 -6)"/><ellipse cx="-4" cy="2" rx="2.6" ry="4.5" transform="rotate(-30 -4 2)"/><ellipse cx="4" cy="2" rx="2.6" ry="4.5" transform="rotate(30 4 2)"/></g>',
+  orge: '<g stroke="rgba(60,40,10,.55)" stroke-width="2" fill="rgba(60,40,10,.4)"><path d="M0,13V-12" fill="none"/><ellipse cx="-4" cy="-6" rx="2.6" ry="4.5" transform="rotate(-30 -4 -6)"/><ellipse cx="4" cy="-6" rx="2.6" ry="4.5" transform="rotate(30 4 -6)"/><ellipse cx="-4" cy="2" rx="2.6" ry="4.5" transform="rotate(-30 -4 2)"/><ellipse cx="4" cy="2" rx="2.6" ry="4.5" transform="rotate(30 4 2)"/></g>',
   houb: '<g fill="rgba(230,250,200,.5)"><path d="M0,-13L7,-4L5,6L0,13L-5,6L-7,-4Z"/></g><g stroke="rgba(30,60,20,.5)" stroke-width="1.6" fill="none"><path d="M-6,-3L0,1L6,-3M-5,5L0,9L5,5"/></g>',
-  friche: '<g stroke="rgba(0,0,0,.3)" stroke-width="2.5" stroke-linecap="round"><path d="M-9,8L-3,-6M0,8L2,-9M7,8L9,-4"/></g>',
+  source: '<path fill="rgba(255,255,255,.55)" d="M0,-12C6,-4 9,0 9,4A9,9 0 0 1 -9,4C-9,0 -6,-4 0,-12Z"/>',
+  bourg: '<g fill="rgba(30,20,14,.45)"><path d="M-14,10V-2L-8,-8L-2,-2V10Z"/><path d="M0,10V-6L7,-13L14,-6V10Z"/><rect x="-4" y="2" width="4" height="8"/></g>',
+  village: '<g fill="rgba(30,20,14,.45)"><path d="M-12,10V0L-5,-7L2,0V10Z"/><path d="M4,10V2L9,-3L14,2V10Z"/></g>',
 };
-const PAWN = '<g stroke="#e9dcc2" stroke-width="1.8"><path fill="#1c1714" d="M-10,13Q-10,-2 0,-2Q10,-2 10,13Z"/><circle fill="#1c1714" cy="-8" r="6.5"/><path fill="#1c1714" d="M-8,-13H8L6,-18H-6Z"/></g>';
+const BREWERY = '<g><path d="M-13,10V-4L-6,-10L1,-4V10Z"/><rect x="2" y="-2" width="10" height="12"/><rect x="4" y="-9" width="3" height="8"/><circle cx="-6" cy="2" r="2" fill="rgba(0,0,0,.35)"/></g>';
 const poly = (pts) => pts.map((p) => p.join(',')).join(' ');
-const DIEPOS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
-const dieHTML = (n, seven) => `<div class="die${seven ? ' seven' : ''}" aria-label="${n || '—'}">${Array.from({ length: 9 }, (_, k) => `<i class="${n && DIEPOS[n].includes(k) ? 'on' : ''}"></i>`).join('')}</div>`;
 const chip = (r) => `<span class="cst" title="${RN[r]}" style="--rc:${RCOL[r]};--rt:${RTXT[r]}">${RI[r]}</span>`;
-const chips = (c) => `<span class="costs">${Object.entries(c).flatMap(([r, n]) => Array(n).fill(chip(r))).join('')}</span>`;
+const schip = (st) => `<span class="cst sty" title="${SN[st]}" style="--rc:${SCOL[st]};--rt:${STXT[st]}">${SI[st]}</span>`;
+const ichip = (k) => (RES.includes(k) || k === 'argent' ? chip(k) : schip(k));
+const chips = (c) => `<span class="costs">${RES.flatMap((r) => Array(c[r] ?? 0).fill(chip(r))).join('')}</span>`;
 const sw = (i) => `<span class="sw" style="background:${PCOL[i]}"></span>`;
+const plural = (n, s) => `${n} ${s}${n > 1 ? 's' : ''}`;
 
 export function createUi({ send, onNewGame, onHome }) {
   let view = null, opts = {}, L = [];
-  const ui = { mode: null, give: 'fut', get: 'malt', offer: { give: Z(), get: Z() }, modal: null, sel: Z(), counter: null, modalKey: null, error: '', errorTimer: null };
+  const ui = { mode: null, offer: { give: ZI(), get: ZI() }, counter: null, counterFor: null, modalKey: null, error: '', errorTimer: null, winClosed: false, qty: 1 };
 
   const me = () => view.me;
   const P = () => view.players;
   const mine = () => view.me !== null && view.me !== undefined;
   const legal = (type, f = () => true) => L.find((a) => a.type === type && f(a));
   const you = (i) => i === view.me;
+  const my = () => (mine() ? P()[me()] : null);
+  const free = () => mine() && !opts.busy && view.phase === 'main' && view.cur === me() && !view.pending;
 
   async function act(action) {
     const r = await send(action);
@@ -54,33 +63,18 @@ export function createUi({ send, onNewGame, onHome }) {
 
   /* ---------- sélection sur le plateau ---------- */
 
-  // Mode de sélection imposé par une décision en attente, sinon celui choisi par le joueur (construction)
   function boardMode() {
     if (!mine() || opts.busy) return null;
-    const pend = view.pending;
-    const b = legal('build');
-    if (view.phase === 'setup' && b) {
-      const second = view.setup.k >= P().length;
-      return b.what === 'settle'
-        ? { kind: 'vert', targets: b.targets, hint: second ? 'Place ta 2ᵉ microbrasserie. Elle te rapporte une carte de chaque case voisine.' : 'Place ta 1ʳᵉ microbrasserie sur un croisement libre.', pick: (at) => act({ type: 'build', what: 'settle', at }) }
-        : { kind: 'edge', targets: b.targets, hint: 'Trace la tournée qui part de cette microbrasserie.', pick: (at) => act({ type: 'build', what: 'road', at }) };
-    }
-    const mr = legal('moveRobber');
-    if (mr) return { kind: 'hex', targets: mr.targets, hint: 'Déplace le contrôleur des douanes sur une autre case.', pick: (hex) => act({ type: 'moveRobber', hex }) };
-    if (pend?.type === 'roads' && b) return { kind: 'edge', targets: b.targets, hint: `Nouveau camion : pose ta tournée gratuite (il en reste ${pend.left}).`, pick: (at) => act({ type: 'build', what: 'road', at }) };
-    if (ui.mode) {
-      const still = legal('build', (a) => a.what === ui.mode.what && !a.free);
-      if (still) return { ...ui.mode, targets: still.targets, cancel: true };
+    const pl = legal('placer');
+    if (pl) return { kind: 'hex', targets: pl.targets, hint: 'Installe ta brasserie sur un terroir : la case et ses six voisines l’approvisionnent.', pick: (hex) => act({ type: 'placer', hex }) };
+    const tf = legal('tournee', (a) => a.free);
+    if (tf) return { kind: 'client', targets: tf.targets, hint: 'Ouvre ta première tournée, gratuite, vers un client à 2 cases ou moins.', pick: (client) => act({ type: 'tournee', client }) };
+    if (ui.mode === 'tournee') {
+      const t = legal('tournee', (a) => !a.free);
+      if (t) return { kind: 'client', targets: t.targets, hint: 'Choisis le client : la tournée coûte 2 Argent par case (1 avec le Camion), une fois pour toutes.', pick: (client) => { ui.mode = null; return act({ type: 'tournee', client }); }, cancel: true };
       ui.mode = null;
     }
     return null;
-  }
-  const BUILD_HINT = { road: 'Choisis où tracer ta tournée.', settle: 'Choisis où ouvrir ta microbrasserie.', city: 'Choisis la microbrasserie à agrandir.' };
-  function chooseBuild(what) {
-    const b = legal('build', (a) => a.what === what && !a.free);
-    if (!b) return;
-    ui.mode = { what, kind: what === 'road' ? 'edge' : 'vert', hint: BUILD_HINT[what], pick: (at) => { ui.mode = null; return act({ type: 'build', what, at }); } };
-    render();
   }
 
   function renderBoard(mode) {
@@ -88,115 +82,130 @@ export function createUi({ send, onNewGame, onHome }) {
     let s = '';
     const R = 318;
     s += `<polygon points="${poly([0, 1, 2, 3, 4, 5].map((i) => [R * Math.cos(Math.PI / 3 * i), R * Math.sin(Math.PI / 3 * i)]))}" fill="var(--sea)" stroke="var(--sea2)" stroke-width="10" stroke-linejoin="round"/>`;
-    TOPO.ports.forEach((pt, i) => {
-      const type = v.ports[i], a = TOPO.verts[pt.a], b = TOPO.verts[pt.b], col = type === '3:1' ? 'var(--ink)' : RCOL[type];
-      s += `<path d="M${pt.x},${pt.y}L${a.x},${a.y}M${pt.x},${pt.y}L${b.x},${b.y}" stroke="#7d6b58" stroke-width="3" stroke-dasharray="4 4"/>`;
-      s += `<g><title>${type === '3:1' ? 'Quai 3:1 (toutes ressources)' : 'Quai 2:1 ' + RN[type]}</title><circle cx="${pt.x}" cy="${pt.y}" r="16" fill="var(--panel)" stroke="${col}" stroke-width="3.5"/><text x="${pt.x}" y="${pt.y + 5}" text-anchor="middle" font-size="14" font-weight="700" fill="var(--ink)">${type === '3:1' ? '3:1' : '2:1'}</text></g>`;
-    });
+    const si = v.saison >= 0 ? saisonIdx(v) : null, carte = v.carte ? CARTE[v.carte] : null;
+    const targets = mode?.kind === 'client' ? new Map(mode.targets.map((t) => [t.client, t.cout])) : null;
+    const posOf = (c) => (c.startsWith('foire') ? TOPO.foires[+c.slice(5)] : TOPO.hexes[clientPos(v, c)]);
+    // cases
     TOPO.hexes.forEach((h, i) => {
-      const t = v.hexes[i];
-      const pts = h.verts.map((x) => [h.x + (TOPO.verts[x].x - h.x) * 0.965, h.y + (TOPO.verts[x].y - h.y) * 0.965]);
-      s += `<polygon class="tile" points="${poly(pts)}" fill="${RCOL[t.res]}"><title>${TILE[t.res]}${t.num ? ' · ' + t.num : ''}</title></polygon>`;
-      if (v.phase === 'main' && v.lastRoll && t.num === v.lastRoll && i !== v.robber) s += `<polygon class="hot" points="${poly(pts.map(([x, y]) => [h.x + (x - h.x) * 0.9, h.y + (y - h.y) * 0.9]))}"/>`;
-      s += `<g transform="translate(${h.x},${h.y - 30})">${i === v.robber ? PAWN : ICON[t.res]}</g>`;
-      if (t.num) {
-        const red = t.num === 6 || t.num === 8, pc = PIPS(t.num), dim = i === v.robber ? 'opacity=".45"' : '';
-        s += `<circle cx="${h.x}" cy="${h.y + 8}" r="17" fill="#efe3c8" stroke="#3b2c22" stroke-width="1.5" ${dim}/>`;
-        s += `<text x="${h.x}" y="${h.y + 13}" text-anchor="middle" font-size="19" font-weight="700" fill="${red ? '#b3311d' : '#2a1d15'}" ${dim}>${t.num}</text>`;
-        for (let k = 0; k < pc; k++) s += `<circle cx="${h.x + (k - (pc - 1) / 2) * 4.6}" cy="${h.y + 19}" r="1.6" fill="${red ? '#b3311d' : '#2a1d15'}"/>`;
+      const t = v.tiles[i];
+      const pts = h.verts.map(([x, y]) => [h.x + (x - h.x) * 0.965, h.y + (y - h.y) * 0.965]);
+      let title = TILE[t];
+      if (t === 'village') title += ` ${'ABC'[v.villages.indexOf(i)]} : aime ${v.prefs[v.villages.indexOf(i)].map((x) => SN[x]).join(' et ')}`;
+      if (PRODUCTION[t]) title += ` → ${RN[PRODUIT[t]]} (${PRODUCTION[t].join(' / ')} par saison)`;
+      s += `<polygon class="tile" points="${poly(pts)}" fill="${TCOL[t]}"><title>${esc(title)}</title></polygon>`;
+      s += `<g transform="translate(${h.x},${h.y - 22})">${ICON[t]}</g>`;
+      // production de la saison
+      if (PRODUCTION[t] && si !== null) {
+        const m = carte?.meteo?.[t];
+        const q = m === 'zero' ? 0 : Math.max(0, PRODUCTION[t][si] + (m ?? 0));
+        s += `<g transform="translate(${h.x},${h.y + 18})"><rect x="-15" y="-10" width="30" height="20" rx="4" fill="rgba(20,14,10,${q ? '.55' : '.25'})"/><text y="5" text-anchor="middle" font-size="14" font-weight="700" fill="${q ? '#f2e6d0' : 'rgba(242,230,208,.5)'}">+${q}</text></g>`;
       }
-      if (i === v.robber && t.res !== 'friche') s += `<polygon points="${poly(pts)}" fill="rgba(20,14,10,.35)"/>`;
+      if ((t === 'village' || t === 'bourg') && v.phase !== 'setup') {
+        const cl = t === 'bourg' ? ['bar', 'cave'] : [`village${v.villages.indexOf(i)}`];
+        cl.forEach((c, k) => {
+          const cap = v.capa?.[c] ?? 0, x = h.x + (cl.length === 2 ? (k ? 16 : -16) : 0), y = h.y + 20;
+          s += `<g transform="translate(${x},${y})"><title>${esc(nomClient(v, c))} : ${cap} à livrer cette saison</title><circle r="11" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/><text y="4.5" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">${cap}</text></g>`;
+        });
+      }
     });
+    // tournées
+    v.players.forEach((p, i) => {
+      if (p.hex === null) return;
+      const h = TOPO.hexes[p.hex];
+      p.tournees.forEach((c) => {
+        const t = posOf(c), dx = t.x - h.x, dy = t.y - h.y, l = Math.hypot(dx, dy) || 1, o = (i - (v.players.length - 1) / 2) * 4;
+        const ox = -dy / l * o, oy = dx / l * o;
+        s += `<line x1="${h.x + ox}" y1="${h.y + oy}" x2="${t.x + ox}" y2="${t.y + oy}" stroke="var(--dark)" stroke-width="5" stroke-dasharray="7 5" opacity=".6"/><line x1="${h.x + ox}" y1="${h.y + oy}" x2="${t.x + ox}" y2="${t.y + oy}" stroke="${PCOL[i]}" stroke-width="2.5" stroke-dasharray="7 5"/>`;
+      });
+    });
+    // brasseries
+    v.players.forEach((p, i) => {
+      if (p.hex === null) return;
+      const h = TOPO.hexes[p.hex];
+      s += `<g transform="translate(${h.x},${h.y + 2}) scale(1.15)" fill="${PCOL[i]}" stroke="var(--dark)" stroke-width="1.6" stroke-linejoin="round"><title>${esc(p.name)}</title>${BREWERY}</g>`;
+    });
+    // foires
+    TOPO.foires.forEach((f, k) => {
+      const id = `foire${k}`, active = v.phase !== 'setup' && si === f.saison, cap = v.capa?.[id] ?? 0;
+      s += `<g transform="translate(${f.x},${f.y})"><title>${esc(f.nom)} (${SAISON_NOM[SAISONS[f.saison]].toLowerCase()})${active ? ` : ${cap} à livrer cette saison` : ''}</title>
+        <circle r="19" fill="${active ? 'var(--copper)' : 'var(--panel)'}" stroke="${active ? 'var(--ink)' : '#7d6b58'}" stroke-width="2.5"/>
+        <text y="-2" text-anchor="middle" font-size="11" font-weight="700" fill="${active ? 'var(--dark)' : 'var(--muted)'}">${SAISON_NOM[SAISONS[f.saison]].slice(0, 3).toUpperCase()}</text>
+        <text y="11" text-anchor="middle" font-size="11" font-weight="600" fill="${active ? 'var(--dark)' : 'var(--muted)'}">${active ? cap : 'foire'}</text></g>`;
+    });
+    // cibles
     if (mode?.kind === 'hex') mode.targets.forEach((i) => {
       const h = TOPO.hexes[i];
-      s += `<polygon class="hpick" data-k="hex" data-id="${i}" tabindex="0" points="${poly(h.verts.map((x) => [h.x + (TOPO.verts[x].x - h.x) * 0.86, h.y + (TOPO.verts[x].y - h.y) * 0.86]))}"><title>${TILE[v.hexes[i].res]}</title></polygon>`;
+      s += `<polygon class="hpick" data-k="hex" data-id="${i}" tabindex="0" points="${poly(h.verts.map(([x, y]) => [h.x + (x - h.x) * 0.86, h.y + (y - h.y) * 0.86]))}"><title>${esc(TILE[v.tiles[i]])}</title></polygon>`;
     });
-    v.edges.forEach((o, i) => {
-      if (o === null) return;
-      const e = TOPO.edges[i], a = TOPO.verts[e.a], b = TOPO.verts[e.b], k = 0.16;
-      const x1 = a.x + (b.x - a.x) * k, y1 = a.y + (b.y - a.y) * k, x2 = b.x + (a.x - b.x) * k, y2 = b.y + (a.y - b.y) * k;
-      s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--dark)" stroke-width="10" stroke-linecap="round"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${PCOL[o]}" stroke-width="6" stroke-linecap="round"/>`;
-    });
-    if (mode?.kind === 'edge') mode.targets.forEach((i) => {
-      const e = TOPO.edges[i], a = TOPO.verts[e.a], b = TOPO.verts[e.b], k = 0.2;
-      s += `<line class="espot" data-k="edge" data-id="${i}" tabindex="0" x1="${a.x + (b.x - a.x) * k}" y1="${a.y + (b.y - a.y) * k}" x2="${b.x + (a.x - b.x) * k}" y2="${b.y + (a.y - b.y) * k}"/>`;
-    });
-    v.verts.forEach((x, i) => {
-      if (x.o === null) return;
-      const c = PCOL[x.o], V = TOPO.verts[i];
-      s += x.t === 1
-        ? `<path transform="translate(${V.x},${V.y})" d="M-9,8V-2L0,-11L9,-2V8Z" fill="${c}" stroke="var(--dark)" stroke-width="2.2" stroke-linejoin="round"/>`
-        : `<path transform="translate(${V.x},${V.y})" d="M-14,9V-3L-5,-10V-3H4V-16H10V-3H14V9Z" fill="${c}" stroke="var(--dark)" stroke-width="2.2" stroke-linejoin="round"/>`;
-    });
-    if (mode?.kind === 'vert') mode.targets.forEach((i) => {
-      const V = TOPO.verts[i];
-      s += `<circle class="spot" data-k="vert" data-id="${i}" tabindex="0" cx="${V.x}" cy="${V.y}" r="${v.verts[i].o !== null ? 16 : 10}"/>`;
-    });
+    if (targets) for (const [c, cout] of targets) {
+      const t = posOf(c), off = c === 'cave' ? 16 : c === 'bar' ? -16 : 0, y = c.startsWith('foire') ? t.y : t.y + 20;
+      s += `<g class="cpick" data-k="client" data-id="${c}" tabindex="0" transform="translate(${t.x + off},${y})"><title>${esc(nomClient(v, c))} : ${cout ? cout + ' Argent' : 'gratuit'}</title><circle r="${c.startsWith('foire') ? 24 : 15}"/>${cout ? `<text y="${c.startsWith('foire') ? 36 : 29}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">${cout}</text>` : ''}</g>`;
+    }
     $('#board').innerHTML = s;
   }
 
   /* ---------- fenêtres ---------- */
 
-  function countsModal(key, title, text, need, maxOf, label, onOk) {
-    const sum = total(ui.sel);
-    return {
-      key,
-      html: `<h2>${title}</h2><p>${text}</p>${RES.map((r) => `<div class="prow">${chip(r)}<span>${RN[r]}</span><span class="have">${maxOf(r)}</span><button class="btn" data-m="${r}" aria-label="Retirer ${RN[r]}" ${ui.sel[r] ? '' : 'disabled'}>−</button><b>${ui.sel[r]}</b><button class="btn" data-p="${r}" aria-label="Ajouter ${RN[r]}" ${ui.sel[r] < maxOf(r) && sum < need ? '' : 'disabled'}>+</button></div>`).join('')}
-        <button class="btn primary" data-ok ${sum === need ? '' : 'disabled'}>${label} (${sum}/${need})</button>`,
-      ok: () => onOk({ ...ui.sel }),
-    };
+  function stepper(k, key, n, max) {
+    return `<span class="stp"><button class="btn mini" data-c="${k}" data-r="${key}" data-d="-1" aria-label="Moins" ${n ? '' : 'disabled'}>−</button><b>${n}</b><button class="btn mini" data-c="${k}" data-r="${key}" data-d="1" aria-label="Plus" ${n < max ? '' : 'disabled'}>+</button></span>`;
+  }
+  // Lignes d'un échange : tout ce que l'un ou l'autre possède ou demande
+  function itemRows(give, get, maxGive, maxGet) {
+    const keys = ITEMS.filter((k) => maxGive(k) > 0 || maxGet(k) > 0 || give[k] || get[k]);
+    return keys.map((k) => `<span class="rl">${ichip(k)}${nomItem(k)}</span>${stepper('give', k, give[k], maxGive(k))}${stepper('get', k, get[k], maxGet(k))}`).join('');
   }
 
   function currentModal() {
-    const v = view;
+    const v = view, p = my();
     if (v.phase === 'over') {
       if (ui.winClosed) return null;
       const w = v.winner, P0 = P();
-      const order = P0.map((_, i) => i).sort((a, b) => P0[b].vp - P0[a].vp);
+      const order = P0.map((_, i) => i).sort((a, b) => P0[b].score.total - P0[a].score.total || P0[b].argent - P0[a].argent);
       return {
         key: 'win',
-        html: `<h2>${you(w) ? 'Tu remportes la saison !' : esc(P0[w].name) + ' remporte la saison'}</h2><p>${you(w) ? 'Ta brasserie est la plus réputée du terroir.' : 'Sa brasserie est la plus réputée du terroir.'}</p>
-          ${order.map((i) => `<div class="score">${sw(i)}<span>${esc(P0[i].name)}</span><b>${P0[i].vp} PV</b></div>`).join('')}
+        html: `<h2>${you(w) ? 'Trois ans ont passé : tu l’emportes !' : esc(P0[w].name) + ' l’emporte'}</h2><p>${you(w) ? 'Ta brasserie est la plus réputée du terroir.' : 'Sa brasserie est la plus réputée du terroir.'}</p>
+          <div class="scores"><span></span><span>Brasserie</span><span>Rép.</span><span>Div.</span><span>Argent</span><span>Total</span>
+          ${order.map((i) => `${sw(i)}<span>${esc(P0[i].name)}</span><span>${P0[i].score.rep}</span><span>${P0[i].score.diversite}</span><span>${P0[i].score.argent}</span><b>${P0[i].score.total}</b>`).join('')}</div>
           <div class="mrow">${opts.rejouer ? '<button class="btn primary" data-again>Rejouer</button>' : '<button class="btn primary" data-home>Retour à l’accueil</button>'}<button class="btn ghost" data-close>Voir le plateau</button></div>`,
       };
     }
-    if (!mine()) return null;
-    const p = P()[me()];
-    const d = legal('discard');
-    if (d) return countsModal('discard', 'Contrôle des douanes', `Tu as ${total(p.res)} cartes : défausse-en ${d.count}.`, d.count, (r) => p.res[r], 'Défausser', (res) => act({ type: 'discard', res }));
-    const st = legal('steal');
-    if (st) return {
-      key: 'steal',
-      html: `<h2>Chez qui piocher ?</h2><p>Une carte au hasard dans la main du joueur choisi.</p><div class="mrow">${st.targets.map((i) => `<button class="btn" data-v="${i}"><span class="sw" style="display:inline-block;vertical-align:-2px;margin-right:6px;background:${PCOL[i]}"></span>${esc(P()[i].name)} (${P()[i].nres})</button>`).join('')}</div>`,
-      pick: (i) => act({ type: 'steal', victim: i }),
+    if (!p) return null;
+    const ev = legal('evenement');
+    if (ev) return {
+      key: `evt-${v.saison}`,
+      html: `<h2>${EVT[ev.kind].nom}</h2><p>${ev.kind === 'contamination' ? 'Une levure sauvage s’est invitée.' : 'Il fait trop chaud dans la brasserie.'} Un de tes brassins en cours perd 1 unité : lequel ?</p>
+        <div class="mrow">${ev.targets.map((i) => `<button class="btn" data-ferm="${i}">${SN[p.ferms[i].st]} · ${p.ferms[i].u} unités, prête dans ${p.ferms[i].left}</button>`).join('')}</div>`,
+    };
+    const cc = legal('concours');
+    if (cc) return {
+      key: `concours-${v.saison}`,
+      html: `<h2>Concours régional</h2><p>Présente une unité de ton stock. Score : réputation du style, +1 s'il est en demande. Le meilleur gagne 5 Réputation, le deuxième 2. L'unité est consommée.</p>
+        <div class="mrow">${cc.styles.map((st) => `<button class="btn" data-style="${st}">${SN[st]} · ${RECETTES[st].rep + (v.demande.includes(st) ? 1 : 0)}</button>`).join('')}</div>`,
     };
     const t = v.trade;
     if (t && t.to.includes(me()) && !t.resp[me()]) {
+      const from = P()[t.from];
       if (ui.counter) {
         const c = ui.counter;
-        const stp = (k, r, n, max) => `<span class="stp"><button class="btn mini" data-c="${k}" data-r="${r}" data-d="-1" ${n ? '' : 'disabled'}>−</button><b>${n}</b><button class="btn mini" data-c="${k}" data-r="${r}" data-d="1" ${n < max ? '' : 'disabled'}>+</button></span>`;
-        const okC = total(c.give) && total(c.get) && RES.every((r) => p.res[r] >= c.get[r]);
+        const okC = total(c.give) && total(c.get) && ITEMS.every((k) => avoir(p, k) >= c.get[k]);
         return {
           key: `counter-${t.id}`,
-          html: `<h2>Contre-proposition</h2><p>Ce que ${esc(P()[t.from].name)} te donnerait, et ce que tu lui donnes.</p>
-            <div class="offer"><span></span><span class="oh">Tu reçois</span><span class="oh">Tu donnes</span>
-            ${RES.map((r) => `<span class="rl">${chip(r)}${RN[r]}</span>${stp('give', r, c.give[r], 9)}${stp('get', r, c.get[r], p.res[r])}`).join('')}</div>
+          html: `<h2>Contre-proposition</h2><p>Ce que ${esc(from.name)} te donnerait, et ce que tu lui donnes.</p>
+            <div class="offer"><span></span><span class="oh">Tu reçois</span><span class="oh">Tu donnes</span>${itemRows(c.give, c.get, (k) => avoir(from, k), (k) => avoir(p, k))}</div>
             <div class="mrow"><button class="btn primary" data-cok ${okC ? '' : 'disabled'}>Envoyer</button><button class="btn ghost" data-cback>Retour</button></div>`,
         };
       }
-      const canAccept = legal('respondTrade')?.canAccept;
       return {
         key: `offer-${t.id}`,
-        html: `<h2>Offre de ${esc(P()[t.from].name)}</h2><p>${esc(P()[t.from].name)} te propose <b>${fmt(t.give)}</b> contre <b>${fmt(t.get)}</b>.</p>
-          <p class="small">Ta main : ${RES.map((r) => `${p.res[r]} ${RN[r]}`).join(' · ')}</p>
-          <div class="mrow"><button class="btn primary" data-y ${canAccept ? '' : 'disabled'}>Accepter</button><button class="btn" data-n>Refuser</button><button class="btn ghost" data-ctr>Contre-proposer</button></div>`,
+        html: `<h2>Offre de ${esc(from.name)}</h2><p>${esc(from.name)} te propose <b>${fmt(t.give)}</b> contre <b>${fmt(t.get)}</b>.</p>
+          <div class="mrow"><button class="btn primary" data-y ${legal('respondTrade')?.canAccept ? '' : 'disabled'}>Accepter</button><button class="btn" data-n>Refuser</button><button class="btn ghost" data-ctr>Contre-proposer</button></div>`,
       };
     }
     if (t && t.from === me()) {
       const rows = t.to.map((i) => {
         const r = t.resp[i];
         const txt = !r ? 'Réfléchit…' : r.s === 'refuse' ? 'Refuse.' : r.s === 'accept' ? 'Accepte.' : `Accepte si tu donnes ${fmt(r.give)} contre ${fmt(r.get)}.`;
-        const can = r && r.s !== 'refuse' && RES.every((x) => p.res[x] >= (r.s === 'counter' ? r.give[x] : t.give[x]));
+        const can = r && r.s !== 'refuse' && ITEMS.every((k) => avoir(p, k) >= (r.s === 'counter' ? r.give[k] : t.give[k]));
         return `<div class="resp">${sw(i)}<div><b>${esc(P()[i].name)}</b><small>${txt}</small></div>${can ? `<button class="btn ${r.s === 'counter' ? '' : 'primary'}" data-k="${i}">${r.s === 'counter' ? 'Accepter' : 'Conclure'}</button>` : ''}</div>`;
       });
       const any = Object.values(t.resp).some((r) => r.s !== 'refuse');
@@ -206,27 +215,19 @@ export function createUi({ send, onNewGame, onHome }) {
           <button class="btn ghost" data-k="-1">${any ? 'Annuler' : Object.keys(t.resp).length === t.to.length ? 'Fermer' : 'Retirer l’offre'}</button>`,
       };
     }
-    if (ui.modal === 'plenty') return countsModal('plenty', 'Livraison fournisseur', 'Choisis 2 ressources.', 2, () => 2, 'Recevoir', (res) => { ui.modal = null; return act({ type: 'playDev', card: 'plenty', res }); });
-    if (ui.modal === 'mono') return {
-      key: 'mono',
-      html: `<h2>Contrat d'exclusivité</h2><p>Quelle ressource récupères-tu chez tout le monde ?</p><div class="mrow">${RES.map((r) => `<button class="btn" data-r="${r}" style="background:${RCOL[r]};color:${RTXT[r]};border-color:${RCOL[r]}">${RN[r]}</button>`).join('')}</div><button class="btn ghost" data-close>Annuler</button>`,
-    };
     return null;
   }
+  const avoir = (p, k) => (RES.includes(k) ? p.res[k] : k === 'argent' ? p.argent : p.stock[k]);
 
   let modalNow = null;
   function renderModal() {
     const m = currentModal();
     const box = $('#modalBox');
-    if (!m) {
-      modalNow = null; ui.modalKey = null;
-      $('#modal').hidden = true;
-      return;
-    }
+    if (!m) { modalNow = null; ui.modalKey = null; $('#modal').hidden = true; return; }
     const fresh = m.key !== ui.modalKey;
-    if (fresh) { ui.sel = Z(); ui.modalKey = m.key; }
-    modalNow = fresh ? currentModal() : m;
-    box.innerHTML = modalNow.html;
+    ui.modalKey = m.key;
+    modalNow = m;
+    box.innerHTML = m.html;
     $('#modal').hidden = false;
     if (fresh) box.querySelector('button:not(:disabled)')?.focus();
   }
@@ -234,84 +235,163 @@ export function createUi({ send, onNewGame, onHome }) {
   function onModalClick(e) {
     const b = e.target.closest('button');
     if (!b || b.disabled || !modalNow) return;
-    const m = modalNow, ds = b.dataset;
-    if (ds.m) { ui.sel[ds.m]--; return render(); }
-    if (ds.p) { ui.sel[ds.p]++; return render(); }
-    if ('ok' in ds) return m.ok();
-    if (ds.v !== undefined) return m.pick(+ds.v);
+    const ds = b.dataset;
+    if (ds.ferm !== undefined) return act({ type: 'evenement', ferm: +ds.ferm });
+    if (ds.style !== undefined) return act({ type: 'concours', style: ds.style });
     if ('again' in ds) return onNewGame?.();
     if ('home' in ds) return onHome?.();
-    if ('close' in ds) { if (view.phase === 'over') ui.winClosed = true; ui.modal = null; return render(); }
-    if (ds.r && ui.modal === 'mono') { ui.modal = null; return act({ type: 'playDev', card: 'mono', r: ds.r }); }
+    if ('close' in ds) { if (view.phase === 'over') ui.winClosed = true; return render(); }
     if ('y' in ds) return act({ type: 'respondTrade', accept: true });
     if ('n' in ds) return act({ type: 'respondTrade', accept: false });
-    if ('ctr' in ds) { ui.counter = { give: { ...view.trade.give }, get: { ...view.trade.get } }; return render(); }
+    if ('ctr' in ds) { ui.counter = { give: { ...ZI(), ...view.trade.give }, get: { ...ZI(), ...view.trade.get } }; return render(); }
     if (ds.c) { const c = ui.counter[ds.c]; c[ds.r] = Math.max(0, c[ds.r] + +ds.d); return render(); }
     if ('cback' in ds) { ui.counter = null; return render(); }
     if ('cok' in ds) { const counter = ui.counter; ui.counter = null; return act({ type: 'respondTrade', counter }); }
-    if (ds.k !== undefined) {
-      const k = +ds.k;
-      if (k < 0) return act({ type: 'cancelTrade' });
-      return act({ type: 'concludeTrade', with: k });
-    }
+    if (ds.k !== undefined) { const k = +ds.k; return k < 0 ? act({ type: 'cancelTrade' }) : act({ type: 'concludeTrade', with: k }); }
   }
 
   /* ---------- comptoir ---------- */
 
   function hintText(mode) {
-    const v = view, cp = P()[v.cur];
+    const v = view;
     if (ui.error) return { txt: ui.error, col: 'var(--copper)' };
     if (mode) return { txt: mode.hint, col: PCOL[me()] };
     if (v.phase === 'over') return { txt: `${you(v.winner) ? 'Tu gagnes' : esc(P()[v.winner].name) + ' gagne'} la partie.`, col: PCOL[v.winner] };
-    if (v.pending?.type === 'discard') {
-      const who = Object.keys(v.pending.need).map(Number).filter((i) => !you(i)).map((i) => esc(P()[i].name));
-      if (who.length && !legal('discard')) return { txt: `Contrôle des douanes : ${who.join(', ')} ${who.length > 1 ? 'défaussent' : 'défausse'}…`, col: PCOL[v.cur] };
+    if (v.pending) {
+      const who = Object.keys(v.pending.need).map(Number);
+      if (mine() && who.includes(me())) return { txt: `${EVT[v.pending.kind].nom} : à toi de décider.`, col: PCOL[me()] };
+      return { txt: `${EVT[v.pending.kind].nom} : ${who.map((i) => esc(P()[i].name)).join(', ')} ${who.length > 1 ? 'décident' : 'décide'}…`, col: 'var(--muted)' };
     }
     if (v.trade && v.trade.from !== me() && !(v.trade.to.includes(me()) && !v.trade.resp[me()])) return { txt: `${esc(P()[v.trade.from].name)} attend des réponses à son offre…`, col: PCOL[v.trade.from] };
-    const myTurn = mine() && v.cur === me() && !v.pending;
-    if (myTurn && v.phase === 'main') return { txt: v.rolled ? 'Construis, négocie ou termine ton tour.' : 'À toi : lance les dés (ou joue un expert-comptable avant).', col: PCOL[me()] };
-    if (v.phase === 'setup') return { txt: `${esc(cp.name)} choisit son emplacement…`, col: PCOL[v.cur] };
-    const who = v.pending?.p ?? v.cur;
-    return { txt: `Tour de ${esc(P()[who].name)}…`, col: PCOL[who] };
+    if (v.phase === 'setup') return { txt: `${esc(P()[v.cur].name)} s'installe…`, col: PCOL[v.cur] };
+    if (free()) {
+      const p = my();
+      if (unites(p) > STOCK_MAX) return { txt: `Ton stock dépasse ${STOCK_MAX} unités : livre ou vends avant de finir ton tour.`, col: 'var(--copper)' };
+      return { txt: 'À toi : brasse, livre, vends, équipe-toi, négocie. Puis fin du tour.', col: PCOL[me()] };
+    }
+    return { txt: `Tour de ${esc(P()[v.cur].name)}…`, col: PCOL[v.cur] };
   }
 
-  function renderSide(mode) {
-    const v = view, players = P(), my = mine() ? players[me()] : null;
-    $('#players').innerHTML = players.map((p, i) => `<div class="pl ${v.cur === i && v.phase !== 'over' ? 'cur' : ''}">${sw(i)}
-      <div class="pn"><b>${esc(p.name)}${you(i) && p.name !== 'Toi' ? ' (toi)' : ''}</b><small>${p.nres} cartes · ${p.ndev} événement${p.ndev > 1 ? 's' : ''} · ${p.knights} expert${p.knights > 1 ? 's' : ''}${p.status ? ' · ' + esc(p.status) : ''}</small></div>
-      <div class="badges">${v.longest === i ? '<span class="bdg" title="Plus grand réseau de livraison">Réseau</span>' : ''}${v.army === i ? '<span class="bdg" title="Meilleur dossier comptable">Dossier</span>' : ''}</div>
-      <div class="vp" title="${you(i) ? 'Tes points, cartes Médaille comprises' : 'Points visibles'}">${p.vp}<small>/10</small></div></div>`).join('');
+  function renderSaison() {
+    const v = view;
+    if (v.saison < 0) { $('#saison').innerHTML = '<p class="empty">La saison commence quand les brasseries sont installées.</p>'; return; }
+    const c = CARTE[v.carte];
+    const cal = Array.from({ length: NB_SAISONS }, (_, t) => {
+      const k = SAISONS[t % 4], an = Math.floor(t / 4), d = v.deck[k];
+      const id = t < v.saison || t === v.saison ? d.revelees[an] : null;
+      const cls = t === v.saison ? 'now' : t < v.saison ? 'past' : '';
+      const txt = id ? CARTE[id].nom : d.restantes.map((x) => CARTE[x].nom).join(' ou ');
+      return `<span class="cal ${cls}" title="${esc(nomSaison(t))} : ${esc(txt)}">${SAISON_NOM[k].slice(0, 1)}</span>`;
+    }).join('');
+    $('#saison').innerHTML = `<div class="season"><b>${nomSaison(v.saison)}</b><span class="cardname">${esc(c.nom)}</span>
+      <small>${meteoTexte(c.meteo)}. En demande : ${c.demande.map((s) => `<span class="dem">${SN[s]}</span>`).join(' et ')}${c.evt ? ` · <span class="evt" title="${esc(EVT[c.evt].txt)}">${EVT[c.evt].nom}</span>` : ''}.</small>
+      <div class="calrow" title="Les 12 saisons ; passe la souris pour voir les cartes possibles">${cal}</div>
+      <small>Saison suivante : ${v.saison + 1 < NB_SAISONS ? v.deck[SAISONS[(v.saison + 1) % 4]].restantes.map((x) => `${esc(CARTE[x].nom)} (${CARTE[x].demande.map((s) => SN[s]).join(', ')})`).join(' · ') : 'fin de la partie'}</small></div>`;
+  }
 
-    const roll = !opts.busy && legal('roll'), end = !opts.busy && legal('endTurn');
-    $('#turn').innerHTML = `<div class="dice">${dieHTML(v.dice[0], v.lastRoll === 7)}${dieHTML(v.dice[1], v.lastRoll === 7)}</div>
-      <button class="btn primary grow" data-act="roll" ${roll ? '' : 'disabled'}>Lancer les dés</button>
-      <button class="btn" data-act="end" ${end ? '' : 'disabled'}>Fin du tour</button>`;
-    if (!my) { $('#hand').innerHTML = ''; $('#build').innerHTML = ''; $('#devs').innerHTML = ''; $('#trade').innerHTML = ''; return; }
+  function renderPlayers() {
+    const v = view;
+    $('#players').innerHTML = P().map((p, i) => `<div class="pl ${v.cur === i && v.phase !== 'over' && !v.pending ? 'cur' : ''}">${sw(i)}
+      <div class="pn"><b>${esc(p.name)}${you(i) && p.name !== 'Toi' ? ' (toi)' : ''}</b><small>${p.argent} Argent · ${plural(unites(p), 'unité')} · ${p.ferms.length}/${p.nferm} ferm.${p.status ? ' · ' + esc(p.status) : ''}</small></div>
+      <div class="badges">${p.tournees.length ? `<span class="bdg" title="Tournées ouvertes">${p.tournees.length} tourn.</span>` : ''}</div>
+      <div class="vp" title="Réputation (diversité et Argent comptent au décompte final)">${p.rep}<small>rép.</small></div></div>`).join('');
+  }
 
-    $('#hand').innerHTML = RES.map((r) => `<div class="res ${my.res[r] ? '' : 'zero'}" style="--rc:${RCOL[r]};--rt:${RTXT[r]}"><b>${my.res[r]}</b><span>${RN[r]}</span></div>`).join('');
-    const can = (what) => !opts.busy && !mode && legal('build', (a) => a.what === what && !a.free);
-    const B = [['road', 'Tournée', `Route de livraison · ${my.roads} restantes`, COST.road], ['settle', 'Microbrasserie', `1 point · ${my.settles} restantes`, COST.settle],
-      ['city', 'Grande brasserie', 'Remplace une microbrasserie · 2 points', COST.city], ['dev', 'Carte Événement', `${v.deck} dans la pioche`, COST.dev]];
-    $('#build').innerHTML = B.map(([k, n, sub, c]) => `<div class="bname"><b>${n}</b><small>${sub}</small>${chips(c)}</div>
-      <button class="btn" data-act="${k}" ${(k === 'dev' ? !opts.busy && !mode && legal('buyDev') : can(k)) ? '' : 'disabled'}>${k === 'dev' ? 'Tirer' : 'Construire'}</button>`).join('');
+  function renderTurn() {
+    const v = view, p = my();
+    const end = free() && legal('endTurn');
+    const over = p && unites(p) > STOCK_MAX;
+    $('#turn').innerHTML = `<div class="turninfo">${v.phase === 'main' ? `<b>${nomSaison(v.saison)}</b><small>${v.ordre.map((i) => esc(P()[i].name)).join(' → ')}</small>` : ''}</div>
+      <button class="btn primary" data-act="end" ${end ? '' : 'disabled'} title="${over ? 'Stock trop plein' : ''}">Fin du tour</button>`;
+  }
 
-    $('#devs').innerHTML = my.dev.length ? my.dev.map((c, i) => {
-      const playable = c.t !== 'vp' && !opts.busy && !mode && c.turn < v.turn && legal('playDev', (a) => a.card === c.t);
-      return `<div class="dev"><b>${DEV[c.t].name}</b><small>${DEV[c.t].txt}${c.t !== 'vp' && c.turn >= v.turn ? ' Jouable au prochain tour.' : ''}</small>${c.t === 'vp' ? '' : `<button class="btn" data-act="play" data-card="${c.t}" ${playable ? '' : 'disabled'}>Jouer</button>`}</div>`;
-    }).join('') : '<p class="empty">Aucune carte. Tire-en une avec Levure, Malt et Houblon.</p>';
+  function renderBrasserie() {
+    const p = my();
+    if (!p) { $('#brasserie').innerHTML = ''; return; }
+    const slots = Array.from({ length: FERMENTEURS_MAX }, (_, i) => {
+      if (i >= p.nferm) return '<div class="ferm none" title="Fermenteur à acheter">—</div>';
+      const f = p.ferms[i];
+      if (!f) return '<div class="ferm empty">libre</div>';
+      return `<div class="ferm" style="--rc:${SCOL[f.st]};--rt:${STXT[f.st]}" title="${SN[f.st]} : ${f.u} unités, prête dans ${plural(f.left, 'saison')}"><b>${SN[f.st]}</b><span>${f.u} u · ${f.left} sais.</span></div>`;
+    }).join('');
+    const stock = STYLES.filter((st) => p.stock[st] > 0);
+    $('#brasserie').innerHTML = `<div class="hand">${RES.map((r) => `<div class="res ${p.res[r] ? '' : 'zero'}" style="--rc:${RCOL[r]};--rt:${RTXT[r]}"><b>${p.res[r]}</b><span>${r === 'torr' ? 'Torréfié' : RN[r]}</span></div>`).join('')}
+      <div class="res" style="--rc:${RCOL.argent};--rt:${RTXT.argent}"><b>${p.argent}</b><span>Argent</span></div></div>
+      <div class="sub2">Fermenteurs · cuve de ${cuveUnites(p)} unités</div><div class="ferms">${slots}</div>
+      <div class="sub2">Stock ${unites(p)}/${STOCK_MAX}${unites(p) > STOCK_MAX ? ' · trop plein' : ''}</div>
+      <div class="stock">${stock.length ? stock.map((st) => `<span class="stk" style="--rc:${SCOL[st]};--rt:${STXT[st]}"><b>${p.stock[st]}</b> ${SN[st]}</span>`).join('') : '<span class="empty">Rien en stock.</span>'}</div>
+      <div class="sub2">Équipement</div><div class="stock">${p.upg.length || p.nferm > 2 ? [...p.upg.map((u) => AMELIORATIONS[u].nom), ...(p.nferm > 2 ? [`${p.nferm} fermenteurs`] : [])].map((n) => `<span class="eq">${esc(n)}</span>`).join('') : '<span class="empty">Le strict nécessaire.</span>'}</div>
+      <div class="sub2">Styles brassés : ${p.styles.length}/7 (diversité ${pointsDiversite(p.styles.length)} pt${pointsDiversite(p.styles.length) > 1 ? 's' : ''})</div>`;
+  }
 
-    const r = rate(v, me(), ui.give), o = ui.offer;
-    const bankOk = !opts.busy && !mode && ui.give !== ui.get && legal('bankTrade', (a) => a.give === ui.give);
-    const okOffer = !opts.busy && !mode && legal('proposeTrade') && total(o.give) && total(o.get) && RES.every((x) => my.res[x] >= o.give[x]) && !RES.some((x) => o.give[x] && o.get[x]);
-    const stp = (k, x, n, max) => `<span class="stp"><button class="btn mini" data-act="${k}" data-r="${x}" data-d="-1" aria-label="Moins de ${RN[x]}" ${n ? '' : 'disabled'}>−</button><b>${n}</b><button class="btn mini" data-act="${k}" data-r="${x}" data-d="1" aria-label="Plus de ${RN[x]}" ${n < max ? '' : 'disabled'}>+</button></span>`;
-    $('#trade').innerHTML = `<div class="tsec"><h3>Avec le grossiste</h3><div class="trade"><label>Tu donnes<select id="give">${RES.map((x) => `<option value="${x}" ${x === ui.give ? 'selected' : ''}>${rate(v, me(), x)} ${RN[x]}</option>`).join('')}</select></label>
-      <label>Tu reçois<select id="get">${RES.map((x) => `<option value="${x}" ${x === ui.get ? 'selected' : ''}>1 ${RN[x]}</option>`).join('')}</select></label>
-      <button class="btn" data-act="bank" ${bankOk ? '' : 'disabled'}>Échanger ${r} ${RN[ui.give]} contre 1 ${RN[ui.get]}</button></div></div>
-      <div class="tsec"><h3>Avec les autres brasseries</h3>
-      <div class="offer"><span></span><span class="oh">Tu donnes</span><span class="oh">Tu demandes</span>
-      ${RES.map((x) => `<span class="rl">${chip(x)}${RN[x]}</span>${stp('og', x, o.give[x], my.res[x])}${stp('ow', x, o.get[x], 9)}`).join('')}</div>
+  function renderBrasser() {
+    const v = view, p = my();
+    if (!p) { $('#brasser').innerHTML = ''; return; }
+    const b = free() && legal('brasser'), tor = free() && legal('torrefier');
+    const plein = p.ferms.length >= p.nferm;
+    $('#brasser').innerHTML = STYLES.map((st) => {
+      const r = RECETTES[st], can = b && b.styles.includes(st);
+      const why = plein ? 'Fermenteurs pleins' : r.exige && !p.upg.includes(r.exige) ? AMELIORATIONS[r.exige].nom + ' requise' : '';
+      return `<div class="bname"><b>${schip(st)} ${SN[st]}${v.demande.includes(st) ? ' <span class="dem">en demande</span>' : ''}</b><small>${plural(r.ferm, 'saison')} · ${r.prix} Argent · ${r.rep} rép.${why && free() ? ' · ' + why : ''}</small>${chips(r)}</div>
+        <button class="btn" data-act="brasser" data-style="${st}" ${can ? '' : 'disabled'}>Brasser</button>`;
+    }).join('') + `<div class="bname"><b>Torréfier</b><small>Touraille : ${TOURAILLE_MALT} Malt → 1 Malt torréfié, une fois par saison</small></div><button class="btn" data-act="torrefier" ${tor ? '' : 'disabled'}>Torréfier</button>`;
+  }
+
+  function renderMarche() {
+    const v = view, p = my();
+    if (!p) { $('#marche').innerHTML = ''; return; }
+    const ach = free() && legal('acheter'), ven = free() && legal('vendre'), sal = free() && legal('salle');
+    $('#marche').innerHTML = `<div class="sub2">Acheter</div><div class="buyrow">${RES.map((r) => `<button class="btn buy" data-act="acheter" data-r="${r}" ${ach && ach.res.includes(r) ? '' : 'disabled'} title="${RN[r]} : ${ACHAT[r]} Argent">${chip(r)} ${ACHAT[r]}</button>`).join('')}</div>
+      <div class="sub2">Vendre · prix courant (base)</div>
+      <div class="sellgrid ${p.upg.includes('salle') ? 'with-salle' : ''}">${STYLES.map((st) => {
+        const cur = prixMarche(v, st), can = ven && ven.styles.includes(st), canS = sal && sal.styles.includes(st);
+        return `<span class="rl">${schip(st)} ${SN[st]}${v.demande.includes(st) ? ' <span class="dem">+2</span>' : ''}</span><span class="pr">${cur} <small>(${RECETTES[st].prix})</small></span>
+          <button class="btn" data-act="vendre" data-style="${st}" ${can ? '' : 'disabled'}>Vendre 1</button>${p.upg.includes('salle') ? `<button class="btn" data-act="salle" data-style="${st}" ${canS ? '' : 'disabled'} title="Salle de dégustation : prix de base +1, ${SALLE_UNITES} par saison">Salle ${RECETTES[st].prix + SALLE_BONUS}</button>` : ''}`;
+      }).join('')}</div>
+      <p class="hintsmall">Chaque unité vendue fait baisser le prix de 1 ; il remonte de 1 par saison. Un style en demande se vend ${DEMANDE_BONUS} de plus.</p>`;
+  }
+
+  function renderClients() {
+    const v = view, p = my();
+    if (!p) { $('#clients').innerHTML = ''; return; }
+    const liv = free() && legal('livrer'), tour = free() && legal('tournee', (a) => !a.free);
+    const rows = p.tournees.map((c) => {
+      const kind = clientKind(c), t = liv ? liv.targets.find((x) => x.client === c) : null;
+      const cap = v.capa[c] ?? 0, done = p.livr[c] ?? 0, lim = limiteLivraison(p);
+      let desc = kind === 'bar' ? 'Tous styles · prix +1' : kind === 'cave' ? 'Styles foncés · prix +3' : kind === 'village' ? `Aime ${v.prefs[+c.slice(7)].map((x) => SN[x]).join(' et ')} · sinon prix −1, 0 rép.` : `${SAISON_NOM[SAISONS[FOIRES[+c.slice(5)].saison]]} · prix +2, rép. +1`;
+      desc += ` · ${cap} à livrer · toi ${done}/${lim}`;
+      const btns = STYLES.filter((st) => p.stock[st] > 0).map((st) => {
+        const val = valeurLivraison(v, c, st), can = t && t.styles.includes(st);
+        return `<button class="btn mini2" data-act="livrer" data-client="${c}" data-style="${st}" ${can ? '' : 'disabled'} title="${val ? `${val.argent} Argent, ${val.rep} Réputation` : 'Pas ce style'}">${SN[st]}${val ? ` <small>${val.argent}€ ${val.rep}r</small>` : ''}</button>`;
+      }).join('');
+      return `<div class="client"><b>${esc(nomClient(v, c))}</b><small>${desc}</small><div class="mrow">${btns || '<span class="empty">Rien à livrer.</span>'}</div></div>`;
+    }).join('');
+    $('#clients').innerHTML = `${rows || '<p class="empty">Aucune tournée ouverte.</p>'}<button class="btn" data-act="tournee" ${tour ? '' : 'disabled'}>Ouvrir une tournée…</button>`;
+  }
+
+  function renderAmeliorer() {
+    const p = my();
+    if (!p) { $('#ameliorer').innerHTML = ''; return; }
+    const am = free() && legal('ameliorer');
+    $('#ameliorer').innerHTML = Object.entries(AMELIORATIONS).map(([u, d]) => {
+      const owned = u === 'ferm' ? p.nferm >= FERMENTEURS_MAX : p.upg.includes(u);
+      const can = am && am.targets.includes(u);
+      return `<div class="bname ${owned ? 'owned' : ''}"><b>${esc(d.nom)}${u === 'ferm' ? ` (${p.nferm}/${FERMENTEURS_MAX})` : ''}</b><small>${esc(d.txt)}${d.exige && !p.upg.includes(d.exige) ? ` Exige ${AMELIORATIONS[d.exige].nom}.` : ''}</small></div>
+        <button class="btn" data-act="ameliorer" data-u="${u}" ${can ? '' : 'disabled'}>${owned ? 'Acquis' : d.cout + ' €'}</button>`;
+    }).join('');
+  }
+
+  function renderTrade() {
+    const p = my();
+    if (!p) { $('#trade').innerHTML = ''; return; }
+    const o = ui.offer;
+    const okOffer = free() && legal('proposeTrade') && total(o.give) && total(o.get) && ITEMS.every((k) => avoir(p, k) >= o.give[k]) && !ITEMS.some((k) => o.give[k] && o.get[k]);
+    const stp = (k, key, n, max) => `<span class="stp"><button class="btn mini" data-act="${k}" data-r="${key}" data-d="-1" aria-label="Moins" ${n ? '' : 'disabled'}>−</button><b>${n}</b><button class="btn mini" data-act="${k}" data-r="${key}" data-d="1" aria-label="Plus" ${n < max ? '' : 'disabled'}>+</button></span>`;
+    const keys = ITEMS.filter((k) => avoir(p, k) > 0 || o.get[k] || o.give[k] || RES.includes(k) || k === 'argent');
+    $('#trade').innerHTML = `<div class="offer"><span></span><span class="oh">Tu donnes</span><span class="oh">Tu demandes</span>
+      ${keys.map((k) => `<span class="rl">${ichip(k)}${nomItem(k)}</span>${stp('og', k, o.give[k], avoir(p, k))}${stp('ow', k, o.get[k], 20)}`).join('')}</div>
       <button class="btn" data-act="propose" ${okOffer ? '' : 'disabled'}>Proposer l'échange</button>
-      <label class="chk"><input type="checkbox" id="offersOn" ${my.offersOn ? 'checked' : ''}>Recevoir les offres des autres brasseries</label></div>`;
+      <label class="chk"><input type="checkbox" id="offersOn" ${p.offersOn ? 'checked' : ''}>Recevoir les offres des autres brasseries</label>`;
   }
 
   function renderHint(mode) {
@@ -320,11 +400,11 @@ export function createUi({ send, onNewGame, onHome }) {
   }
 
   function renderLog() {
-    const lines = view.log.flatMap((e) => logLines(e, view)).reverse().slice(0, 40);
+    const lines = view.log.flatMap((e) => logLines(e, view)).reverse().slice(0, 50);
     $('#log').innerHTML = lines.map((l) => `<li><i style="background:${l.p === null || l.p === undefined ? 'var(--muted)' : PCOL[l.p]}"></i><span>${esc(l.txt)}</span></li>`).join('');
   }
 
-  // Une offre qui m'était adressée disparaît avant ma réponse : on le dit, au lieu de fermer la fenêtre sans un mot
+  // Une offre qui m'était adressée disparaît avant ma réponse : on le dit
   let offreVue = null;
   function suivreOffre() {
     const t = view.trade, waitingMe = t && mine() && t.to.includes(me()) && !t.resp[me()];
@@ -344,7 +424,7 @@ export function createUi({ send, onNewGame, onHome }) {
     const mode = boardMode();
     lastMode = mode;
     renderBoard(mode);
-    renderSide(mode);
+    renderSaison(); renderPlayers(); renderTurn(); renderBrasserie(); renderBrasser(); renderMarche(); renderClients(); renderAmeliorer(); renderTrade();
     renderHint(mode);
     renderLog();
     renderModal();
@@ -353,25 +433,22 @@ export function createUi({ send, onNewGame, onHome }) {
   /* ---------- événements ---------- */
 
   const ACTS = {
-    roll: () => act({ type: 'roll' }),
     end: () => act({ type: 'endTurn' }),
     cancel: () => { ui.mode = null; render(); },
-    road: () => chooseBuild('road'),
-    settle: () => chooseBuild('settle'),
-    city: () => chooseBuild('city'),
-    dev: () => act({ type: 'buyDev' }),
-    play: (b) => {
-      const card = b.dataset.card;
-      if (card === 'plenty' || card === 'mono') { ui.modal = card; return render(); }
-      return act({ type: 'playDev', card });
-    },
+    tournee: () => { ui.mode = 'tournee'; render(); },
+    brasser: (b) => act({ type: 'brasser', style: b.dataset.style }),
+    torrefier: () => act({ type: 'torrefier' }),
+    acheter: (b) => act({ type: 'acheter', r: b.dataset.r, n: 1 }),
+    vendre: (b) => act({ type: 'vendre', style: b.dataset.style, n: 1 }),
+    salle: (b) => act({ type: 'salle', style: b.dataset.style }),
+    livrer: (b) => act({ type: 'livrer', client: b.dataset.client, style: b.dataset.style }),
+    ameliorer: (b) => act({ type: 'ameliorer', u: b.dataset.u }),
     og: (b) => { const r = b.dataset.r; ui.offer.give[r] = Math.max(0, ui.offer.give[r] + +b.dataset.d); render(); },
     ow: (b) => { const r = b.dataset.r; ui.offer.get[r] = Math.max(0, ui.offer.get[r] + +b.dataset.d); render(); },
     propose: async () => {
       const r = await act({ type: 'proposeTrade', give: { ...ui.offer.give }, get: { ...ui.offer.get } });
-      if (r?.ok) ui.offer = { give: Z(), get: Z() };
+      if (r?.ok) ui.offer = { give: ZI(), get: ZI() };
     },
-    bank: () => act({ type: 'bankTrade', give: ui.give, get: ui.get }),
     new: () => onNewGame?.(),
     accueil: () => onHome?.(),
   };
@@ -380,8 +457,6 @@ export function createUi({ send, onNewGame, onHome }) {
     if (b && !b.disabled && ACTS[b.dataset.act]) ACTS[b.dataset.act](b);
   });
   document.addEventListener('change', (e) => {
-    if (e.target.id === 'give') { ui.give = e.target.value; render(); }
-    if (e.target.id === 'get') { ui.get = e.target.value; render(); }
     if (e.target.id === 'offersOn') act({ type: 'setOffers', on: e.target.checked });
   });
   function boardPick(e) {
@@ -389,8 +464,9 @@ export function createUi({ send, onNewGame, onHome }) {
     if (!mode) return;
     const t = e.target.closest('[data-id]');
     if (!t || t.dataset.k !== mode.kind) return;
-    const id = +t.dataset.id;
-    if (mode.targets.includes(id)) mode.pick(id);
+    const id = mode.kind === 'hex' ? +t.dataset.id : t.dataset.id;
+    const okId = mode.kind === 'hex' ? mode.targets.includes(id) : mode.targets.some((x) => x.client === id);
+    if (okId) mode.pick(id);
   }
   $('#board').addEventListener('click', boardPick);
   $('#board').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); boardPick(e); } });
@@ -398,6 +474,6 @@ export function createUi({ send, onNewGame, onHome }) {
 
   return {
     update(v, o = {}) { view = v; opts = o; render(); },
-    reset() { ui.mode = null; ui.modal = null; ui.offer = { give: Z(), get: Z() }; ui.counter = null; ui.modalKey = null; ui.winClosed = false; view = null; $('#modal').hidden = true; },
+    reset() { ui.mode = null; ui.offer = { give: ZI(), get: ZI() }; ui.counter = null; ui.modalKey = null; ui.winClosed = false; view = null; $('#modal').hidden = true; },
   };
 }

@@ -108,22 +108,22 @@ describe('serveur WebSocket', () => {
     assert.equal((await a.send({ t: 'demarrer' })).t, 'ok');
     await b.until((v) => v.statut === 'jeu');
     const v = b.vue.view;
-    assert.equal(v.players[0].res, null);
-    assert.ok(v.players[1].res);
+    assert.equal(v.me, 1);
     assert.equal(v.seed, undefined);
+    assert.equal(v.rng, undefined);
     const ctl = { stop: false };
     try {
       await Promise.race([Promise.all([botLoop(a, ctl), botLoop(b, ctl)]), watchdog(a, ctl)]);
       await a.until((x) => x.statut === 'fini', 5000);
     } finally { ctl.stop = true; }
     assert.equal(a.vue.view.phase, 'over');
-    assert.ok(a.vue.view.turn > 20, `partie trop courte (${a.vue.view.turn} tours)`);
-    assert.ok(a.actions > 20 && b.actions > 20, `les deux humains ont joué (${a.actions} et ${b.actions} actions)`);
-    assert.ok(a.vue.view.players.every((p) => p.res), 'tout est révélé à la fin');
+    assert.equal(a.vue.view.saison, 11, 'douze saisons jouées');
+    assert.ok(a.actions > 12 && b.actions > 12, `les deux humains ont joué (${a.actions} et ${b.actions} actions)`);
+    assert.ok(a.vue.view.scores, 'décompte final');
     assert.deepEqual(a.refus, []);
     const refus = [...a.refusVus, ...b.refusVus];
     assert.ok(refus.length <= 5, `trop de refus : ${refus.join(' | ')}`);
-    console.log(`  partie réseau : ${a.vue.view.turn} tours, ${a.actions} + ${b.actions} actions humaines, ${refus.length} refus sur vue périmée (${refus.join(' | ')}), gagnant ${a.vue.view.players[a.vue.view.winner].name}`);
+    console.log(`  partie réseau : ${a.vue.view.turn} tours de joueur, ${a.actions} + ${b.actions} actions humaines, ${refus.length} refus sur vue périmée (${refus.join(' | ')}), gagnant ${a.vue.view.players[a.vue.view.winner].name}`);
     a.close(); b.close();
   });
 
