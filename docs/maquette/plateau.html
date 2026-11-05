@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Brassins — maquette du plateau</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@500;600&display=swap">
+<style>
+  html, body { margin: 0; background: #2a1d15; }
+  svg { display: block; width: 100%; height: auto; }
+  text { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; }
+</style>
+</head>
+<body>
+<!-- Maquette « illustration moderne » : la table vue du dessus, avec le plateau imprimé, les cartes Client,
+     les ouvriers en bois, les dés et le plateau d'une brasserie. Tout est dessiné en SVG, sans image externe. -->
+<svg id="t" viewBox="0 0 1600 1060" xmlns="http://www.w3.org/2000/svg"></svg>
+<script>
+const W = 1600, H = 1060;
+const C = {
+  creme: '#f4e9d4', creme2: '#eadcc0', encre: '#2b1d14', encre2: '#6b5442', cuivre: '#d38b46', cuivre2: '#b56d2e',
+  orge: '#e8b84a', orge2: '#c9952b', ciel: '#bfe0e6', vert: '#6aa84f', vert2: '#4b8a3a', vert3: '#2f6b33',
+  brique: '#c8553d', bleu: '#3d7fa6', violet: '#7a3e6a', sarcelle: '#2f8f87', pierre: '#a89580',
+  blonde: '#f2c14e', ipa: '#e08a2e', stout: '#3a241a', garde: '#9a4b2a',
+  j: ['#d9473a', '#4b87d6', '#e6ad2e', '#ece4d4'],
+};
+let s = '';
+const add = (x) => { s += x; };
+const g = (tr, inner) => `<g transform="${tr}">${inner}</g>`;
+const txt = (x, y, t, o = {}) => `<text x="${x}" y="${y}" font-size="${o.size ?? 16}" font-weight="${o.w ?? 600}" fill="${o.fill ?? C.encre}" text-anchor="${o.anchor ?? 'start'}" ${o.font ? `font-family='${o.font}'` : ''} letter-spacing="${o.ls ?? 0}">${t}</text>`;
+
+/* ---------- définitions : ombres, motifs, pièces ---------- */
+add(`<defs>
+  <filter id="ombre" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#000" flood-opacity=".45"/></filter>
+  <filter id="ombre2" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#000" flood-opacity=".5"/></filter>
+  <linearGradient id="bois" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#5a3a24"/><stop offset=".5" stop-color="#6b4429"/><stop offset="1" stop-color="#553621"/>
+  </linearGradient>
+  <pattern id="lattes" width="1600" height="132" patternUnits="userSpaceOnUse">
+    <rect width="1600" height="132" fill="url(#bois)"/>
+    <path d="M0 131.5H1600" stroke="#3b2516" stroke-width="3"/>
+    <path d="M0 40 C 300 30, 600 52, 900 38 S 1400 30, 1600 44" stroke="#4a2e1b" stroke-width="2" fill="none" opacity=".5"/>
+    <path d="M0 90 C 250 98, 700 80, 1000 92 S 1400 100, 1600 86" stroke="#7a4f30" stroke-width="2" fill="none" opacity=".35"/>
+  </pattern>
+  <pattern id="papier" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="${C.creme}"/><circle cx="2" cy="3" r=".6" fill="#e2d3b4"/><circle cx="6" cy="6" r=".5" fill="#e6d8bb"/></pattern>
+  <!-- ouvrier en bois : un petit brasseur -->
+  <symbol id="ouvrier" viewBox="-20 -34 40 44">
+    <path d="M-15 9 C -15 -6, -9 -12, -6 -13 L 6 -13 C 9 -12, 15 -6, 15 9 Z"/>
+    <circle cx="0" cy="-21" r="9"/>
+    <path d="M-11 -27 H11 L8 -33 H-8 Z" opacity=".9"/>
+  </symbol>
+</defs>`);
+
+/* ---------- la table ---------- */
+add(`<rect width="${W}" height="${H}" fill="url(#lattes)"/>`);
+
+/* ---------- le plateau ---------- */
+const BX = 40, BY = 30, BW = 1140, BH = 760;
+add(`<g filter="url(#ombre)"><rect x="${BX}" y="${BY}" width="${BW}" height="${BH}" rx="22" fill="url(#papier)"/></g>`);
+add(`<rect x="${BX + 10}" y="${BY + 10}" width="${BW - 20}" height="${BH - 20}" rx="16" fill="none" stroke="${C.encre}" stroke-width="2" opacity=".25"/>`);
+
+// titre
+add(txt(BX + 34, BY + 66, 'Brassins', { font: '"Alfa Slab One", serif', size: 44, w: 400, fill: C.cuivre2 }));
+add(txt(BX + 38, BY + 92, 'TROIS ANS POUR BÂTIR TA RÉPUTATION', { size: 14, w: 700, fill: C.encre2, ls: 2 }));
+// cône de houblon décoratif
+const cone = (x, y, sc, col = C.vert) => g(`translate(${x},${y}) scale(${sc})`, `<path d="M0 -20 C 10 -14, 12 -2, 0 22 C -12 -2, -10 -14, 0 -20 Z" fill="${col}"/><path d="M-8 -8 Q 0 -2 8 -8 M-9 2 Q 0 8 9 2 M-6 11 Q 0 16 6 11" stroke="${C.vert3}" stroke-width="1.6" fill="none"/><path d="M0 -20 Q 6 -30 14 -28" stroke="${C.vert3}" stroke-width="2" fill="none"/>`);
+add(cone(BX + 286, BY + 52, 1.1));
+
+/* calendrier des 12 saisons */
+const SAISONS = [['P', '#9fd07f'], ['É', '#f2c14e'], ['A', '#d98a3a'], ['H', '#9cc4dd']];
+const icone = (k, x, y) => ({
+  0: `<g transform="translate(${x},${y})">${[0, 72, 144, 216, 288].map((a) => `<ellipse rx="3.4" ry="6" transform="rotate(${a}) translate(0,-6)" fill="#fff" opacity=".95"/>`).join('')}<circle r="3" fill="${C.orge}"/></g>`,
+  1: `<g transform="translate(${x},${y})"><circle r="6" fill="#fff"/>${[0, 45, 90, 135, 180, 225, 270, 315].map((a) => `<rect x="-1.2" y="-12" width="2.4" height="4" fill="#fff" transform="rotate(${a})"/>`).join('')}</g>`,
+  2: `<g transform="translate(${x},${y}) rotate(-30)"><path d="M0 -10 C 8 -6, 8 6, 0 10 C -8 6, -8 -6, 0 -10 Z" fill="#fff"/><path d="M0 -9 V 12" stroke="${C.encre2}" stroke-width="1.2"/></g>`,
+  3: `<g transform="translate(${x},${y})" stroke="#fff" stroke-width="2.2" stroke-linecap="round">${[0, 60, 120].map((a) => `<path d="M0 -10 V10" transform="rotate(${a})"/>`).join('')}</g>`,
+}[k]);
+const calX = BX + 430, calY = BY + 30;
+add(txt(calX, calY + 8, 'CALENDRIER', { size: 13, w: 700, fill: C.encre2, ls: 2 }));
+for (let t = 0; t < 12; t++) {
+  const an = Math.floor(t / 4), k = t % 4, x = calX + t * 54 + an * 14, y = calY + 40;
+  add(`<circle cx="${x + 20}" cy="${y}" r="20" fill="${SAISONS[k][1]}" stroke="${C.encre}" stroke-width="1.5" opacity="${t < 5 ? .55 : 1}"/>`);
+  add(icone(k, x + 20, y));
+  if (k === 0) add(txt(x + 2, y + 40, `AN ${an + 1}`, { size: 12, w: 700, fill: C.encre2, ls: 1 }));
+}
+// marqueur de saison (anneau cuivre) sur Été an 2
+const mx = calX + 5 * 54 + 14 + 20, my = calY + 40;
+add(`<circle cx="${mx}" cy="${my}" r="25" fill="none" stroke="${C.cuivre}" stroke-width="5" filter="url(#ombre2)"/>`);
+
+/* ---------- les 8 cases d'action ---------- */
+const TW = 258, TH = 232, TX = BX + 34, TY = BY + 128, GAP = 14;
+function tuile(col, row, titre, coul, art, sous, places, ouvriers = []) {
+  const x = TX + col * (TW + GAP), y = TY + row * (TH + GAP);
+  let h = `<g transform="translate(${x},${y})">`;
+  h += `<rect width="${TW}" height="${TH}" rx="14" fill="${C.creme2}" stroke="${C.encre}" stroke-width="2"/>`;
+  h += `<clipPath id="c${col}${row}"><rect width="${TW}" height="128" rx="14"/></clipPath>`;
+  h += `<g clip-path="url(#c${col}${row})"><rect width="${TW}" height="128" fill="${coul}"/>${art}</g>`;
+  h += `<path d="M0 128 H${TW}" stroke="${C.encre}" stroke-width="2"/>`;
+  h += txt(14, 154, titre.toUpperCase(), { size: 19, w: 700, ls: 1 });
+  h += txt(14, 175, sous, { size: 14, w: 500, fill: C.encre2 });
+  // emplacements d'ouvriers
+  places.forEach((p, k) => {
+    const cx = 30 + k * 52, cy = 206;
+    h += `<circle cx="${cx}" cy="${cy}" r="19" fill="${C.creme}" stroke="${C.encre}" stroke-width="1.8" stroke-dasharray="${p === 'multi' ? '4 3' : '0'}"/>`;
+    if (p === '-1') h += txt(cx, cy + 5, '−1', { size: 13, w: 700, anchor: 'middle', fill: C.encre2 });
+  });
+  ouvriers.forEach(([k, j]) => {
+    h += `<g filter="url(#ombre2)"><use href="#ouvrier" x="${30 + k * 52 - 17}" y="${206 - 24}" width="34" height="38" fill="${C.j[j]}" stroke="${C.encre}" stroke-width="1.5"/></g>`;
+  });
+  return h + '</g>';
+}
+// rendements par saison (petites pastilles)
+const rend = (vals) => vals.map((v, k) => `<g transform="translate(${150 + k * 26},196)"><circle r="11" fill="${SAISONS[k][1]}" stroke="${C.encre}" stroke-width="1.2"/><text y="4.5" text-anchor="middle" font-size="13" font-weight="700" fill="${C.encre}">${v}</text></g>`).join('');
+
+// illustrations
+const champ = `<rect y="70" width="${TW}" height="60" fill="${C.orge2}"/><path d="M0 76 Q 70 52 140 70 T ${TW} 64 V128 H0 Z" fill="${C.orge}"/>
+  <circle cx="210" cy="34" r="18" fill="#fff3c4"/>
+  ${Array.from({ length: 11 }, (_, i) => { const x = 14 + i * 22, y = 88 + (i % 2) * 6; return `<g transform="translate(${x},${y})"><path d="M0 40 V0" stroke="${C.orge2}" stroke-width="2.4"/>${[0, 8, 16].map((d) => `<ellipse cx="-3.5" cy="${d}" rx="3" ry="5.5" fill="#f7d77a" transform="rotate(-25 -3.5 ${d})"/><ellipse cx="3.5" cy="${d}" rx="3" ry="5.5" fill="#f7d77a" transform="rotate(25 3.5 ${d})"/>`).join('')}</g>`; }).join('')}`;
+const houblon = `<rect y="96" width="${TW}" height="40" fill="${C.vert2}"/>
+  ${[30, 100, 170, 240].map((x) => `<path d="M${x} 128 V8" stroke="#8a6a48" stroke-width="5"/>`).join('')}<path d="M0 12 H${TW}" stroke="#8a6a48" stroke-width="2.5"/>
+  ${[30, 100, 170, 240].map((x) => `<path d="M${x} 120 C ${x + 16} 100, ${x - 16} 80, ${x} 60 S ${x + 14} 30, ${x} 14" stroke="${C.vert3}" stroke-width="3" fill="none"/>${[30, 55, 80, 104].map((y, k) => cone(x + (k % 2 ? 9 : -9), y, .55)).join('')}`).join('')}`;
+const marcheMat = `<rect width="${TW}" height="128" fill="#f6d9b1"/>
+  <path d="M10 46 L ${TW / 2} 8 L ${TW - 10} 46 Z" fill="${C.brique}"/>${Array.from({ length: 8 }, (_, i) => `<path d="M${10 + i * 30} 46 q 15 14 30 0" fill="${i % 2 ? '#fff' : C.brique}" stroke="${C.encre}" stroke-width="1"/>`).join('')}
+  <rect x="24" y="54" width="8" height="74" fill="${C.encre2}"/><rect x="${TW - 32}" y="54" width="8" height="74" fill="${C.encre2}"/>
+  ${[[56, C.orge], [100, '#e9c76b'], [144, C.vert], [188, '#7cbf5c']].map(([x, c]) => `<path d="M${x} 126 C ${x - 4} 96, ${x + 4} 84, ${x + 16} 82 C ${x + 28} 84, ${x + 36} 96, ${x + 32} 126 Z" fill="#d6b88a" stroke="${C.encre2}" stroke-width="1.5"/><ellipse cx="${x + 16}" cy="86" rx="13" ry="5" fill="${c}"/>`).join('')}`;
+const tournee = `<rect width="${TW}" height="128" fill="${C.ciel}"/><path d="M0 84 Q 80 70 160 82 T ${TW} 78 V128 H0Z" fill="#9cc77e"/>
+  <path d="M-10 128 C 60 104, 140 116, 270 96" stroke="#8b7a68" stroke-width="22" fill="none"/><path d="M-10 128 C 60 104, 140 116, 270 96" stroke="#fff" stroke-width="2" stroke-dasharray="10 9" fill="none"/>
+  <g transform="translate(116,70)"><rect x="0" y="0" width="74" height="34" rx="5" fill="${C.cuivre}" stroke="${C.encre}" stroke-width="2"/><path d="M74 10 H96 L108 24 V34 H74 Z" fill="#f6eadb" stroke="${C.encre}" stroke-width="2"/><rect x="80" y="14" width="14" height="10" fill="${C.ciel}"/>
+  ${[18, 92].map((cx) => `<circle cx="${cx}" cy="36" r="9" fill="${C.encre}"/><circle cx="${cx}" cy="36" r="3.5" fill="#ccc"/>`).join('')}${[8, 30, 52].map((x) => `<rect x="${x}" y="-14" width="16" height="16" rx="3" fill="#a0612f" stroke="${C.encre}" stroke-width="1.2"/>`).join('')}</g>`;
+const keg = (x, y, sc, col = '#b8b8b0') => g(`translate(${x},${y}) scale(${sc})`, `<rect x="-14" y="-18" width="28" height="36" rx="6" fill="${col}" stroke="${C.encre}" stroke-width="1.6"/><path d="M-14 -8 H14 M-14 8 H14" stroke="${C.encre}" stroke-width="1.4"/><rect x="-4" y="-22" width="8" height="5" fill="${C.encre2}"/>`);
+const marcheBieres = `<rect width="${TW}" height="128" fill="#f3d38f"/>
+  <path d="M0 0 H${TW} V30 H0 Z" fill="${C.bleu}"/>${Array.from({ length: 9 }, (_, i) => `<path d="M${i * 30} 30 q 15 14 30 0" fill="${i % 2 ? '#fff' : C.bleu}"/>`).join('')}
+  <rect x="150" y="48" width="92" height="56" rx="4" fill="${C.encre}"/>${['Blonde 5 €', 'Stout 7 €', 'Garde 6 €'].map((t, k) => `<text x="162" y="${66 + k * 15}" font-size="12" fill="#f6eadb" font-weight="600">${t}</text>`).join('')}
+  ${keg(40, 104, 1.05)}${keg(78, 104, 1.05, '#c9a26a')}${keg(59, 72, 1.05)}
+  <rect x="0" y="122" width="${TW}" height="8" fill="#a0612f"/>`;
+const chantier = `<rect width="${TW}" height="128" fill="#cfe3ea"/>
+  <rect x="40" y="58" width="110" height="70" fill="#e6c9a0" stroke="${C.encre}" stroke-width="2"/>${[0, 1, 2].map((r) => [0, 1, 2, 3].map((c) => `<rect x="${44 + c * 27}" y="${62 + r * 22}" width="24" height="18" fill="none" stroke="${C.brique}" stroke-width="1.5"/>`).join('')).join('')}
+  <path d="M196 128 V20 M196 22 H96 M196 22 L212 38" stroke="${C.cuivre2}" stroke-width="6" fill="none"/><path d="M110 22 V52" stroke="${C.encre}" stroke-width="2"/><rect x="98" y="52" width="26" height="16" fill="${C.orge}" stroke="${C.encre}" stroke-width="1.5"/>
+  <g transform="translate(222,96) rotate(30)"><rect x="-3" y="-20" width="6" height="34" fill="#8a6a48"/><rect x="-12" y="-28" width="24" height="10" rx="2" fill="#777"/></g>`;
+
+add(tuile(0, 0, "Champ d'orge", '#bfe0e6', champ, 'Malt', ['1', '-1'], [[0, 1]]));
+add(tuile(1, 0, "Champ d'orge", '#bfe0e6', champ, 'Malt', ['1', '-1']));
+add(tuile(2, 0, 'Houblonnière', '#cfe8c0', houblon, 'Houblon', ['1', '-1'], [[0, 0], [1, 2]]));
+add(tuile(3, 0, 'Houblonnière', '#cfe8c0', houblon, 'Houblon', ['1', '-1']));
+add(tuile(0, 1, 'Marché aux matières', '', marcheMat, '3 matières max · 2 € chacune', ['1'], [[0, 3]]));
+add(tuile(1, 1, 'Tournée', '', tournee, 'Livrer un client de la file', ['multi', 'multi', 'multi'], [[0, 1]]));
+add(tuile(2, 1, 'Marché aux bières', '', marcheBieres, 'Vendre au prix de la piste', ['multi', 'multi', 'multi']));
+add(tuile(3, 1, 'Chantier', '', chantier, 'Acheter un équipement', ['multi', 'multi', 'multi'], [[0, 0]]));
+// rendements sur les tuiles de récolte
+[[0, [3, 4, 4, '–']], [1, [3, 4, 4, '–']], [2, [2, 2, 4, '–']], [3, [2, 2, 4, '–']]].forEach(([col, v]) => add(g(`translate(${TX + col * (TW + GAP)},${TY})`, rend(v))));
+
+/* ---------- pistes de prix ---------- */
+const PX = BX + 34, PY = TY + 2 * (TH + GAP) + 6;
+add(txt(PX, PY + 4, 'PRIX AU MARCHÉ', { size: 13, w: 700, fill: C.encre2, ls: 2 }));
+const STY = [['Blonde', C.blonde, 3, 3], ['IPA', C.ipa, 5, 4], ['Stout', C.stout, 6, 6], ['Garde', C.garde, 7, 5]];
+STY.forEach(([nom, col, base, cur], r) => {
+  const y = PY + 16 + (r % 2) * 40, x0 = PX + Math.floor(r / 2) * 548;
+  add(`<rect x="${x0}" y="${y}" width="96" height="30" rx="15" fill="${col}" stroke="${C.encre}" stroke-width="1.5"/>`);
+  add(txt(x0 + 48, y + 21, nom.toUpperCase(), { size: 15, w: 700, anchor: 'middle', fill: r === 2 ? '#f6eadb' : C.encre, ls: 1 }));
+  for (let n = 1; n <= 7; n++) {
+    const cx = x0 + 120 + (n - 1) * 56;
+    add(`<rect x="${cx}" y="${y}" width="48" height="30" rx="7" fill="${n === base ? '#f9edd2' : C.creme2}" stroke="${C.encre}" stroke-width="${n === base ? 2.4 : 1.2}"/>`);
+    add(txt(cx + 24, y + 21, `${n} €`, { size: 15, w: 700, anchor: 'middle', fill: C.encre2 }));
+    if (n === cur) add(`<g filter="url(#ombre2)"><circle cx="${cx + 24}" cy="${y + 15}" r="13" fill="${col}" stroke="${C.encre}" stroke-width="2"/>${Array.from({ length: 12 }, (_, k) => `<circle cx="${cx + 24 + 13 * Math.cos(k * Math.PI / 6)}" cy="${y + 15 + 13 * Math.sin(k * Math.PI / 6)}" r="2.2" fill="${col}" stroke="${C.encre}" stroke-width="1"/>`).join('')}</g>`);
+  }
+});
+
+/* ---------- dés, posés sur la table ---------- */
+const POS = { 1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]], 4: [[-1, -1], [1, -1], [-1, 1], [1, 1]], 5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]], 6: [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]] };
+const de = (x, y, n, rot, fond, point) => `<g transform="translate(${x},${y}) rotate(${rot})" filter="url(#ombre2)"><rect x="-26" y="-26" width="52" height="52" rx="10" fill="${fond}" stroke="${C.encre}" stroke-width="1.5"/>${POS[n].map(([a, b]) => `<circle cx="${a * 13}" cy="${b * 13}" r="5" fill="${point}"/>`).join('')}</g>`;
+add(de(1240, 90, 6, -12, '#f6eadb', C.encre));
+add(de(1310, 104, 4, 9, C.brique, '#f6eadb'));
+add(de(1378, 86, 3, -4, C.bleu, '#f6eadb'));
+add(txt(1232, 158, 'Météo · Événement · Brassage', { size: 14, w: 600, fill: '#f0e2c8' }));
+
+/* ---------- la file des clients (cartes) ---------- */
+const KIND = { bar: ['BAR', C.orge2, 'verre'], cave: ['CAVE', C.violet, 'bouteille'], fest: ['FESTIVAL', C.sarcelle, 'tente'] };
+const pict = (k) => ({
+  verre: `<path d="M-14 -20 H14 L10 22 H-10 Z" fill="#f7d77a" stroke="${C.encre}" stroke-width="2"/><path d="M-15 -20 Q -8 -30 0 -22 Q 8 -32 15 -20 Z" fill="#fff" stroke="${C.encre}" stroke-width="1.5"/><path d="M14 -10 h6 a6 6 0 0 1 0 14 h-8" fill="none" stroke="${C.encre}" stroke-width="2.5"/>`,
+  bouteille: `<path d="M-5 -30 H5 V-16 C 12 -12, 12 -6, 12 0 V24 H-12 V0 C -12 -6, -12 -12, -5 -16 Z" fill="#5a2a3a" stroke="${C.encre}" stroke-width="2"/><rect x="-9" y="2" width="18" height="12" fill="#f4e9d4"/>`,
+  tente: `<path d="M0 -26 L 26 22 H-26 Z" fill="#f4e9d4" stroke="${C.encre}" stroke-width="2"/><path d="M0 -26 L 10 22 H-10 Z" fill="${C.brique}"/><path d="M0 -26 V-36 L 12 -32 L 0 -28" fill="${C.cuivre}" stroke="${C.encre}" stroke-width="1.2"/>`,
+}[k]);
+function carte(x, y, rot, kind, nom, n, style, prix, rep) {
+  const [lab, col, pic] = KIND[kind], st = STY.find((t) => t[0] === style);
+  return `<g transform="translate(${x},${y}) rotate(${rot})" filter="url(#ombre2)">
+    <rect width="150" height="210" rx="12" fill="${C.creme}" stroke="${C.encre}" stroke-width="2"/>
+    <path d="M0 12 a12 12 0 0 1 12 -12 h126 a12 12 0 0 1 12 12 v18 h-150 z" fill="${col}"/>
+    ${txt(14, 22, lab, { size: 13, w: 700, fill: '#fff', ls: 2 })}
+    <rect x="10" y="38" width="130" height="78" rx="8" fill="${kind === 'cave' ? '#ead8de' : kind === 'fest' ? '#d4ece8' : '#f6e3b8'}"/>${g('translate(75,80)', pict(pic))}
+    ${txt(75, 140, nom, { size: 18, w: 700, anchor: 'middle' })}
+    <g transform="translate(75,160)">${Array.from({ length: n }, (_, k) => `<circle cx="${(k - (n - 1) / 2) * 24}" cy="0" r="10" fill="${st ? st[1] : C.pierre}" stroke="${C.encre}" stroke-width="1.5"/>`).join('')}</g>
+    ${txt(75, 182, st ? style : 'Tous styles', { size: 13, w: 600, anchor: 'middle', fill: C.encre2 })}
+    <g transform="translate(36,198)"><circle r="11" fill="${C.cuivre}" stroke="${C.encre}" stroke-width="1.5"/><text y="4.5" text-anchor="middle" font-size="12" font-weight="700">${prix}</text></g>
+    <g transform="translate(114,198)"><path d="M0 -12 L3.5 -4 L12 -3.5 L5.5 2 L7.5 10.5 L0 6 L-7.5 10.5 L-5.5 2 L-12 -3.5 L-3.5 -4 Z" fill="${C.orge}" stroke="${C.encre}" stroke-width="1.3"/><text y="4" text-anchor="middle" font-size="11" font-weight="700">${rep}</text></g>
+  </g>`;
+}
+add(txt(1212, 376, 'LA FILE DES CLIENTS', { size: 14, w: 700, fill: '#f0e2c8', ls: 2 }));
+add(carte(1210, 392, -2, 'bar', 'Le Rock Bar', 1, 'IPA', 6, 2));
+add(carte(1384, 396, 2, 'fest', 'Foire de Pâques', 2, 'Blonde', 8, 4));
+add(carte(1210, 618, 1.5, 'cave', 'Le Caviste', 1, 'Garde', 10, 4));
+add(carte(1384, 622, -1.5, 'bar', 'La Terrasse', 1, null, 'B', 1));
+add(carte(1210, 842, 2, 'fest', 'Bal du 14 juillet', 2, 'IPA', 12, 2));
+// pioche
+add(`<g transform="translate(1400,866)">${[0, 1, 2].map((k) => `<rect x="${k * 3}" y="${-k * 3}" width="100" height="140" rx="10" fill="${C.cuivre2}" stroke="${C.encre}" stroke-width="2" filter="url(#ombre2)"/>`).join('')}${g('translate(56,64)', cone(0, 0, 1.4, '#f4e9d4'))}${txt(56, 118, '35', { size: 20, w: 700, anchor: 'middle', fill: '#f4e9d4' })}</g>`);
+
+/* ---------- plateau de ta brasserie (carton devant toi) ---------- */
+const MX = 40, MY = 812, MW = 1140, MH = 220;
+add(`<g filter="url(#ombre)"><rect x="${MX}" y="${MY}" width="${MW}" height="${MH}" rx="18" fill="#f1e2c4"/></g>`);
+add(`<rect x="${MX}" y="${MY}" width="${MW}" height="44" rx="18" fill="${C.j[0]}"/><rect x="${MX}" y="${MY + 26}" width="${MW}" height="18" fill="${C.j[0]}"/>`);
+add(txt(MX + 24, MY + 31, 'TA BRASSERIE', { size: 20, w: 700, fill: '#fff', ls: 2 }));
+add(txt(MX + MW - 24, MY + 31, '12 RÉPUTATION', { size: 20, w: 700, fill: '#fff', ls: 2, anchor: 'end' }));
+// fermenteurs (cuves)
+const cuve = (x, y, niveau, col, label) => `<g transform="translate(${x},${y})">
+  <rect x="0" y="0" width="74" height="118" rx="30" fill="#d9dde0" stroke="${C.encre}" stroke-width="2"/>
+  ${niveau ? `<clipPath id="cv${x}"><rect x="0" y="0" width="74" height="118" rx="30"/></clipPath><rect x="0" y="${118 - niveau}" width="74" height="${niveau}" fill="${col}" clip-path="url(#cv${x})"/>` : ''}
+  <rect x="10" y="10" width="10" height="90" rx="5" fill="#fff" opacity=".55"/>
+  <rect x="-4" y="112" width="82" height="10" rx="4" fill="${C.encre2}"/>
+  ${label ? `<text x="37" y="62" text-anchor="middle" font-size="13" font-weight="700" fill="${col === C.stout ? '#f6eadb' : C.encre}">${label}</text>` : `<text x="37" y="62" text-anchor="middle" font-size="13" font-weight="600" fill="${C.encre2}">libre</text>`}</g>`;
+add(cuve(MX + 30, MY + 64, 70, C.ipa, 'IPA · 1'));
+add(cuve(MX + 124, MY + 64, 92, C.stout, 'STOUT · 2'));
+add(cuve(MX + 218, MY + 64, 0));
+add(`<g transform="translate(${MX + 312},${MY + 64})"><rect width="74" height="118" rx="30" fill="none" stroke="${C.encre2}" stroke-width="2" stroke-dasharray="6 5"/><text x="37" y="64" text-anchor="middle" font-size="12" font-weight="600" fill="${C.encre2}">à acheter</text></g>`);
+add(txt(MX + 30, MY + 204, 'FERMENTEURS · le chiffre = saisons restantes', { size: 12, w: 600, fill: C.encre2, ls: 1 }));
+// étagère de stock
+const SX = MX + 430;
+add(txt(SX, MY + 66, 'CAVE (6 MAX)', { size: 13, w: 700, fill: C.encre2, ls: 2 }));
+add(`<rect x="${SX}" y="${MY + 150}" width="300" height="10" rx="3" fill="#a0612f"/>`);
+[[C.blonde, 0], [C.blonde, 1], [C.ipa, 2], [C.garde, 3]].forEach(([col, k]) => add(`<g filter="url(#ombre2)">${keg(SX + 30 + k * 46, MY + 128, 1.15, col)}</g>`));
+// réserve de matières et argent
+const RX = MX + 780;
+add(txt(RX, MY + 66, 'RÉSERVE', { size: 13, w: 700, fill: C.encre2, ls: 2 }));
+const sac = (x, y, col, n, nom) => `<g transform="translate(${x},${y})" filter="url(#ombre2)"><path d="M-22 30 C -28 6, -18 -14, -8 -18 L 8 -18 C 18 -14, 28 6, 22 30 Z" fill="#e2c493" stroke="${C.encre}" stroke-width="1.8"/><ellipse cx="0" cy="-16" rx="12" ry="5" fill="${col}"/><path d="M-10 -10 h20" stroke="${C.encre2}" stroke-width="2"/></g>${txt(x, y + 58, `${n} ${nom}`, { size: 15, w: 700, anchor: 'middle' })}`;
+add(sac(RX + 34, MY + 110, C.orge, 4, 'Malt'));
+add(`<g filter="url(#ombre2)">${cone(RX + 124, MY + 112, 1.5)}</g>` + txt(RX + 124, MY + 168, '2 Houblon', { size: 15, w: 700, anchor: 'middle' }));
+add(`<g filter="url(#ombre2)">${[0, 1, 2].map((k) => `<ellipse cx="${RX + 224}" cy="${MY + 124 - k * 9}" rx="22" ry="9" fill="${C.cuivre}" stroke="${C.encre}" stroke-width="1.6"/>`).join('')}</g>` + txt(RX + 224, MY + 168, '9 Argent', { size: 15, w: 700, anchor: 'middle' }));
+// ouvriers restants
+add(`<g filter="url(#ombre2)"><use href="#ouvrier" x="${RX + 290}" y="${MY + 80}" width="40" height="46" fill="${C.j[0]}" stroke="${C.encre}" stroke-width="1.5"/></g>`);
+add(txt(RX + 310, MY + 168, '1 ouvrier', { size: 15, w: 700, anchor: 'middle' }));
+
+/* ---------- les autres brasseries, en petit, sur la table ---------- */
+add(txt(1212, 196, 'LES AUTRES BRASSERIES', { size: 14, w: 700, fill: '#f0e2c8', ls: 2 }));
+add(`<g transform="translate(1206,210)">${[['Brasserie du Moulin', 1, 9], ['La Mousse Noire', 2, 11], ['Les Fûts Joyeux', 3, 7]].map(([nom, j, rep], k) => `<g transform="translate(0,${k * 52})" filter="url(#ombre2)"><rect width="250" height="44" rx="10" fill="#f1e2c4"/><rect width="12" height="44" rx="4" fill="${C.j[j]}"/><text x="24" y="28" font-size="16" font-weight="700" fill="${C.encre}">${nom}</text><text x="236" y="29" font-size="17" font-weight="700" fill="${C.cuivre2}" text-anchor="end">${rep}</text></g>`).join('')}</g>`);
+
+document.getElementById('t').innerHTML = s;
+</script>
+</body>
+</html>
