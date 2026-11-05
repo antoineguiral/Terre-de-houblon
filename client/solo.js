@@ -2,18 +2,12 @@
 // Place 0 = le joueur, les autres = l'IA. La partie est gardée dans le navigateur entre deux visites.
 
 import { VERSION, createGame, applyAction, viewFor, aiStep, waitingFor } from '../moteur/index.js';
+import { rythme, pauseApres, surRythme } from './rythme.js';
 
 const KEY = 'brassins-solo';
 const AI_NAMES = ['Brasserie du Moulin', 'La Mousse Noire', 'Les Fûts Joyeux'];
 const isAi = (i) => i !== 0;
 
-// Rythme des IA (ms avant l'action suivante)
-function delayAfter(action, state) {
-  if (action.type === 'respondTrade') return 250;
-  if (action.type === 'endTurn') return 650;
-  if (action.type === 'poser') return 700;
-  return 420;
-}
 
 const randomSeed = () => Array.from(crypto.getRandomValues(new Uint32Array(2)), (n) => n.toString(36)).join('');
 
@@ -35,23 +29,36 @@ export function startSolo(ui) {
   });
   let state = load() ?? fresh();
   let timer = null;
+  let attente = false; // pas à pas : l'ordinateur attend un clic
 
-  const show = () => { ui.update(viewFor(state, 0), { busy: timer !== null, rejouer: true }); save(state); };
+  const show = () => { ui.update(viewFor(state, 0), { busy: timer !== null || attente, rejouer: true, pasApas: attente }); save(state); };
 
+  // Une action de l'ordinateur, puis une pause à la mesure de ce qu'il vient de faire (rythme choisi par le joueur)
   function tick() {
-    timer = null;
+    timer = null; attente = false;
+    const avant = state.saison;
     const r = aiStep(state, isAi);
     if (r) {
       state = r.state;
-      if (state.phase !== 'over') timer = setTimeout(tick, delayAfter(r.action, state));
+      if (state.phase !== 'over') planifier(pauseApres(r.action, state.saison !== avant));
     }
     show();
   }
-  function kick(ms = 400) {
-    if (timer || state.phase === 'over') return;
+  function planifier(ms) {
     if (!waitingFor(state).some(isAi)) return;
+    if (rythme() === 'pas') { attente = true; return; }
     timer = setTimeout(tick, ms);
   }
+  function kick(ms = 400) {
+    if (timer || attente || state.phase === 'over') return;
+    planifier(ms);
+  }
+  // Changement de rythme en cours de partie : on reprend avec le nouveau réglage
+  surRythme(() => {
+    if (state.phase === 'over') return;
+    clearTimeout(timer); timer = null; attente = false;
+    kick(300); show();
+  });
 
   function send(action) {
     const r = applyAction(state, 0, action);
@@ -66,7 +73,7 @@ export function startSolo(ui) {
   function newGame(o) {
     if (o) opts = { ...opts, ...o };
     clearTimeout(timer);
-    timer = null;
+    timer = null; attente = false;
     state = fresh();
     ui.reset();
     kick();
@@ -84,7 +91,9 @@ export function startSolo(ui) {
       }
       kick(600); show();
     },
-    stop() { clearTimeout(timer); timer = null; },
+    stop() { clearTimeout(timer); timer = null; attente = false; },
+    // Pas à pas : jouer l'action suivante de l'ordinateur
+    step() { if (attente) tick(); },
     options: () => ({ ...opts }),
   };
 }

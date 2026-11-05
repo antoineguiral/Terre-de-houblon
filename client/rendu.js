@@ -2,13 +2,15 @@
 // le même code sert au mode solo et au jeu en réseau.
 //
 //   const ui = createUi({ send, onNewGame, onHome });   send(action) → { ok, error } (ou une promesse)
-//   ui.update(view, { busy, rejouer })                   busy : l'adversaire joue ; rejouer : proposer une nouvelle partie à la fin
+//   ui.update(view, { busy, rejouer, pasApas })          busy : l'adversaire joue ; rejouer : proposer une nouvelle partie à la fin ;
+//                                                        pasApas : l'ordinateur attend un clic (onStep) pour jouer
 
 import {
   RES, STYLES, ITEMS, RECETTES, CASES, ACHAT, ACHAT_MAX, AMELIORATIONS, EVT, SAISONS, NB_SAISONS, STOCK_MAX, FERMENTEURS_MAX, OUVRIERS_MAX,
   DEMANDE, ZI, total, legalActions, saisonIdx, unites, cuveUnites, prixMarche, valeurLivraison, pointsDiversite,
 } from '../moteur/index.js';
 import { RN, RI, SN, SI, SAISON_NOM, KIND, nomItem, nomSaison, meteoTexte, fmt, logLines, plural } from './textes.js';
+import { RYTHMES, rythme, choisirRythme, facteur, DUREE_BULLE } from './rythme.js';
 
 export const RCOL = { malt: '#d8af40', houb: '#5d9638', argent: '#d38b46' };
 export const RTXT = { malt: '#2a1d15', houb: '#f1f7ea', argent: '#1a120d' };
@@ -23,12 +25,12 @@ const schip = (st) => `<span class="cst sty" title="${SN[st]}" style="--rc:${SCO
 const ichip = (k) => (RES.includes(k) || k === 'argent' ? chip(k) : schip(k));
 const chips = (c) => `<span class="costs">${RES.flatMap((r) => Array(c[r] ?? 0).fill(chip(r))).join('')}</span>`;
 const sw = (i) => `<span class="sw" style="background:${PCOL[i]}"></span>`;
-const pawn = (i, name) => `<span class="pawn" title="${esc(name)}" style="background:${PCOL[i]}"></span>`;
+const pawn = (i, name) => `<span class="pawn" data-p="${i}" title="${esc(name)}" style="background:${PCOL[i]}"></span>`;
 const DIEPOS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
 const die = (n, cls = '') => `<span class="die ${cls}" aria-label="${n}">${Array.from({ length: 9 }, (_, k) => `<i class="${DIEPOS[n]?.includes(k) ? 'on' : ''}"></i>`).join('')}</span>`;
 const stepper = (k, key, n, max) => `<span class="stp"><button class="btn mini" data-act="${k}" data-r="${key}" data-d="-1" aria-label="Moins" ${n ? '' : 'disabled'}>−</button><b>${n}</b><button class="btn mini" data-act="${k}" data-r="${key}" data-d="1" aria-label="Plus" ${n < max ? '' : 'disabled'}>+</button></span>`;
 
-export function createUi({ send, onNewGame, onHome }) {
+export function createUi({ send, onNewGame, onHome, onStep }) {
   let view = null, opts = {}, L = [];
   const ui = { mode: null, sel: null, offer: { give: ZI(), get: ZI() }, counter: null, counterFor: null, modalKey: null, error: '', errorTimer: null, winClosed: false };
 
@@ -93,7 +95,7 @@ export function createUi({ send, onNewGame, onHome }) {
         if (t) foot = `<button class="btn primary" data-act="mode" data-mode="chantier">S'équiper…</button>`;
       }
       const cls = ['spot', closed ? 'closed' : '', d.multi ? 'multi' : '', ui.mode === c ? 'active' : '', t ? 'can' : ''].join(' ');
-      return `<div class="${cls}"><h4>${esc(d.nom)}${closed ? ' <span class="tagc">fermé</span>' : ''}</h4>${body}<div class="pawns">${workersOn(c)}</div><div class="foot">${foot}</div></div>`;
+      return `<div class="${cls}" data-case="${c}"><h4>${esc(d.nom)}${closed ? ' <span class="tagc">fermé</span>' : ''}</h4>${body}<div class="pawns">${workersOn(c)}</div><div class="foot">${foot}</div></div>`;
     }).join('');
     $('#cases').innerHTML = html;
     $('#modebox').innerHTML = renderModeBox();
@@ -260,7 +262,8 @@ export function createUi({ send, onNewGame, onHome }) {
     const v = view;
     const end = free() && legal('endTurn');
     $('#turn').innerHTML = `<div class="turninfo"><b>${v.phase === 'main' ? nomSaison(v.saison) : 'Partie terminée'}</b><small>${v.phase === 'main' ? `Premier joueur : ${esc(P()[v.first].name)}` : ''}</small></div>
-      <button class="btn primary" data-act="end" ${end ? '' : 'disabled'}>${end?.passe ? 'Passer' : 'Fin du tour'}</button>`;
+      <button class="btn primary" data-act="end" ${end ? '' : 'disabled'}>${end?.passe ? 'Passer' : 'Fin du tour'}</button>
+      <div class="rythme" role="group" aria-label="Rythme de l'ordinateur"><small>Rythme</small>${Object.entries(RYTHMES).map(([k, r]) => `<button class="btn mini3 ${rythme() === k ? 'on' : ''}" data-act="rythme" data-r="${k}" aria-pressed="${rythme() === k}">${r.nom}</button>`).join('')}</div>`;
   }
 
   function renderBrasserie() {
@@ -310,7 +313,8 @@ export function createUi({ send, onNewGame, onHome }) {
 
   function renderHint() {
     const h = hintText();
-    $('#hint').innerHTML = `<span class="dot" style="background:${h.col}"></span><span class="grow">${h.txt}</span>${ui.mode ? '<button class="btn ghost" data-act="cancel">Annuler</button>' : ''}`;
+    const pas = opts.pasApas ? '<button class="btn primary" data-act="suivant">Action suivante</button>' : '';
+    $('#hint').innerHTML = `<span class="dot" style="background:${opts.pasApas ? PCOL[view.cur] : h.col}"></span><span class="grow">${opts.pasApas ? `${esc(P()[view.cur]?.name ?? '')} attend ton signal pour jouer.` : h.txt}</span>${pas}${ui.mode ? '<button class="btn ghost" data-act="cancel">Annuler</button>' : ''}`;
   }
   function renderLog() {
     const lines = view.log.flatMap((e) => logLines(e, view)).reverse().slice(0, 50);
@@ -327,15 +331,75 @@ export function createUi({ send, onNewGame, onHome }) {
     offreVue = waitingMe ? { id: t.id, from: t.from } : null;
   }
 
+  /* ---------- mise en scène des gestes des autres ---------- */
+
+  // Chaque nouvelle entrée du journal jouée par un autre devient une bulle, montrée l'une après l'autre,
+  // avec la case concernée mise en lumière (ouvrier qui tombe) ou les dés qui roulent.
+  const scene = { seen: null, queue: [], cur: null, timer: null, saison: null };
+  const SCENE_KINDS = new Set(['saison', 'ordre', 'poser', 'brasser', 'salle', 'passe', 'tradeOffer', 'tradeDone', 'perte', 'presente', 'concours', 'douanes', 'clientParti', 'vendre', 'salleRep', 'fin']);
+  function suivreJournal() {
+    const last = view.log.at(-1)?.i ?? -1;
+    if (scene.seen === null) { scene.seen = last; scene.saison = view.saison; return; }
+    for (const e of view.log) {
+      if (e.i <= scene.seen) continue;
+      if (!SCENE_KINDS.has(e.k) || (e.p !== undefined && you(e.p) && e.k !== 'fin')) continue;
+      const lines = logLines(e, view);
+      if (!lines.length) continue;
+      scene.queue.push({ txt: lines.map((l) => l.txt).join(' '), p: e.p ?? null, case: e.k === 'poser' ? e.case : null, saison: e.k === 'saison' });
+    }
+    scene.seen = Math.max(scene.seen, last);
+    // Nouvelle saison : bilan de la saison écoulée
+    if (view.saison !== scene.saison) {
+      if (view.saison > 0 && scene.saison !== null) ui.bilan = { saison: view.saison - 1 };
+      scene.saison = view.saison;
+    }
+    if (!scene.cur) jouerBulle();
+  }
+  function jouerBulle() {
+    clearTimeout(scene.timer);
+    scene.cur = scene.queue.shift() ?? null;
+    afficherScene();
+    if (!scene.cur) return;
+    const presse = scene.queue.length > 3 ? 0.5 : 1;
+    scene.timer = setTimeout(jouerBulle, DUREE_BULLE * facteur() * presse * (scene.cur.saison ? 1.6 : 1));
+  }
+  function afficherScene() {
+    const el = $('#scene'), b = scene.cur;
+    if (!el) return;
+    el.innerHTML = b ? `<div class="bulle" style="--pc:${b.p === null ? 'var(--copper)' : PCOL[b.p]}"><span class="dot"></span><span>${esc(b.txt)}</span>${scene.queue.length ? `<small>+${scene.queue.length}</small>` : ''}</div>` : '';
+    el.classList.toggle('on', !!b);
+    if (!b) return;
+    if (b.case) {
+      const spot = document.querySelector(`.spot[data-case="${b.case}"]`);
+      spot?.classList.add('flash');
+      const pions = spot ? [...spot.querySelectorAll(`.pawn[data-p="${b.p}"]`)] : [];
+      pions.at(-1)?.classList.add('drop');
+    }
+    if (b.saison) document.querySelectorAll('#saison .die').forEach((d) => d.classList.add('roll'));
+  }
+
+  function renderBilan() {
+    const el = $('#bilan');
+    if (!el) return;
+    const b = ui.bilan;
+    if (!b || view.phase === 'over') { el.innerHTML = ''; el.hidden = true; return; }
+    const parJoueur = P().map((_, i) => view.log.filter((e) => e.saison === b.saison && e.p === i && ['poser', 'brasser', 'salle', 'tradeDone', 'passe'].includes(e.k)).flatMap((e) => logLines(e, view)).map((l) => l.txt));
+    el.hidden = false;
+    el.innerHTML = `<div class="bilan"><div class="bh"><b>Bilan : ${nomSaison(b.saison)}</b><button class="btn ghost mini3" data-act="bilanFermer" aria-label="Fermer le bilan">Fermer</button></div>
+      ${P().map((p, i) => `<div class="bl">${sw(i)}<div><b>${esc(p.name)}</b>${parJoueur[i].length ? `<ul>${parJoueur[i].map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : '<small>Rien de noté.</small>'}</div></div>`).join('')}</div>`;
+  }
+
   function render() {
     if (!view) return;
+    suivreJournal();
     suivreOffre();
     L = mine() ? legalActions(view, me()) : [];
     if (view.trade?.id !== ui.counterFor) { ui.counter = null; ui.counterFor = view.trade?.id; }
     if (ui.mode && !poseSur(ui.mode)) { ui.mode = null; ui.sel = null; }
     renderSaison(); renderCases(); renderFile(); renderPrix();
     renderPlayers(); renderTurn(); renderBrasserie(); renderBrasser(); renderTrade();
-    renderHint(); renderLog(); renderModal();
+    renderHint(); renderLog(); renderBilan(); renderModal();
+    afficherScene();
   }
 
   /* ---------- événements ---------- */
@@ -363,6 +427,9 @@ export function createUi({ send, onNewGame, onHome }) {
     },
     new: () => onNewGame?.(),
     accueil: () => onHome?.(),
+    rythme: (b) => { choisirRythme(b.dataset.r); render(); },
+    suivant: () => onStep?.(),
+    bilanFermer: () => { ui.bilan = null; render(); },
   };
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]');
@@ -373,6 +440,9 @@ export function createUi({ send, onNewGame, onHome }) {
 
   return {
     update(v, o = {}) { view = v; opts = o; render(); },
-    reset() { ui.mode = null; ui.sel = null; ui.offer = { give: ZI(), get: ZI() }; ui.counter = null; ui.modalKey = null; ui.winClosed = false; view = null; $('#modal').hidden = true; },
+    reset() {
+      ui.mode = null; ui.sel = null; ui.offer = { give: ZI(), get: ZI() }; ui.counter = null; ui.modalKey = null; ui.winClosed = false; ui.bilan = null; view = null; $('#modal').hidden = true;
+      clearTimeout(scene.timer); scene.seen = null; scene.queue = []; scene.cur = null; scene.saison = null;
+    },
   };
 }

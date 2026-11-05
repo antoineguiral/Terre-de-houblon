@@ -35,11 +35,13 @@ function readEmail(e) {
 // Joueurs dont une décision fait avancer la partie (les réponses d'échange sont bornées à part)
 const decideurs = deciders;
 
+// Pause de l'ordinateur après une action (ms, au rythme direct) : le temps que les autres voient le geste
 function delayAfter(action, state) {
-  if (action.type === 'respondTrade') return 250;
-  if (action.type === 'endTurn') return 650;
-  if (action.type === 'poser') return 700;
-  return 420;
+  if (action.type === 'respondTrade') return 450;
+  if (action.type === 'endTurn') return 700;
+  if (action.type === 'poser') return 1900;
+  if (action.type === 'brasser') return 1400;
+  return 1000;
 }
 const SAISON_NOM = { printemps: 'Printemps', ete: 'Été', automne: 'Automne', hiver: 'Hiver' };
 

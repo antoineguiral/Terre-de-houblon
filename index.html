@@ -215,6 +215,29 @@ input.code{text-transform:uppercase;letter-spacing:.2em;font-family:var(--font-n
 .spot.closed{opacity:.5}
 .spot.can{border-color:var(--copper);box-shadow:inset 0 0 0 1px var(--copper)}
 .spot.active{background:var(--panel2)}
+/* mise en scène des gestes des autres joueurs */
+.scene{position:sticky;top:calc(env(safe-area-inset-top,0px) + 6px);z-index:20;min-height:0}
+.scene .bulle{display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--pc);border-left:6px solid var(--pc);border-radius:8px;padding:10px 14px;font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.45);animation:bulle .35s ease-out}
+.scene .bulle .dot{width:12px;height:12px;border-radius:50%;background:var(--pc);flex:none}
+.scene .bulle small{margin-left:auto;color:var(--muted);font-weight:500}
+@keyframes bulle{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@media (max-width:920px){.scene{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px));z-index:40;pointer-events:none}.scene .bulle{font-size:14px;padding:8px 12px}}
+.spot.flash{animation:flash 1.4s ease-out}
+@keyframes flash{0%{box-shadow:0 0 0 3px var(--copper),0 0 22px rgba(211,139,70,.8)}100%{box-shadow:0 0 0 0 transparent}}
+.pawn.drop{animation:drop .55s cubic-bezier(.3,1.6,.5,1)}
+@keyframes drop{from{transform:translateY(-26px) scale(1.4);opacity:0}to{transform:none;opacity:1}}
+.die.roll{animation:roll .7s ease-out}
+@keyframes roll{0%{transform:rotate(-200deg) scale(.6)}70%{transform:rotate(15deg) scale(1.1)}100%{transform:none}}
+.bilan{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.bilan .bh{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.bilan .bl{display:grid;grid-template-columns:14px minmax(0,1fr);gap:8px;align-items:start;font-size:13px}
+.bilan ul{margin:2px 0 0;padding-left:16px;color:var(--muted)}
+.bilan small{color:var(--muted)}
+.rythme{display:flex;align-items:center;gap:4px;flex-wrap:wrap;width:100%;margin-top:6px}
+.rythme small{color:var(--muted);font-size:12px;margin-right:4px}
+.btn.mini3{padding:4px 8px;min-height:28px;font-size:12.5px}
+.btn.mini3.on{background:var(--copper);color:var(--dark);border-color:var(--copper)}
+@media (prefers-reduced-motion:reduce){.scene .bulle,.spot.flash,.pawn.drop,.die.roll{animation:none}}
 .spot .foot{margin-top:auto}
 .spot .foot .btn{width:100%}
 .tagc{font-size:11px;color:var(--copper);letter-spacing:.06em}
@@ -271,7 +294,9 @@ input.code{text-transform:uppercase;letter-spacing:.2em;font-family:var(--font-n
   <section id="salle" class="home" hidden></section>
   <main class="layout" id="jeu" hidden>
     <section class="boardWrap">
+      <div id="scene" class="scene" aria-live="polite"></div>
       <div id="saison" aria-label="Saison en cours"></div>
+      <div id="bilan" hidden></div>
       <div id="cases" class="cases" aria-label="Cases du plateau"></div>
       <div id="modebox"></div>
       <div id="file" class="file" aria-label="File des clients"></div>
