@@ -34,14 +34,19 @@ export function botAction(view, me) {
   const L = legalActions(view, me);
   const has = (type) => L.find((a) => a.type === type);
   if (has('respondTrade') && view.trade?.from !== me) return { type: 'respondTrade', accept: false };
-  const pl = has('placer'); if (pl) return { type: 'placer', hex: pl.targets[0] };
-  const tf = has('tournee'); if (tf?.free) return { type: 'tournee', client: tf.targets[0].client };
   const ev = has('evenement'); if (ev) return { type: 'evenement', ferm: ev.targets[0] };
   const cc = has('concours'); if (cc) return { type: 'concours', style: cc.styles[0] };
   if (view.trade?.from === me) return { type: 'cancelTrade' };
-  const liv = has('livrer'); if (liv) return { type: 'livrer', client: liv.targets[0].client, style: liv.targets[0].styles[0] };
   const br = has('brasser'); if (br) return { type: 'brasser', style: br.styles[0] };
+  const po = has('poser');
+  if (po) {
+    const t = po.targets.find((x) => x.case === 'tournee') ?? po.targets.find((x) => x.case === 'marcheBieres') ?? po.targets.find((x) => x.case !== 'chantier' && x.case !== 'marcheMat') ?? po.targets[0];
+    if (t.case === 'tournee') return { type: 'poser', case: 'tournee', client: t.clients[0].id, style: t.clients[0].styles[0] };
+    if (t.case === 'marcheBieres') return { type: 'poser', case: 'marcheBieres', ventes: { [t.styles[0]]: 1 } };
+    if (t.case === 'marcheMat') return { type: 'poser', case: 'marcheMat', achats: { malt: 1 } };
+    if (t.case === 'chantier') return { type: 'poser', case: 'chantier', u: t.targets[0] };
+    return { type: 'poser', case: t.case };
+  }
   if (has('endTurn')) return { type: 'endTurn' };
-  const v = has('vendre'); if (v) return { type: 'vendre', style: v.styles[0], n: 1 };
   return null;
 }

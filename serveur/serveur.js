@@ -16,6 +16,7 @@ import { WebSocketServer } from 'ws';
 import { CONFIG } from './config.js';
 import { openBase } from './base.js';
 import { Salle } from './salle.js';
+import { VERSION } from '../moteur/index.js';
 import { creerNotifier, envoyeurBrevo } from './notifications.js';
 
 export function demarrerServeur(opts = {}) {
@@ -40,7 +41,10 @@ export function demarrerServeur(opts = {}) {
     if (salles.has(code)) return salles.get(code);
     const row = base.partie(code);
     if (!row) return null;
-    const s = new Salle({ code: row.code, statut: row.statut, meta: row.meta, etat: row.etat }, deps);
+    // Une partie d'une ancienne version des règles ne peut plus être jouée : on la clôt
+    const perimee = row.etat && row.etat.v !== VERSION && row.statut !== 'fini';
+    const s = new Salle({ code: row.code, statut: perimee ? 'fini' : row.statut, meta: row.meta, etat: row.etat }, deps);
+    if (perimee) { s.sauver(); deps.log?.(`[${code}] partie close : règles v${row.etat.v}, le serveur joue la v${VERSION}`); }
     salles.set(code, s);
     return s;
   }

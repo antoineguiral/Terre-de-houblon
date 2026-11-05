@@ -81,23 +81,22 @@ export function creerNotifier({ publicUrl, envoyer, base, now, setTimeout, clear
   function messageTour(salle, siege) {
     const s = salle.etat, nom = s.players[siege].name, echeance = salle.meta.echeances[siege];
     const limite = echeance ? `Tu as jusqu'à ${dateLimite(echeance)} ; ensuite, l'ordinateur jouera ce tour à ta place.` : '';
-    const evt = s.pending?.need?.[siege] ? s.pending.kind : null;
-    if (evt) {
-      const EVT = { contamination: ['Contamination', 'une levure sauvage s’est invitée : choisis le brassin qui perd 1 unité'], canicule: ['Canicule', 'il fait trop chaud : choisis le brassin qui perd 1 unité'], concours: ['Concours régional', 'présente une unité de ton stock'] };
-      const [titre, txt] = EVT[evt];
-      return { sujet: `${titre} : à toi de décider (partie ${salle.code})`, titre, bouton: 'Décider',
-        lignes: [`${esc(nom)}, ${txt}.`, limite] };
-    }
-    if (s.phase === 'setup') {
-      return { sujet: `À toi de t'installer (partie ${salle.code})`, titre: 'La partie commence', bouton: 'Installer ma brasserie',
-        lignes: [`${esc(nom)}, c'est à toi de choisir l'emplacement de ta brasserie et ta première tournée.`, limite] };
-    }
     const SAISON_NOM = ['Printemps', 'Été', 'Automne', 'Hiver'];
     const saison = `${SAISON_NOM[s.saison % 4]} an ${Math.floor(s.saison / 4) + 1}`;
+    const evt = s.pending?.need?.[siege] ? s.pending.kind : null;
+    if (evt) {
+      const EVT = { contamination: ['Contamination', 'une levure sauvage s’est invitée : choisis le brassin qui perd 1 unité'], canicule: ['Canicule', 'il fait trop chaud : choisis le brassin qui perd 1 unité'], concours: ['Concours régional', 'présente une unité de ton stock'], salon: ['Salon des brasseurs', 'présente une unité de ton stock'] };
+      const [titre, txt] = EVT[evt];
+      return { sujet: `${titre} : à toi de décider (partie ${salle.code}, ${saison})`, titre, bouton: 'Décider',
+        lignes: [`${esc(nom)}, ${txt}.`, limite] };
+    }
     const prev = s.log.filter((e) => e.k === 'endTurn').at(-1);
     const avant = prev && prev.p !== siege ? `${esc(s.players[prev.p].name)} a passé la main : ` : '';
-    return { sujet: `À toi de jouer (partie ${salle.code}, ${saison})`, titre: 'À toi de jouer', bouton: 'Jouer mon tour',
-      lignes: [`${avant}c'est ton tour, ${esc(nom)}, ${saison.toLowerCase()}.`, limite] };
+    const p = s.players[siege], restants = s.restants?.[siege] ?? 0;
+    const n = p.ouv - restants + 1;
+    const quoi = restants > 0 ? `poser ton ${n === 1 ? '1er' : n + 'e'} ouvrier` : 'passer la main';
+    return { sujet: `À toi de ${quoi} (partie ${salle.code}, ${saison})`, titre: 'À toi de jouer', bouton: 'Jouer mon tour',
+      lignes: [`${avant}à toi de ${quoi}, ${esc(nom)}, ${saison.toLowerCase()}.`, limite] };
   }
 
   function doitPrevenir(salle, siege) {

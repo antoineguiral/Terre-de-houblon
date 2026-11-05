@@ -36,10 +36,9 @@ function readEmail(e) {
 const decideurs = deciders;
 
 function delayAfter(action, state) {
-  if (state.phase === 'setup') return 500;
   if (action.type === 'respondTrade') return 250;
   if (action.type === 'endTurn') return 650;
-  if (action.type === 'acheter') return 200;
+  if (action.type === 'poser') return 700;
   return 420;
 }
 const SAISON_NOM = { printemps: 'Printemps', ete: 'Été', automne: 'Automne', hiver: 'Hiver' };

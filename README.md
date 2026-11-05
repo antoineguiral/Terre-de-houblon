@@ -1,23 +1,21 @@
 # Brassins
 
-Jeu de gestion de brasserie. On brasse des recettes, on fait fermenter, on livre les bars, les caves et les foires du terroir, on agrandit sa brasserie. Trois ans de quatre saisons, et la brasserie la plus réputée l'emporte. Seul contre l'ordinateur, ou à plusieurs, en direct ou en différé.
+Jeu de gestion de brasserie, par pose d'ouvriers. On récolte, on brasse, on fait fermenter, on livre les clients de la file et on vend au marché, sur un plateau commun où chaque place prise manque aux autres. Trois ans de quatre saisons, et la brasserie la plus réputée l'emporte. Seul contre l'ordinateur, ou à plusieurs, en direct ou en différé. Les règles sont pensées pour tenir sur une table : un plateau A3, trois dés, quarante cartes.
 
-Issu de [Terres de Houblon](https://github.com/antoineguiral/Terre-de-houblon), dont il garde l'architecture (moteur séparé de l'affichage, serveur arbitre, client réseau, déploiement) avec des règles entièrement nouvelles.
+Issu de [Terres de Houblon](https://github.com/antoineguiral/Terre-de-houblon), dont il garde l'architecture (moteur séparé de l'affichage, serveur arbitre, client réseau, déploiement) avec des règles entièrement nouvelles. La première version de Brassins, sur plateau hexagonal, est sur la branche `brassins-hex` ; Terres de Houblon sur la branche `terres-de-houblon`.
 
 ## Les règles
 
-- **Le plateau.** 19 cases : le Bourg au centre, 3 villages, 15 terroirs (champs d'orge, houblonnières, sources). Chaque joueur pose sa brasserie sur un terroir : sa case et ses six voisines l'approvisionnent. Six foires sur la côte, une par saison ou presque.
-- **Les saisons.** 12 saisons. Chaque carte Saison donne la météo, deux styles en demande et parfois un événement (contamination, canicule, concours régional, contrôle des douanes, fête au village). Chaque carte sort une fois sur les trois ans : la frise au-dessus du plateau montre ce qui est sorti et ce qui peut encore venir.
-- **Les matières.** Malt (été, automne), Houblon (surtout automne), Eau (printemps et sources), Levure (récupérée à la fin de chaque fermentation), Malt torréfié (fabriqué à la Touraille).
-- **Brasser.** 7 styles, de la Blonde (1 saison, 3 Argent, 1 réputation) à la Bière de garde (3 saisons, 7 Argent, 4 réputation). Un brassin occupe un fermenteur, donne 2 à 4 unités selon la cuve. La première fois qu'on brasse un style : +1 réputation.
-- **Le Marché.** On y achète les matières à prix fixe, mais en quantité limitée : un stock par saison selon le nombre de joueurs, sans report. Premier arrivé, premier servi ; le moins réputé joue en premier.
-- **Vendre.** Au Marché du Bourg, sans limite, mais chaque unité vendue baisse le prix de 1. Aux clients, avec une tournée (2 Argent par case de distance) : ils paient plus et donnent la réputation. Capacité limitée par saison, à prendre dans l'ordre de jeu.
-- **Les collabs.** Pendant son tour, on peut proposer à une autre brasserie de brasser une bière à deux, dans son propre fermenteur : chacun apporte une partie de la recette, gagne 1 Réputation (et le bonus de style nouveau), et la bière (cuve + 1 unité) se partage. Une collab par brasserie et par saison.
-- **S'équiper.** Cuve, fermenteurs, Touraille, Chambre froide, Labo, Camion, Salle de dégustation.
-- **L'ordre.** Le moins réputé joue en premier. On ne peut pas finir son tour avec plus de 6 unités en stock.
-- **Le décompte.** Réputation + diversité (3 styles +2, 5 styles +5, 7 styles +9) + 1 point par 8 Argent.
+- **Le plateau.** 8 cases d'action : deux champs d'orge, deux houblonnières (deux places chacun, le second récolte un de moins, fermés l'hiver), le Marché aux matières, la Tournée (une place par joueur), le Marché aux bières et le Chantier (ouverts à tous).
+- **Une saison.** Le premier joueur lance deux dés : la météo (1 : récoltes −1, 6 : +1) et l'événement, lu dans la table de la saison (mildiou, contamination, critique gastronomique, canicule, pénurie, concours, douanes, grève…). Puis chacun à son tour pose un ouvrier et agit aussitôt, jusqu'à ce que tous soient posés. Le premier joueur tourne à chaque saison.
+- **Brasser.** 4 styles, de la Blonde (1 saison, 3 Argent, 1 réputation) à la Bière de garde (3 saisons, 7 Argent, 4 réputation), le Stout avec une Touraille. Deux matières : Malt et Houblon. Un brassin donne 2 unités (3 avec la Grande cuve), et un dé : 1 c'est une unité en moins, 6 une de plus. La première fois qu'on brasse un style : +1 réputation.
+- **Les clients.** 40 cartes, 5 en file sous les yeux de tous : bars, caves, festivals liés à une saison. Livrer, c'est prendre la carte. Le plus ancien part à chaque fin de saison.
+- **Le Marché aux bières.** Une piste de prix par style : chaque unité vendue baisse le prix d'un cran, pour tout le monde ; les prix remontent d'un cran par saison. Deux styles en demande par saison : +2 au Marché, +1 réputation chez un client.
+- **S'équiper.** Grande cuve, fermenteurs, Touraille, Embauche, Salle de dégustation.
+- **Les échanges.** Une offre par tour aux autres brasseries, en matières, bière ou Argent.
+- **Le décompte.** Réputation + diversité (3 styles +2, 4 styles +5) + 1 point par 8 Argent.
 
-Toutes les valeurs sont dans [`moteur/constantes.js`](moteur/constantes.js). Elles sortent d'une première campagne de simulation (voir `docs/`), à affiner en jouant. Les règles pour les joueurs, telles qu'on les expliquerait à table : [`docs/regles.md`](docs/regles.md).
+Toutes les valeurs sont dans [`moteur/constantes.js`](moteur/constantes.js). Elles sortent de la simulation (voir [`docs/conception-table.md`](docs/conception-table.md)), à affiner en jouant : l'ordre au premier tour garde un léger biais, et l'IPA est le style le moins brassé par l'IA. Les règles pour les joueurs, telles qu'on les expliquerait à table : [`docs/regles.md`](docs/regles.md).
 
 ## Jouer en local
 
@@ -37,7 +35,7 @@ Toute la logique vit dans `moteur/`, en modules JavaScript purs, sans DOM, utili
 - `applyAction(état, joueur, action)` valide et applique, ou refuse avec une raison (`{ ok: false, error }`), sans jamais modifier l'état reçu ;
 - `legalActions(état, joueur)` liste ce que ce joueur peut faire, avec les cibles possibles ;
 - `waitingFor(état)` dit de qui on attend une décision : plusieurs joueurs à la fois pour un événement de saison ou les réponses à une offre ;
-- `viewFor(état, joueur)` masque la graine et l'ordre des cartes restantes (presque tout le reste est public) ;
+- `viewFor(état, joueur)` masque la graine et l'ordre de la pioche des clients (tout le reste est public) ;
 - `aiAction(état, joueur)` renvoie la décision de l'IA pour ce joueur, et `aiStep(état)` la joue.
 
 ```bash

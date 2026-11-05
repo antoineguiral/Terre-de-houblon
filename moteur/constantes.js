@@ -1,140 +1,120 @@
-// Constantes et valeurs de réglage de Brassins, partagées par le moteur, l'IA, le navigateur et le serveur.
+// Constantes et valeurs de réglage de Brassins (version table : pose d'ouvriers, clients en cartes, prix partagés).
 // Tout ce qui s'équilibre est ici : pas de nombre magique dans les règles.
+// Valeurs issues de 3 000 parties simulées (docs/conception-table.md), à corriger en jouant.
 
 export const SAISONS = ['printemps', 'ete', 'automne', 'hiver'];
 export const ANNEES = 3;
 export const NB_SAISONS = ANNEES * SAISONS.length;
 
-export const RES = ['malt', 'houb', 'lev', 'eau', 'torr'];
-export const STYLES = ['blonde', 'blanche', 'ipa', 'ambree', 'stout', 'lager', 'garde'];
-export const FONCES = ['ambree', 'stout', 'lager', 'garde'];
-// Tout ce qui peut s'échanger entre joueurs
+export const RES = ['malt', 'houb'];
+export const STYLES = ['blonde', 'ipa', 'stout', 'garde'];
 export const ITEMS = [...RES, ...STYLES, 'argent'];
 
 // Recette d'un style : matières, saisons de fermentation, prix de base au Marché, réputation chez un client
 export const RECETTES = {
-  blonde:  { malt: 2, houb: 1, lev: 1, eau: 1, torr: 0, ferm: 1, prix: 3, rep: 1 },
-  blanche: { malt: 1, houb: 1, lev: 1, eau: 2, torr: 0, ferm: 1, prix: 3, rep: 1 },
-  ipa:     { malt: 2, houb: 3, lev: 1, eau: 1, torr: 0, ferm: 2, prix: 5, rep: 2 },
-  ambree:  { malt: 2, houb: 1, lev: 1, eau: 1, torr: 1, ferm: 2, prix: 4, rep: 3 },
-  stout:   { malt: 1, houb: 1, lev: 1, eau: 1, torr: 2, ferm: 2, prix: 6, rep: 3 },
-  lager:   { malt: 2, houb: 1, lev: 1, eau: 2, torr: 0, ferm: 2, prix: 4, rep: 3, exige: 'froide' },
-  garde:   { malt: 3, houb: 1, lev: 1, eau: 1, torr: 1, ferm: 3, prix: 7, rep: 4 },
+  blonde: { malt: 2, houb: 1, ferm: 1, prix: 3, rep: 1 },
+  ipa:    { malt: 2, houb: 2, ferm: 2, prix: 5, rep: 2 },
+  stout:  { malt: 3, houb: 1, ferm: 2, prix: 6, rep: 3, exige: 'touraille' },
+  garde:  { malt: 4, houb: 1, ferm: 3, prix: 7, rep: 4 },
 };
-export const REP_PREMIERE = 1; // réputation la première fois qu'on brasse un style
+export const REP_PREMIERE = 1;          // réputation la première fois qu'on brasse un style
+export const CUVE = [2, 3];             // unités par brassin selon la cuve
+export const DE_BRASSAGE = { rate: 1, cuvee: 6 }; // 1 : une unité en moins ; 6 : une de plus
 
-// Production d'une case voisine par saison (printemps, été, automne, hiver)
-export const TERROIRS = ['orge', 'houb', 'source'];
-export const PRODUCTION = { orge: [0, 3, 2, 0], houb: [0, 2, 3, 0], source: [3, 0, 2, 1] };
-export const PRODUIT = { orge: 'malt', houb: 'houb', source: 'eau' };
-export const PUITS = 1;        // Eau par saison, chaque brasserie
-export const LABO_LEV = 1;     // Levure par saison avec le Labo
-export const LABO_HOUB = 1;    // Houblon par saison avec le Labo
-export const LEV_REPIQUAGE = 1; // Levure récupérée à la fin de chaque fermentation
-
-// Plateau : 19 cases, dont le Bourg au centre et 3 villages sur l'anneau extérieur
-export const TUILES = ['orge', 'orge', 'orge', 'orge', 'orge', 'orge', 'houb', 'houb', 'houb', 'houb', 'houb', 'source', 'source', 'source', 'source'];
-export const NB_VILLAGES = 3;
-
-// Marché
-export const ACHAT = { malt: 2, houb: 2, lev: 3, eau: 1, torr: 5 };
-// Stock de matières du Marché, renouvelé à chaque saison selon le nombre de joueurs (ce qui n'est pas acheté disparaît)
-export const MARCHE_STOCK = {
-  2: { malt: 4, houb: 2, lev: 2, eau: 4, torr: 1 },
-  3: { malt: 5, houb: 3, lev: 3, eau: 5, torr: 2 },
-  4: { malt: 6, houb: 4, lev: 4, eau: 6, torr: 2 },
+// Cases du plateau. Les cases `multi` accueillent tout le monde ; `tournee` a une place par joueur.
+// Récolte par saison (printemps, été, automne, hiver) pour les champs et houblonnières.
+const CAP = 2; // ouvriers par champ ou houblonnière (le deuxième récolte un de moins)
+export const CASES = {
+  champA: { nom: "Champ d'orge", res: 'malt', recolte: [3, 4, 4, 0], cap: CAP, moins: 1 },
+  champB: { nom: "Champ d'orge", res: 'malt', recolte: [3, 4, 4, 0], cap: CAP, moins: 1 },
+  houbA:  { nom: 'Houblonnière', res: 'houb', recolte: [2, 2, 4, 0], cap: CAP, moins: 1 },
+  houbB:  { nom: 'Houblonnière', res: 'houb', recolte: [2, 2, 4, 0], cap: CAP, moins: 1 },
+  marcheMat: { nom: 'Marché aux matières' },
+  tournee: { nom: 'Tournée', parJoueur: true },
+  marcheBieres: { nom: 'Marché aux bières', multi: true },
+  chantier: { nom: 'Chantier', multi: true },
 };
+export const ACHAT = { malt: 2, houb: 2 };
+export const ACHAT_MAX = 3;               // matières par passage au Marché
+
+// Marché aux bières
 export const PRIX_PLANCHER = 1;
-export const PRIX_REMONTEE = 1;   // par saison, vers le prix de base
-export const DEMANDE_BONUS = 2;   // sur le prix du Marché pour un style en demande
-export const DEMANDE_REP = 1;     // réputation en plus chez un client pour un style en demande
+export const PRIX_PLAFOND = 7;
+export const PRIX_REMONTEE = 1;           // par saison, vers le prix de base
+export const DEMANDE_BONUS = 2;           // au Marché, pour un style en demande
+export const DEMANDE_REP = 1;             // chez un client, pour un style en demande
+export const DEMANDE = { printemps: ['blonde', 'ipa'], ete: ['blonde', 'ipa'], automne: ['stout', 'ipa'], hiver: ['stout', 'garde'] };
 
-// Clients (le Bourg et les villages sont sur la carte, les foires sur la côte)
-export const CLIENTS = {
-  bar:   { cap: 3, bonus: 1 },                    // Bar du Bourg : tous styles
-  cave:  { cap: 2, bonus: 3 },                    // Cave du Bourg : styles foncés seulement
-  village: { cap: 2, bonus: 0, malus: -1 },       // bars de village : deux styles préférés
-  foire: { cap: 4, bonus: 2, rep: 1 },            // foires : pendant leur saison seulement
+// Clients : file de 5, le plus ancien part à chaque fin de saison
+export const FILE = 5;
+export const FEST_REP = 2;                // festival livré pendant sa saison
+export const CRITIQUE_REP = 3;            // premier à livrer une cave sous un critique gastronomique
+export const CLIENTS = [
+  ...['Le Comptoir', 'Chez Lucette', 'Le Relais', 'Bar des Sports', 'La Terrasse', 'Le Tabac-Presse', 'Café de la Gare', 'Le Petit Bal'].map((nom) => ({ kind: 'bar', nom, style: null, n: 1, bonus: 0, rep: 1 })),
+  ...[['blonde', ['La Guinguette', 'Le Marché couvert', 'Buvette du stade']], ['ipa', ['Le Rock Bar', 'La Cave à bières', 'Le Skate Park']], ['stout', ['Le Pub irlandais', 'La Cheminée', 'Le Club de rugby']], ['garde', ["L'Auberge", "La Table d'hôtes", 'Le Relais de chasse']]]
+    .flatMap(([style, noms]) => noms.map((nom) => ({ kind: 'bar', nom, style, n: 1, bonus: 1, rep: 2 }))),
+  ...['Cave du Bourg', 'Cave Saint-Front', 'Épicerie fine', 'Cave de la Halle'].map((nom) => ({ kind: 'cave', nom, style: 'stout', n: 1, bonus: 3, rep: 3 })),
+  ...['Cave du Château', 'La Vinothèque', 'Le Caviste', 'Cave des Remparts'].map((nom) => ({ kind: 'cave', nom, style: 'garde', n: 1, bonus: 3, rep: 4 })),
+  ...[[0, 'Festival de printemps', 'blonde'], [0, 'Fête des plantes', 'ipa'], [0, 'Foire de Pâques', 'blonde'], [1, 'Fête de la bière', 'blonde'], [1, 'Fête des moissons', 'ipa'], [1, 'Bal du 14 juillet', 'ipa'],
+    [2, "Foire d'automne", 'stout'], [2, 'Fête des vendanges', 'ipa'], [2, 'Salon des brasseurs', 'garde'], [3, 'Marché de Noël', 'garde'], [3, 'Saint-Vincent', 'stout'], [3, 'Fête de la truffe', 'stout']]
+    .map(([saison, nom, style]) => ({ kind: 'fest', nom, style, n: 2, bonus: 1, rep: 2, saison })),
+].map((c, i) => ({ id: i, ...c }));
+export const CLIENT_MAIRIE = { kind: 'mairie', nom: 'Commande de la mairie', n: 3, bonus: 2, rep: 4 };
+
+// Dés de saison. Météo : 1 = champs et houblonnières −1, 6 = +1. Événement : 1 et 2 rien, puis selon la saison.
+export const METEO = { 1: -1, 6: 1 };
+export const EVENEMENTS = {
+  printemps: { 3: 'mildiou', 4: 'contamination', 5: 'critique', 6: 'invite' },
+  ete: { 3: 'canicule', 4: 'fetePrix', 5: 'penurie', 6: 'inspection' },
+  automne: { 3: 'recolte', 4: 'mairie', 5: 'concours', 6: 'salon' },
+  hiver: { 3: 'greve', 4: 'douanes', 5: 'noel', 6: 'feteVillage' },
 };
-// Saison de chaque foire, dans l'ordre des 6 directions
-export const FOIRES = [
-  { id: 'foire0', saison: 1, nom: 'Fête de la bière' },
-  { id: 'foire1', saison: 1, nom: 'Fête des moissons' },
-  { id: 'foire2', saison: 2, nom: "Foire d'automne" },
-  { id: 'foire3', saison: 3, nom: 'Marché de Noël' },
-  { id: 'foire4', saison: 3, nom: 'Fête de la Saint-Vincent' },
-  { id: 'foire5', saison: 0, nom: 'Festival de printemps' },
-];
-export const TOURNEE_COUT = 2;         // Argent par case de distance
-export const TOURNEE_COUT_CAMION = 1;
-export const TOURNEE_GRATUITE_DIST = 2; // au départ, un client à 2 cases ou moins
-export const LIVRAISON_PAR_CLIENT = 1;  // unités par client et par saison
-export const LIVRAISON_CAMION = 2;
+export const EVT = {
+  mildiou: { nom: 'Mildiou', txt: 'Les houblonnières sont fermées cette saison.' },
+  contamination: { nom: 'Contamination', txt: 'Chacun retire 1 unité d’un de ses brassins en cours.' },
+  critique: { nom: 'Critique gastronomique', txt: 'Le premier qui livre une cave gagne 3 Réputation de plus.' },
+  invite: { nom: 'Brasseur invité', txt: 'Le Stout se brasse sans Touraille cette saison.' },
+  canicule: { nom: 'Canicule', txt: 'Chacun retire 1 unité d’un de ses brassins en cours.' },
+  fetePrix: { nom: 'Fête de la bière', txt: 'Tous les prix sont majorés de 1 cette saison.' },
+  penurie: { nom: 'Pénurie', txt: 'Le Marché aux matières est fermé cette saison.' },
+  inspection: { nom: 'Inspection', txt: 'Chaque brassin en cours perd 1 unité.' },
+  recolte: { nom: 'Belle récolte', txt: 'Champs et houblonnières +1 cette saison.' },
+  mairie: { nom: 'Commande de la mairie', txt: 'Un client spécial rejoint la file : 3 unités, bien payées.' },
+  concours: { nom: 'Concours régional', txt: 'Chacun présente 1 unité : le meilleur gagne 5 Réputation, le deuxième 2.' },
+  salon: { nom: 'Salon des brasseurs', txt: 'Comme le concours, mais 8 et 3 Réputation.' },
+  greve: { nom: 'Grève des transporteurs', txt: 'Pas de Tournée cette saison.' },
+  douanes: { nom: 'Contrôle des douanes', txt: '1 Argent par tranche de 3 unités en stock.' },
+  noel: { nom: 'Marché de Noël', txt: '2 clients de plus dans la file.' },
+  feteVillage: { nom: 'Fête au village', txt: '2 clients de plus dans la file, et tous les prix +1.' },
+};
+export const CONCOURS = { concours: [5, 2], salon: [8, 3] };
+export const DOUANES_PAR = 3;
 
 // Brasserie
+export const OUVRIERS_DEPART = 2;
+export const OUVRIERS_MAX = 3;
 export const FERMENTEURS_DEPART = 2;
-export const FERMENTEURS_MAX = 5;
-export const CUVE = [2, 3, 4];           // unités par brassin selon le niveau de cuve (0, 1, 2)
+export const FERMENTEURS_MAX = 4;
 export const STOCK_MAX = 6;
-export const TOURAILLE_MALT = 2;         // Malt par Malt torréfié
-export const TOURAILLE_PAR_SAISON = 1;
-export const SALLE_UNITES = 2;           // ventes par saison à la Salle de dégustation
-export const SALLE_BONUS = 1;            // sur le prix de base
+export const SALLE_BONUS = 1;             // sur le prix de base
 export const SALLE_REP_HIVER = 1;
-
 export const AMELIORATIONS = {
-  cuve2:     { cout: 8,  nom: 'Cuve niveau 2',        txt: '3 unités par brassin.' },
-  cuve3:     { cout: 14, nom: 'Cuve niveau 3',        txt: '4 unités par brassin.', exige: 'cuve2' },
-  ferm:      { cout: 6,  nom: 'Fermenteur',           txt: 'Un fermenteur de plus, jusqu’à 5.', multiple: true },
-  touraille: { cout: 7,  nom: 'Touraille',            txt: 'Une fois par saison, 2 Malt deviennent 1 Malt torréfié.' },
-  froide:    { cout: 6,  nom: 'Chambre froide',       txt: 'Permet les Lagers et protège de la canicule.' },
-  labo:      { cout: 6,  nom: 'Labo',                 txt: '+1 Levure et +1 Houblon par saison ; protège de la contamination.' },
-  camion:    { cout: 8,  nom: 'Camion',               txt: 'Tournées à 1 Argent par case, et 2 unités par client et par saison.' },
-  salle:     { cout: 10, nom: 'Salle de dégustation', txt: 'Vend 2 unités par saison au prix de base +1, et rapporte 1 Réputation chaque hiver.' },
+  cuve:      { cout: 6, nom: 'Grande cuve',           txt: '3 unités par brassin.' },
+  ferm:      { cout: 4, nom: 'Fermenteur',            txt: 'Un fermenteur de plus, jusqu’à 4.', multiple: true },
+  touraille: { cout: 4, nom: 'Touraille',             txt: 'Permet le Stout.' },
+  embauche:  { cout: 7, nom: 'Embauche',              txt: 'Un troisième ouvrier.' },
+  salle:     { cout: 7, nom: 'Salle de dégustation',  txt: 'Chaque saison, vendre 1 unité au prix de base +1 sans ouvrier ; chaque hiver, +1 Réputation.' },
 };
 
-// Collaboration : une bière brassée à deux, dans le fermenteur de celui qui la propose
-export const COLLAB_UNITE_BONUS = 1;   // unités en plus de la cuve de l'hôte
-export const COLLAB_REP = 1;           // réputation de chacun au brassage
-export const COLLAB_PAR_SAISON = 1;    // collabs par brasserie et par saison
-
-// Départ
-export const DEPART = { res: { malt: 4, houb: 2, lev: 2, eau: 2, torr: 0 }, argent: 6 };
-
-// Pioche des saisons : 3 cartes par saison, une météo, deux styles en demande, parfois un événement
-export const CARTES = {
-  printemps: [
-    { id: 'p_doux',     nom: 'Printemps doux',     meteo: null,                 demande: ['blanche', 'blonde'] },
-    { id: 'p_pluvieux', nom: 'Printemps pluvieux', meteo: { source: 1 },        demande: ['blonde', 'lager'] },
-    { id: 'p_froid',    nom: 'Printemps froid',    meteo: { source: -1 },       demande: ['ambree', 'stout'], evt: 'contamination' },
-  ],
-  ete: [
-    { id: 'e_bel',      nom: 'Bel été',            meteo: null,                 demande: ['blonde', 'ipa'] },
-    { id: 'e_canicule', nom: 'Canicule',           meteo: { source: 'zero' },   demande: ['blanche', 'lager'], evt: 'canicule' },
-    { id: 'e_orageux',  nom: 'Été orageux',        meteo: { orge: -1 },         demande: ['ipa', 'blanche'] },
-  ],
-  automne: [
-    { id: 'a_recolte',  nom: 'Belle récolte',      meteo: { houb: 1 },          demande: ['ipa', 'ambree'] },
-    { id: 'a_humide',   nom: 'Automne humide',     meteo: null,                 demande: ['ambree', 'stout'], evt: 'concours' },
-    { id: 'a_sec',      nom: 'Automne sec',        meteo: { houb: -1 },         demande: ['garde', 'ipa'] },
-  ],
-  hiver: [
-    { id: 'h_tranquille', nom: 'Hiver tranquille', meteo: null,                 demande: ['stout', 'garde'] },
-    { id: 'h_rude',     nom: 'Hiver rude',         meteo: { source: -1 },       demande: ['ambree', 'garde'], evt: 'douanes' },
-    { id: 'h_fete',     nom: 'Hiver de fête',      meteo: null,                 demande: ['blonde', 'stout'], evt: 'fete' },
-  ],
-};
-export const CARTE = Object.fromEntries(Object.values(CARTES).flat().map((c) => [c.id, c]));
-
-export const CONCOURS = [5, 2];       // réputation du premier et du deuxième
-export const DOUANES_PAR = 3;         // 1 Argent par tranche de 3 unités en stock
-export const FETE_MULT = 2;           // capacité des villages doublée
+// Départ et compensation
+export const DEPART = { res: { malt: 4, houb: 2 }, argent: 5 };
+export const REP_DERNIER = 1;             // le dernier joueur de la première saison commence avec 1 Réputation
 
 // Décompte final
-export const DIVERSITE = { 3: 2, 5: 5, 7: 9 };   // styles différents brassés → points
+export const DIVERSITE = { 3: 2, 4: 5 };
 export const ARGENT_PAR_POINT = 8;
 
-export const Z = () => ({ malt: 0, houb: 0, lev: 0, torr: 0, eau: 0 });
+export const Z = () => ({ malt: 0, houb: 0 });
 export const ZS = () => Object.fromEntries(STYLES.map((s) => [s, 0]));
 export const ZI = () => Object.fromEntries(ITEMS.map((k) => [k, 0]));
 export const total = (o) => Object.values(o ?? {}).reduce((s, n) => s + n, 0);

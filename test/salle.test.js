@@ -63,22 +63,23 @@ describe('salle', () => {
     const { deps, clock, tours } = setup();
     const { salle } = Salle.creer({ nom: 'Lent', humains: 1, mode: 'direct', delai: 60 }, deps);
     salle.demarrer(0);
-    // les IA qui se placent avant l'humain jouent d'abord
+    // les IA qui jouent avant l'humain jouent d'abord
     for (let n = 0; n < 100 && !waitingFor(salle.etat).includes(0); n++) clock.advance(100);
     assert.deepEqual(tours, [0]);
     const deadline = salle.meta.echeances[0];
     assert.ok(deadline > clock.now() + 59000 && deadline <= clock.now() + 60000, 'échéance à 60 s');
+    const turn = salle.etat.turn, nlog = salle.etat.log.length;
     clock.advance(58000);
-    assert.equal(salle.etat.players[0].hex, null);
+    assert.equal(salle.etat.log.length, nlog);
     clock.advance(3000);
-    assert.notEqual(salle.etat.players[0].hex, null, 'l’IA a placé la brasserie');
+    assert.ok(salle.etat.log.length > nlog, 'l’IA a joué une action en retard');
     assert.equal(salle.meta.sieges[0].retards, 1);
     assert.equal(salle.isAi(0), false);
     clock.advance(61000);
     assert.equal(salle.meta.sieges[0].absent, true);
     assert.equal(salle.vue(0).sieges[0].absent, true);
     clock.advance(60000);
-    assert.ok(salle.etat.phase !== 'setup', 'l’IA a continué à jouer');
+    assert.ok(salle.etat.turn > turn, 'l’IA a continué à jouer');
     salle.present(0);
     assert.equal(salle.isAi(0), false);
   });
@@ -102,7 +103,7 @@ describe('salle', () => {
     playHuman(salle, clock, 0, () => salle.etat.phase === 'main' && salle.etat.cur === 0 && !salle.etat.pending);
     const r = salle.etat.players[0].res;
     const give = Object.keys(r).find((k) => r[k] > 0);
-    const get = ['malt', 'houb', 'lev', 'eau', 'torr'].find((k) => k !== give);
+    const get = ['malt', 'houb'].find((k) => k !== give);
     assert.equal(salle.agir(0, { type: 'proposeTrade', give: { [give]: 1 }, get: { [get]: 9 } }).ok, true);
     clock.advance(1000);
     assert.ok(salle.etat.trade, 'offre ouverte, les IA ont répondu');

@@ -1,12 +1,10 @@
 // Point d'entrée du moteur, identique dans le navigateur (import ES) et dans Node.
 
 export * from './constantes.js';
-export { TOPO, distClient, hexDist } from './plateau.js';
 export {
   VERSION, createGame, applyAction, legalActions, waitingFor, deciders, viewFor,
-  saisonIdx, annee, carteCourante, unites, cuveUnites, a, clientIds, clientKind, clientPos, distance, coutTournee, limiteLivraison,
-  enDemande, prixMarche, valeurLivraison, peutBrasser, coutRecette, ameliorationsPossibles, pointsDiversite, score, avoirs,
-  collabLibre, stockMarche, lireApport, apportParDefaut,
+  saisonIdx, saisonNom, annee, unites, cuveUnites, a, enDemande, prixMarche, caseOuverte, caseLibre, ordre, recolte, peutBrasser,
+  valeurLivraison, stylesPour, ameliorationsPossibles, pointsDiversite, score, avoirs, posesPossibles,
 } from './regles.js';
 export { aiAction, NIVEAUX } from './ia.js';
 

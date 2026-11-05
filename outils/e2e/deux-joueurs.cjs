@@ -1,52 +1,7 @@
 const { chromium } = require('playwright');
 const OUT = process.env.CAPTURES || require('node:os').tmpdir();
 const URL = process.env.URL || 'http://localhost:8642/';
-// Une interaction possible sur la page, ou false s'il n'y a rien à faire
-async function step(page, c) {
-  const bump = (k) => (c[k] = (c[k] || 0) + 1);
-  if (await page.locator('#modal:not([hidden])').count()) {
-    const box = page.locator('#modalBox'), title = (await box.locator('h2').textContent()) || '';
-    if (/emporte/.test(title)) { bump('fin vue'); return 'fini'; }
-    if (/Contamination|Canicule/.test(title)) { bump('perte'); await box.locator('[data-ferm]').first().click(); return true; }
-    if (/Concours/.test(title)) { bump('concours'); await box.locator('[data-style]').first().click(); return true; }
-    if (/Offre de/.test(title)) { bump('offre reçue'); const acc = box.locator('[data-y]:not(:disabled)'); try { if (await acc.count() && c['offre reçue'] % 2) { await acc.click({ timeout: 1500 }); bump('offre acceptée'); } else await box.locator('[data-n]').click({ timeout: 1500 }); } catch { bump('offre disparue'); } return true; }
-    if (/Réponses/.test(title)) {
-      const k = box.locator('[data-k]:not([data-k="-1"])');
-      if (await k.count()) { bump('échange conclu'); await k.first().click(); return true; }
-      if (/Fermer|Annuler/.test(await box.locator('[data-k="-1"]').textContent())) { await box.locator('[data-k="-1"]').click(); return true; }
-      return false; // on attend les réponses
-    }
-    if (/Contre-proposition/.test(title)) { await box.locator('[data-cback]').click(); return true; }
-    // Collabs : accepter une fois sur deux celle qu'on reçoit, brasser la sienne dès qu'elle est acceptée
-    if (/Collab avec/.test(title)) { bump('collab reçue'); const acc = box.locator('[data-y]:not(:disabled)'); try { if (await acc.count() && c['collab reçue'] % 2) { await acc.click({ timeout: 1500 }); bump('collab acceptée'); } else await box.locator('[data-n]').click({ timeout: 1500 }); } catch { bump('collab disparue'); } return true; }
-    if (/Ta collab/.test(title)) {
-      const k = box.locator('[data-k]:not([data-k="-1"])');
-      if (await k.count()) { bump('collab brassée'); await k.first().click(); return true; }
-      if (/Fermer|Renoncer/.test(await box.locator('[data-k="-1"]').textContent())) { await box.locator('[data-k="-1"]').click(); return true; }
-      return false;
-    }
-    if (/Autre répartition/.test(title)) { await box.locator('[data-ccback]').click(); return true; }
-    throw new Error('fenêtre inconnue : ' + title);
-  }
-  const spot = page.locator('#board .hpick, #board .cpick');
-  if (await spot.count()) { bump('plateau'); await spot.first().dispatchEvent('click'); return true; }
-  if (!(await page.locator('[data-act="end"]:not(:disabled)').count()) && !(await page.locator('[data-act="vendre"]:not(:disabled)').count())) return false;
-  const click = async (sel, k) => { const b = page.locator(`${sel}:not(:disabled)`); if (await b.count()) { bump(k); await b.first().click(); return true; } return false; };
-  if (await click('[data-act="livrer"]', 'livraison')) return true;
-  if (await click('[data-act="ameliorer"]', 'amélioration')) return true;
-  if (await click('[data-act="brasser"]', 'brassin')) return true;
-  const stock = (await page.locator('#brasserie .stk b').allTextContents()).reduce((n, t) => n + +t, 0);
-  if (stock > 4 && await click('[data-act="vendre"]', 'vente')) return true;
-  bump('tours');
-  if (c.tours % 5 === 3 && c.dernierePropo !== c.tours && await page.locator('[data-act="og"][data-d="1"]:not(:disabled)').count()) {
-    c.dernierePropo = c.tours;
-    await page.locator('[data-act="og"][data-d="1"]:not(:disabled)').first().click();
-    await page.locator('[data-act="ow"][data-d="1"]:not(:disabled)').last().click();
-    if (await page.locator('[data-act="propose"]:not(:disabled)').count()) { bump('proposition'); await page.locator('[data-act="propose"]').click(); return true; }
-  }
-  if (await click('[data-act="end"]', 'fin de tour')) return true;
-  return false;
-}
+const { step } = require('./joueur.cjs');
 (async () => {
   const browser = await chromium.launch();
   const errors = [];

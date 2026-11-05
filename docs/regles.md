@@ -1,191 +1,117 @@
 # Brassins — règles du jeu
 
-*Pour 2 à 4 brasseries, humaines ou tenues par l'ordinateur. Une partie dure trois ans de jeu, soit douze saisons, environ 45 minutes à quatre.*
+*Pour 2 à 4 brasseries, humaines ou tenues par l'ordinateur. Une partie dure trois ans de jeu, soit douze saisons, 45 minutes à une heure à quatre.*
 
 ## De quoi il s'agit
 
-Chacun tient une brasserie artisanale dans le même terroir. Pendant trois ans, vous allez récolter ce que vos champs et vos sources produisent, brasser des bières, les laisser fermenter, puis les vendre : au Marché du Bourg quand il faut de l'argent vite, ou en tournée chez les bars, la cave et les foires, qui paient mieux et font votre renommée. Entre-temps, vous agrandirez la brasserie : une cuve plus grande, des fermenteurs, une touraille, un camion.
+Chacun tient une brasserie artisanale dans le même terroir. À chaque saison, vous envoyez vos ouvriers sur le plateau commun : récolter l'orge et le houblon, acheter ce qui manque, livrer les clients, vendre au marché, agrandir la brasserie. Une place prise ne l'est plus pour les autres : ce que tu récoltes, le voisin ne l'a pas ; le client que tu livres, il ne le livre pas.
 
-À la fin du troisième hiver, on compte la **réputation**. La brasserie la plus réputée l'emporte.
+Entre deux poses, on brasse. La bière fermente une à trois saisons selon le style, puis se vend au Marché, ou mieux, chez les clients, qui paient plus et font la **réputation**. À la fin du troisième hiver, la brasserie la plus réputée l'emporte.
 
-## Le plateau
+## Le matériel
 
-Dix-neuf cases hexagonales entourées par la côte.
+- **Le plateau** : 8 cases d'action, la file des 5 clients, 4 pistes de prix (une par style), le calendrier des 12 saisons avec la table des événements.
+- **2 dés de saison** (météo, événement) et **1 dé de brassage**.
+- **40 cartes Client** : bars, caves, festivals.
+- **Par brasserie** : 2 ouvriers (un troisième à embaucher), 2 fermenteurs (jusqu'à 4), une cuve, les tuiles Recette et Équipement.
+- **Jetons** : Malt, Houblon, Argent, et la bière en quatre couleurs.
 
-- **Le Bourg**, au centre. On y trouve le **Marché**, le **Bar du Bourg** et la **Cave du Bourg**.
-- **Trois villages**, sur le pourtour. Chacun a son bar, avec deux styles de bière préférés, tirés au sort en début de partie.
-- **Quinze terroirs** : six champs d'orge, cinq houblonnières, quatre sources. Ils sont mélangés à chaque partie.
-- **Six foires** sur la côte, chacune liée à une saison : Festival de printemps, Fête de la bière et Fête des moissons (été), Foire d'automne, Marché de Noël et Fête de la Saint-Vincent (hiver). Une foire n'achète que pendant sa saison.
+Deux matières, quatre styles, une monnaie. Tout le reste est dans les mains des joueurs.
 
-## Les matières et la bière
+## Les recettes
 
-Quatre matières premières : **Malt**, **Houblon**, **Levure**, **Eau**. Une matière transformée : le **Malt torréfié**, qu'on fabrique à la brasserie avec une touraille (ou qu'on achète cher au Marché). Et de l'**Argent**.
+| Style | Malt | Houblon | Fermentation | Prix de base | Réputation chez un client |
+|---|---|---|---|---|---|
+| Blonde | 2 | 1 | 1 saison | 3 | 1 |
+| IPA | 2 | 2 | 2 saisons | 5 | 2 |
+| Stout | 3 | 1 | 2 saisons | 6 | 3 |
+| Bière de garde | 4 | 1 | 3 saisons | 7 | 4 |
 
-La bière se compte en **unités**. Un brassin donne 2 unités au départ, 3 ou 4 avec une cuve agrandie. On ne peut pas garder plus de **6 unités en stock** à la fin de son tour.
+Le Stout demande une **Touraille**. Un brassin donne **2 unités** (3 avec la Grande cuve), corrigées par le dé de brassage : **1**, brassin raté, une unité en moins ; **6**, cuvée exceptionnelle, une unité en plus. La première fois qu'on brasse un style, **+1 Réputation**.
 
 ## Mise en place
 
-1. On tire au sort qui jouera en premier à la première saison. L'ordre de jeu tourne ensuite vers la gauche.
-2. **Dans l'ordre inverse** (le dernier à jouer choisit en premier), chacun pose sa brasserie sur un terroir libre. La case choisie et ses six voisines approvisionnent la brasserie. Deux brasseries peuvent être voisines : elles partagent les cases communes sans se gêner.
-3. Aussitôt après, chacun ouvre gratuitement **une première tournée** vers un client à deux cases ou moins de sa brasserie.
-4. Chacun commence avec 4 Malt, 2 Houblon, 2 Levure, 2 Eau, 6 Argent, deux fermenteurs et une cuve de 2 unités.
+Chacun reçoit 4 Malt, 2 Houblon, 5 Argent, 2 ouvriers et 2 fermenteurs vides. On retourne 5 cartes Client. On tire au sort le premier joueur ; **le joueur qui jouera en dernier à la première saison commence avec 1 Réputation**.
 
 ## Une saison
 
-La partie se joue en douze saisons : printemps, été, automne, hiver, trois fois. Chaque saison se déroule en quatre temps.
+### 1. Les dés
 
-### 1. La carte Saison
+Le premier joueur lance les deux dés.
 
-On retourne la carte de la saison. Il y en a trois par saison, mélangées ; sur trois ans, chacune sort exactement une fois. On sait donc toujours ce qui peut encore arriver.
+- **Météo** : sur **1**, champs et houblonnières produisent 1 de moins cette saison ; sur **6**, 1 de plus ; sinon, rien.
+- **Événement** : sur **1** ou **2**, rien. Sinon, on lit la table dans la colonne de la saison :
 
-La **frise des saisons**, au-dessus du plateau, montre les douze saisons de la partie : les cartes déjà sorties, la saison en cours, et pour chaque saison à venir les cartes qui peuvent encore tomber, avec leurs styles en demande et leurs événements.
-
-La carte indique :
-
-- la **météo**, qui modifie la production d'un type de terroir ;
-- deux **styles en demande** : ils se vendent 2 Argent de plus au Marché et rapportent 1 Réputation de plus chez les clients ;
-- parfois un **événement** (voir plus bas).
-
-### 2. La production
-
-Chaque brasserie reçoit ce que produisent sa case et ses six voisines, selon la saison :
-
-| Terroir | Printemps | Été | Automne | Hiver |
+| Dé | Printemps | Été | Automne | Hiver |
 |---|---|---|---|---|
-| Champ d'orge → Malt | 0 | 3 | 2 | 0 |
-| Houblonnière → Houblon | 0 | 2 | 3 | 0 |
-| Source → Eau | 3 | 0 | 2 | 1 |
+| 3 | **Mildiou** : houblonnières fermées | **Canicule** : chacun retire 1 unité d'un brassin en cours | **Belle récolte** : champs et houblonnières +1 | **Grève des transporteurs** : pas de Tournée |
+| 4 | **Contamination** : chacun retire 1 unité d'un brassin en cours | **Fête de la bière** : tous les prix +1 | **Commande de la mairie** : un client de 3 unités, bien payé, rejoint la file | **Douanes** : 1 Argent par tranche de 3 unités en stock |
+| 5 | **Critique gastronomique** : le premier qui livre une cave gagne 3 Réputation de plus | **Pénurie** : Marché aux matières fermé | **Concours régional** : chacun présente 1 unité, le meilleur gagne 5 Réputation, le deuxième 2 | **Marché de Noël** : 2 clients de plus dans la file |
+| 6 | **Brasseur invité** : le Stout se brasse sans Touraille | **Inspection** : chaque brassin en cours perd 1 unité | **Salon des brasseurs** : comme le concours, 8 et 3 Réputation | **Fête au village** : 2 clients de plus, tous les prix +1 |
 
-Chaque brasserie a aussi un puits : **+1 Eau** chaque saison. Avec un Labo : +1 Levure et +1 Houblon.
+Au concours et au salon, l'unité présentée est consommée ; elle vaut la réputation de son style, +1 s'il est en demande.
 
-La levure, elle, ne pousse pas dans les champs. On la **récupère à la fin de chaque fermentation** (1 Levure par brassin terminé), on l'achète au Marché, ou on l'entretient au Labo.
+Les **styles en demande** ne dépendent pas des dés : Blonde et IPA au printemps et en été, Stout et IPA en automne, Stout et Bière de garde en hiver. Un style en demande se vend **+2 au Marché** et rapporte **+1 Réputation** chez un client.
 
-Au même moment, les **brassins dont la fermentation est finie arrivent en stock**, et **le Marché se réapprovisionne** (voir *Acheter au Marché*).
+### 2. Les brassins mûrs sortent
 
-### 3. L'événement
+Les brassins dont la fermentation est finie passent en stock.
 
-S'il y en a un sur la carte, il s'applique à tout le monde avant les tours :
+### 3. La pose des ouvriers
 
-- **Contamination** (printemps froid) : chaque joueur sans Labo choisit un de ses brassins en cours, qui perd 1 unité.
-- **Canicule** (été) : même chose pour les joueurs sans Chambre froide.
-- **Concours régional** (automne humide) : chaque joueur qui a de la bière en stock présente 1 unité, qui est consommée. Son score est la réputation du style, +1 s'il est en demande. Le meilleur gagne 5 Réputation, le deuxième 2. En cas d'égalité, chacun prend le lot.
-- **Contrôle des douanes** (hiver rude) : chacun paie 1 Argent par tranche de 3 unités en stock.
-- **Fête au village** (hiver de fête) : les bars de village achètent deux fois plus cette saison.
+Le premier joueur change à chaque saison : il tourne d'un cran vers la gauche. Dans l'ordre, chacun pose **un** ouvrier sur une case et fait l'action aussitôt. Pendant son tour, avant ou après la pose, on peut **brasser** autant qu'on a de fermenteurs libres, et proposer **un échange** aux autres brasseries (matières, bière, Argent). On continue jusqu'à ce que tous les ouvriers soient posés. Qui n'a plus d'ouvrier ne joue plus de la saison ; qui n'a aucune case jouable passe, et l'ouvrier est perdu.
 
-### 4. Les tours
+| Case | Ce qu'on y fait |
+|---|---|
+| **Champ d'orge** (×2) | Malt : 3 au printemps, 4 en été et en automne, fermé l'hiver. Deux places, le second récolte 1 de moins. |
+| **Houblonnière** (×2) | Houblon : 2 au printemps et en été, 4 en automne, fermé l'hiver. Deux places, le second récolte 1 de moins. |
+| **Marché aux matières** | Acheter jusqu'à 3 matières, 2 Argent chacune. Une place. |
+| **Tournée** | Livrer **un** client de la file. Une place par joueur et par saison. |
+| **Marché aux bières** | Vendre autant d'unités qu'on veut au prix de la piste. Ouvert à tous. |
+| **Chantier** | Acheter un équipement. Ouvert à tous. |
 
-**Le joueur le moins réputé commence** (égalité : le moins riche, puis le hasard), puis on tourne vers la gauche. Chacun joue tout son tour, puis passe. Quand tout le monde a joué, la saison se termine : les fermentations avancent d'une saison, les prix du Marché remontent de 1, et on passe à la saison suivante.
+### 4. Fin de saison
 
-## Ton tour
+Les fermentations avancent d'une saison. Chaque piste de prix remonte d'un cran vers son prix de base. **Le client le plus ancien de la file part**, et on complète la file à 5. On ne garde pas plus de **6 unités** en stock : le surplus est vendu d'office au Marché. Les ouvriers reviennent.
 
-Pendant ton tour, tu fais autant d'actions que tu veux, dans l'ordre que tu veux, parmi celles-ci. Puis tu passes la main. Tu ne peux pas passer avec plus de 6 unités en stock : vends ou livre d'abord.
+## Les clients
 
-### Acheter au Marché
+Chaque carte dit le style voulu (ou « n'importe lequel »), le nombre d'unités, le bonus d'Argent et la Réputation.
 
-Prix fixes : Malt 2, Houblon 2, Levure 3, Eau 1, Malt torréfié 5.
+- **Bars** : 1 unité, prix de base du style (+1 pour un bar à style), 1 ou 2 Réputation.
+- **Caves** : 1 unité de Stout ou de Bière de garde, prix de base +3, 3 ou 4 Réputation.
+- **Festivals** : 2 unités d'un style, prix de base +1, 2 Réputation ; livré **pendant sa saison**, +2 Réputation de plus.
 
-Mais **le Marché n'a qu'un stock limité**, renouvelé au début de chaque saison. Ce qui n'est pas vendu dans la saison disparaît : il n'y a pas de report.
+Un client paie le prix de base de son style plus son bonus, par unité ; les fêtes qui majorent les prix comptent aussi. Livrer, c'est prendre la carte devant soi.
 
-| Matière | 2 joueurs | 3 joueurs | 4 joueurs |
-|---|---|---|---|
-| Malt | 4 | 5 | 6 |
-| Houblon | 2 | 3 | 4 |
-| Levure | 2 | 3 | 4 |
-| Eau | 4 | 5 | 6 |
-| Malt torréfié | 1 | 2 | 2 |
+## Le Marché aux bières
 
-Premier arrivé, premier servi : celui qui joue avant toi peut tout acheter. Comme le moins réputé joue en premier, c'est lui qui a le premier choix.
+Une piste par style, de 1 à 7, avec le prix de base marqué. Chaque unité vendue descend le marqueur d'un cran, **pour tout le monde**. Vendre trois Stout fait chuter le Stout du voisin. En fin de saison, chaque marqueur remonte d'un cran vers sa base.
 
-### Brasser
+## Les équipements
 
-Choisis un style, paie la recette, occupe un fermenteur libre. Le brassin y reste pendant toute sa fermentation. Une bière brassée au printemps avec 1 saison de fermentation est en stock à l'été ; avec 3 saisons, elle est en stock à l'hiver.
-
-| Style | Malt | Houblon | Levure | Eau | Malt torréfié | Fermentation | Prix de base | Réputation |
-|---|---|---|---|---|---|---|---|---|
-| Blonde | 2 | 1 | 1 | 1 | – | 1 saison | 3 | 1 |
-| Blanche | 1 | 1 | 1 | 2 | – | 1 saison | 3 | 1 |
-| IPA | 2 | 3 | 1 | 1 | – | 2 saisons | 5 | 2 |
-| Ambrée | 2 | 1 | 1 | 1 | 1 | 2 saisons | 4 | 3 |
-| Stout | 1 | 1 | 1 | 1 | 2 | 2 saisons | 6 | 3 |
-| Lager | 2 | 1 | 1 | 2 | – | 2 saisons | 4 | 3 |
-| Bière de garde | 3 | 1 | 1 | 1 | 1 | 3 saisons | 7 | 4 |
-
-La Lager demande une Chambre froide. Le **prix de base** est ce que vaut une unité au Marché quand personne n'en a vendu ; la **réputation** est ce que rapporte une unité livrée à un client.
-
-**La première fois que tu brasses un style, tu gagnes 1 Réputation.** Et à la fin de la partie, le nombre de styles différents que tu as brassés compte (voir le décompte).
-
-### Torréfier
-
-Avec une Touraille : une fois par saison, transformer 2 Malt en 1 Malt torréfié.
-
-### Vendre au Marché
-
-Tu peux vendre autant d'unités que tu veux, au **prix courant** du style. Mais chaque unité vendue fait **baisser le prix de 1** (jamais sous 1), et il ne remonte que de 1 par saison. Un style en demande se vend 2 de plus. Le Marché rapporte de l'Argent, jamais de Réputation.
-
-### Ouvrir une tournée
-
-Pour livrer un client, il faut une tournée vers lui. Elle coûte, une fois pour toutes, **2 Argent par case de distance** entre ta brasserie et le client (1 avec le Camion). Les foires se comptent depuis la côte.
-
-### Livrer un client
-
-Une unité par client et par saison (deux avec le Camion), tant que le client a encore de la place : sa capacité est partagée entre tous les joueurs, dans l'ordre de jeu. Une livraison rapporte l'Argent du client et la **Réputation du style**, +1 si le style est en demande.
-
-| Client | Capacité par saison | Paie | Particularité |
-|---|---|---|---|
-| Bar du Bourg | 3 | prix de base +1 | tous styles |
-| Cave du Bourg | 2 | prix de base +3 | Ambrée, Stout, Lager et Bière de garde seulement |
-| Bar de village (×3) | 2 | prix de base | deux styles préférés ; les autres : prix de base −1 et aucune Réputation |
-| Foire (×6) | 4 | prix de base +2 | seulement pendant sa saison ; +1 Réputation par livraison |
-
-### Vendre à la Salle de dégustation
-
-Si tu l'as construite : jusqu'à 2 unités par saison, au prix de base +1, sans client ni tournée. Et chaque hiver, elle rapporte 1 Réputation.
-
-### S'équiper
-
-| Amélioration | Coût | Effet |
+| Équipement | Coût | Effet |
 |---|---|---|
-| Cuve niveau 2 | 8 | 3 unités par brassin |
-| Cuve niveau 3 | 14 | 4 unités par brassin (il faut le niveau 2) |
-| Fermenteur | 6 chacun | un fermenteur de plus, jusqu'à 5 |
-| Touraille | 7 | torréfier le malt |
-| Chambre froide | 6 | permet les Lagers ; protège de la canicule |
-| Labo | 6 | +1 Levure et +1 Houblon par saison ; protège de la contamination |
-| Camion | 8 | tournées à 1 Argent par case ; 2 unités par client et par saison |
-| Salle de dégustation | 10 | vend 2 unités par saison ; 1 Réputation chaque hiver |
+| Grande cuve | 6 | 3 unités par brassin |
+| Fermenteur | 4 | Un fermenteur de plus, jusqu'à 4 |
+| Touraille | 4 | Permet le Stout |
+| Embauche | 7 | Un troisième ouvrier |
+| Salle de dégustation | 7 | Chaque saison, vendre 1 unité au prix de base +1 sans ouvrier ; chaque hiver, +1 Réputation |
 
-### Brasser en collaboration
+## Les échanges
 
-Pendant ton tour, tu peux proposer une **collab** à une autre brasserie : une bière brassée à deux, chez toi.
+Pendant son tour, une brasserie peut proposer **une** offre aux autres : ce qu'elle donne contre ce qu'elle demande, en Malt, Houblon, bière ou Argent. Chacun accepte, refuse ou contre-propose ; le proposant conclut avec l'un d'eux, ou retire l'offre. Une brasserie peut choisir de ne pas recevoir les offres.
 
-- Tu choisis le style et tu répartis la recette : qui apporte quelles matières. Chacun doit en apporter au moins une.
-- Le brassin occupe **un de tes fermenteurs**, avec ta cuve. Si le style demande un équipement (la Lager et sa Chambre froide), c'est le tien qui compte : une collab permet à ton partenaire de brasser un style qu'il ne pourrait pas faire seul.
-- L'autre accepte, refuse ou fait une contre-proposition sur la répartition, comme pour un échange. L'offre reste ouverte jusqu'à la fin de ton tour.
-- Au brassage, **chacun gagne 1 Réputation**, plus le bonus de première fois si c'est un style qu'il n'avait jamais brassé (et le style compte pour sa diversité).
-- Une collab donne **1 unité de plus** que ta cuve. À la fin de la fermentation, les unités se partagent en deux, l'unité impaire allant à celui qui prête le fermenteur. La part de ton partenaire arrive directement dans son stock.
-- Si un événement abîme le brassin, la perte se fait avant le partage.
-- Chaque brasserie participe à **une collab par saison au plus**, qu'elle reçoive ou qu'elle prête son fermenteur.
+## Le décompte
 
-### Négocier
+Après l'hiver de l'an 3 :
 
-À tout moment de ton tour, tu peux proposer un échange aux autres brasseries : matières, bière, Argent, dans les deux sens. Chacun accepte, refuse ou fait une contre-proposition, et tu choisis avec qui conclure. Une seule offre ouverte à la fois, échange ou collab.
+- la **Réputation** ;
+- la **diversité** : +2 pour trois styles brassés au moins une fois, +5 pour les quatre ;
+- **1 point par 8 Argent**.
 
-## Fin de partie et décompte
+La bière restante ne vaut rien. En cas d'égalité, la brasserie la plus riche, puis celle qui a le plus de bière.
 
-Après le tour de l'hiver de la troisième année, chacun additionne :
+## En deux mots, pour expliquer à table
 
-- sa **Réputation** ;
-- le **bonus de diversité** : 3 styles différents brassés dans la partie +2, 5 styles +5, les 7 styles +9 ;
-- **1 point par 8 Argent**, arrondi à l'inférieur. La bière invendue ne vaut rien.
-
-Égalité : le plus riche l'emporte, puis celui qui a le plus de bière en stock.
-
-## Quelques conseils pour une première partie
-
-- **Place ta brasserie là où les trois terroirs se touchent.** Un seul type manquant, et tu passeras ta vie à acheter au Marché.
-- **Le Marché est une soupape, pas un débouché.** Deux Blondes vendues d'affilée rapportent 3 puis 2. La réputation vient des clients.
-- **Regarde le calendrier.** La frise te dit quels styles seront en demande et quelles foires arrivent. Une bière de garde brassée au printemps est prête pour le Marché de Noël.
-- **Le Malt torréfié se fait rare au Marché.** Sans Touraille, achète-le tôt, ou propose une collab à celui qui en a une.
-- **Une collab rapporte aux deux.** Choisis bien ton partenaire : aider le meneur à brasser un style de plus peut lui donner la partie.
-- **Agrandis la cuve tôt.** Passer de 2 à 3 unités par brassin, c'est 50 % de bière en plus pour la même recette.
-- **Ne finis pas le dernier hiver avec un fermenteur plein.** Ce qui n'est pas en stock à la fin ne vaut rien.
+Deux ouvriers, huit cases, cinq clients sous les yeux de tous. À chaque saison, le premier joueur lance les dés, puis chacun pose un ouvrier à son tour, et brasse quand il veut. Récolte, achète, brasse, livre, vends : ce que tu prends, l'autre ne l'a plus. Au bout de trois ans, la brasserie la plus réputée gagne.

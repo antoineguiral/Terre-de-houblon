@@ -42,7 +42,7 @@ describe('notifications e-mail', () => {
     assert.equal(mails.length, 1);
     const m = mails[0];
     assert.equal(m.to, 'moi@exemple.fr');
-    assert.match(m.subject, new RegExp(`installer \\(partie ${salle.code}\\)`));
+    assert.match(m.subject, new RegExp(`À toi de poser ton 1er ouvrier \\(partie ${salle.code}, Printemps an 1\\)`));
     assert.ok(m.html.includes(`https://jeu.test/#p=${jeton}`));
     assert.ok(m.text.includes(`https://jeu.test/desabonner?jeton=${jeton}`));
     assert.equal(m.unsubscribe, `https://jeu.test/desabonner?jeton=${jeton}`);
@@ -52,7 +52,7 @@ describe('notifications e-mail', () => {
     // Pas de second message pour la même décision
     clock.advance(60 * MIN);
     assert.equal(mails.length, 1);
-    assert.equal(base.partie(salle.code).meta.sieges[0].notif.tour, 0);
+    assert.equal(base.partie(salle.code).meta.sieges[0].notif.tour, salle.etat.turn);
   });
 
   test('pas d’e-mail si le joueur est connecté, ni en direct, ni sans adresse', () => {
@@ -82,7 +82,7 @@ describe('notifications e-mail', () => {
     salle.demarrer(0);
     for (let h = 0; h < 2000 && salle.statut !== 'fini'; h++) clock.advance(3600 * 1000);
     assert.equal(salle.statut, 'fini');
-    const tours = mails.filter((m) => /À toi|installer|décider/.test(m.subject));
+    const tours = mails.filter((m) => /À toi|décider/.test(m.subject));
     assert.ok(tours.length >= 2, `messages de tour (${tours.length})`);
     const parTour = new Map();
     tours.forEach((m) => { const k = m.subject; parTour.set(k, (parTour.get(k) || 0) + 1); });
