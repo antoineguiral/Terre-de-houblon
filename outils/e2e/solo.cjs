@@ -24,7 +24,9 @@ const dir = process.env.CAPTURES || require('node:os').tmpdir();
   }
   await page.screenshot({ path: `${dir}/solo-fin.png` });
   console.log(JSON.stringify(counts));
-  console.log('scores :', await page.locator('.scores b').allTextContents());
+  const totaux = await page.locator('#modalBox .fm .fmrow.tot b').allTextContents(); // feuilles de marque, du premier au dernier
+  if (!totaux.length) throw new Error('pas de feuilles de marque en fin de partie');
+  console.log('scores :', totaux);
   if (r !== 'fini') { console.log('PARTIE NON FINIE'); process.exitCode = 1; }
   if (errors.length) { console.log('ERREURS', errors.slice(0, 5)); process.exitCode = 1; }
   await browser.close();
