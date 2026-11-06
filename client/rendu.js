@@ -11,6 +11,7 @@ import {
 } from '../moteur/index.js';
 import { RN, RI, SN, SI, SAISON_NOM, KIND, nomItem, nomSaison, meteoTexte, fmt, logLines, plural } from './textes.js';
 import { RYTHMES, rythme, choisirRythme, facteur, DUREE_BULLE } from './rythme.js';
+import * as D from './dessins.js';
 
 export const RCOL = { malt: '#d8af40', houb: '#5d9638', argent: '#d38b46' };
 export const RTXT = { malt: '#2a1d15', houb: '#f1f7ea', argent: '#1a120d' };
@@ -25,9 +26,6 @@ const schip = (st) => `<span class="cst sty" title="${SN[st]}" style="--rc:${SCO
 const ichip = (k) => (RES.includes(k) || k === 'argent' ? chip(k) : schip(k));
 const chips = (c) => `<span class="costs">${RES.flatMap((r) => Array(c[r] ?? 0).fill(chip(r))).join('')}</span>`;
 const sw = (i) => `<span class="sw" style="background:${PCOL[i]}"></span>`;
-const pawn = (i, name) => `<span class="pawn" data-p="${i}" title="${esc(name)}" style="background:${PCOL[i]}"></span>`;
-const DIEPOS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
-const die = (n, cls = '') => `<span class="die ${cls}" aria-label="${n}">${Array.from({ length: 9 }, (_, k) => `<i class="${DIEPOS[n]?.includes(k) ? 'on' : ''}"></i>`).join('')}</span>`;
 const stepper = (k, key, n, max) => `<span class="stp"><button class="btn mini" data-act="${k}" data-r="${key}" data-d="-1" aria-label="Moins" ${n ? '' : 'disabled'}>−</button><b>${n}</b><button class="btn mini" data-act="${k}" data-r="${key}" data-d="1" aria-label="Plus" ${n < max ? '' : 'disabled'}>+</button></span>`;
 
 export function createUi({ send, onNewGame, onHome, onStep }) {
@@ -62,42 +60,88 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
 
   function renderSaison() {
     const v = view;
-    const cal = Array.from({ length: NB_SAISONS }, (_, t) => `<span class="cal ${t === v.saison ? 'now' : t < v.saison ? 'past' : ''}" title="${esc(nomSaison(t))} · en demande : ${DEMANDE[SAISONS[t % 4]].map((s) => SN[s]).join(', ')}">${SAISON_NOM[SAISONS[t % 4]].slice(0, 1)}</span>`).join('');
     const e = v.evt ? EVT[v.evt] : null;
     $('#saison').innerHTML = `<div class="sbar">
-      <div class="stitle"><b>${v.phase === 'over' ? 'Fin de la partie' : nomSaison(v.saison)}</b><div class="calrow">${cal}</div></div>
-      <div class="sdice"><div class="dsl">${die(v.meteo)}<small>${meteoTexte(v.meteo)}</small></div><div class="dsl">${die(v.de, 'evt')}<small>${e ? `<b>${esc(e.nom)}</b> ${esc(e.txt)}` : 'Pas d’événement'}</small></div></div>
+      <div class="stitle"><b>${v.phase === 'over' ? 'Fin de la partie' : nomSaison(v.saison)}</b></div>
+      <div class="sdice"><div class="dsl">${D.de(v.meteo, '#f6eadb', D.C.encre, 34, -8)}<small>${meteoTexte(v.meteo)}</small></div><div class="dsl">${D.de(v.de, D.C.brique, '#f6eadb', 34, 6)}<small>${e ? `<b>${esc(e.nom)}</b> ${esc(e.txt)}` : 'Pas d’événement'}</small></div></div>
       <div class="sdem"><small>En demande</small> ${v.demande.map((s) => schip(s) + ' ' + SN[s]).join(' · ')}</div>
     </div>`;
   }
 
+  // Le plateau imprimé, dessiné depuis l'état : calendrier, 8 cases illustrées avec leurs places et les ouvriers
+  // posés, pistes de prix. Une case jouable s'illumine et se clique. En portrait (téléphone), deux colonnes.
+  const TW = 258, TH = 232, GAP = 14, M = 18;
+  const SOUS = { marcheMat: `${ACHAT_MAX} matières max · ${ACHAT.malt} € chacune`, tournee: 'Livrer un client de la file', marcheBieres: 'Vendre au prix de la piste', chantier: 'Acheter un équipement' };
+  const ACTION = { marcheMat: 'Acheter…', tournee: 'Livrer…', marcheBieres: 'Vendre…', chantier: 'S’équiper…' };
+  function recolteDe(v, c, d) {
+    const t = poseSur(c), si = saisonIdx(v);
+    if (v.ferme.includes(c)) return 0;
+    return t?.recolte ?? Math.max(0, d.recolte[si] ? d.recolte[si] + ({ 1: -1, 6: 1 }[v.meteo] ?? 0) + (v.evt === 'recolte' ? 1 : 0) - (v.occ[c]?.length ?? 0) : 0);
+  }
   function renderCases() {
-    const v = view;
-    const workersOn = (c) => (c === 'tournee' ? v.tournee : v.occ[c] ?? []).map((i) => pawn(i, P()[i].name)).join('');
-    const html = Object.entries(CASES).map(([c, d]) => {
-      const closed = v.ferme.includes(c), t = poseSur(c);
-      let body = '', foot = '';
+    const v = view, el = $('#plateau'), id = 'pl';
+    const portrait = (el.clientWidth || innerWidth) < 640;
+    const cols = portrait ? 2 : 4, W = M * 2 + cols * TW + (cols - 1) * GAP;
+    const cases = Object.keys(CASES), rows = Math.ceil(cases.length / cols);
+    const y0 = M + 78, yp = y0 + rows * (TH + GAP) + 4, trackRows = portrait ? 4 : 2;
+    const H = yp + 26 + trackRows * 40 + M;
+    let o = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Plateau de jeu">${D.defs(id)}`;
+    o += `<rect x="4" y="4" width="${W - 8}" height="${H - 8}" rx="20" fill="url(#${id}-pap)" filter="url(#${id}-o)"/>`;
+    o += `<rect x="12" y="12" width="${W - 24}" height="${H - 24}" rx="15" fill="none" stroke="${D.C.encre}" stroke-width="2" opacity=".25"/>`;
+    // calendrier : 12 saisons, marqueur sur la saison en cours
+    const step = (W - 2 * M - 28) / 12;
+    o += `<text x="${M + 6}" y="${M + 12}" font-size="12" font-weight="700" fill="${D.C.encre2}" letter-spacing="2">CALENDRIER · EN DEMANDE : ${v.demande.map((st) => SN[st].toUpperCase()).join(' ET ')}</text>`;
+    for (let t = 0; t < NB_SAISONS; t++) {
+      const k = t % 4, an = Math.floor(t / 4), x = M + 18 + t * step + an * (portrait ? 6 : 14), y = M + 42, r = Math.min(18, step / 2 - (portrait ? 6 : 3));
+      o += `<g opacity="${t < v.saison ? .45 : 1}"><title>${esc(nomSaison(t))} · en demande : ${DEMANDE[SAISONS[k]].map((st) => SN[st]).join(', ')}</title><circle cx="${x}" cy="${y}" r="${r}" fill="${D.SAISON_COL[k]}" stroke="${D.C.encre}" stroke-width="1.5"/>${D.iconeSaison(k, x, y)}</g>`;
+      if (k === 0) o += `<text x="${x - r}" y="${y + r + 14}" font-size="11" font-weight="700" fill="${D.C.encre2}">AN ${an + 1}</text>`;
+      if (t === v.saison) o += `<circle cx="${x}" cy="${y}" r="${r + 5}" fill="none" stroke="${D.C.cuivre}" stroke-width="5" filter="url(#${id}-o2)"/>`;
+    }
+    // cases
+    cases.forEach((c, k) => {
+      const d = CASES[c], x = M + (k % cols) * (TW + GAP), y = y0 + Math.floor(k / cols) * (TH + GAP);
+      const t = poseSur(c), closed = v.ferme.includes(c) || (d.recolte && !d.recolte[saisonIdx(v)]);
+      const cls = ['tuile', t ? 'can' : '', ui.mode === c ? 'active' : '', closed ? 'closed' : ''].join(' ');
+      o += `<g class="${cls}" data-case="${c}" transform="translate(${x},${y})" ${t ? `tabindex="0" role="button" aria-label="${esc(d.nom)} : ${d.recolte ? 'récolter' : ACTION[c]}"` : ''}>`;
+      o += `<clipPath id="${id}-c${k}"><rect width="${TW}" height="128" rx="14"/></clipPath><rect width="${TW}" height="${TH}" rx="14" fill="${D.C.creme2}"/>`;
+      o += `<g clip-path="url(#${id}-c${k})">${D.artCase(c, TW)}${closed ? `<rect width="${TW}" height="128" fill="rgba(43,29,20,.55)"/>` : ''}</g>`;
+      o += `<path d="M0 128 H${TW}" stroke="${D.C.encre}" stroke-width="2"/>`;
+      o += `<text x="14" y="154" font-size="19" font-weight="700" fill="${D.C.encre}" letter-spacing="1">${esc(d.nom.toUpperCase())}</text>`;
       if (d.recolte) {
-        const q = closed ? 0 : (t?.recolte ?? Math.max(0, d.recolte[saisonIdx(v)] ? d.recolte[saisonIdx(v)] + ({ 1: -1, 6: 1 }[v.meteo] ?? 0) + (v.evt === 'recolte' ? 1 : 0) - (v.occ[c]?.length ?? 0) : 0));
-        body = `<div class="yield">${d.recolte.map((n, k) => `<span class="${k === saisonIdx(v) ? 'now' : ''}" title="${SAISON_NOM[SAISONS[k]]}">${n || '–'}</span>`).join('')}</div><div class="big">${closed ? 'fermé' : q ? `+${q} ${RN[d.res]}` : d.recolte[saisonIdx(v)] ? 'épuisé' : 'fermé l’hiver'}</div><small>${d.cap > 1 ? `${d.cap} places, le 2ᵉ récolte 1 de moins` : ''}</small>`;
-        if (t) foot = `<button class="btn primary" data-act="poser" data-case="${c}">Récolter</button>`;
-      } else if (c === 'marcheMat') {
-        body = `<small>Jusqu'à ${ACHAT_MAX} matières<br>${RES.map((r) => `${RN[r]} ${ACHAT[r]} €`).join(' · ')}</small>`;
-        if (t) foot = `<button class="btn primary" data-act="mode" data-mode="marcheMat">Acheter…</button>`;
-      } else if (c === 'tournee') {
-        body = `<small>Une place par joueur.<br>Livrer un client de la file.</small>`;
-        if (t) foot = `<button class="btn primary" data-act="mode" data-mode="tournee">Livrer…</button>`;
-      } else if (c === 'marcheBieres') {
-        body = `<small>Vendre au prix de la piste.<br>Chaque unité baisse le prix de 1.</small>`;
-        if (t) foot = `<button class="btn primary" data-act="mode" data-mode="marcheBieres">Vendre…</button>`;
-      } else if (c === 'chantier') {
-        body = `<small>Acheter un équipement.</small>`;
-        if (t) foot = `<button class="btn primary" data-act="mode" data-mode="chantier">S'équiper…</button>`;
+        const q = recolteDe(v, c, d);
+        o += `<text x="14" y="175" font-size="14" font-weight="500" fill="${D.C.encre2}">${RN[d.res]} · le 2ᵉ ouvrier récolte 1 de moins</text>`;
+        o += d.recolte.map((n, j) => `<g transform="translate(${150 + j * 26},206)"><circle r="11" fill="${D.SAISON_COL[j]}" stroke="${D.C.encre}" stroke-width="${j === saisonIdx(v) ? 2.6 : 1.2}"/><text y="4.5" text-anchor="middle" font-size="13" font-weight="700" fill="${D.C.encre}">${n || '–'}</text></g>`).join('');
+        o += closed ? `<g transform="translate(${TW / 2},64)"><rect x="-52" y="-16" width="104" height="32" rx="16" fill="${D.C.encre}"/><text y="6" text-anchor="middle" font-size="16" font-weight="700" fill="#f4e9d4" letter-spacing="2">FERMÉ</text></g>`
+          : `<g transform="translate(12,12)"><rect width="${q ? 104 : 86}" height="30" rx="15" fill="#f4e9d4" stroke="${D.C.encre}" stroke-width="1.5"/><text x="${q ? 52 : 43}" y="20" text-anchor="middle" font-size="16" font-weight="700" fill="${D.C.encre}">${q ? `+${q} ${RN[d.res]}` : 'épuisé'}</text></g>`;
+      } else o += `<text x="14" y="175" font-size="14" font-weight="500" fill="${D.C.encre2}">${SOUS[c]}</text>`;
+      if (t) o += `<g transform="translate(${TW - 12},142)"><rect x="-96" y="0" width="96" height="26" rx="13" fill="${D.C.cuivre}" stroke="${D.C.encre}" stroke-width="1.5"/><text x="-48" y="18" text-anchor="middle" font-size="14" font-weight="700" fill="${D.C.encre}">${d.recolte ? 'Récolter' : ACTION[c]}</text></g>`;
+      // places et ouvriers
+      const occ = c === 'tournee' ? v.tournee : v.occ[c] ?? [];
+      const places = d.recolte ? ['1', '−1'] : c === 'marcheMat' ? ['1'] : c === 'tournee' ? P().map(() => 'j') : ['m', 'm', 'm'];
+      const n = Math.max(places.length, occ.length), pas = Math.min(52, (d.recolte ? 120 : TW - 40) / n);
+      for (let j = 0; j < n; j++) {
+        const cx = 30 + j * pas, cy = 206, pl = places[j] ?? 'm';
+        o += `<circle cx="${cx}" cy="${cy}" r="19" fill="${D.C.creme}" stroke="${D.C.encre}" stroke-width="1.8" ${pl === 'm' || pl === 'j' ? 'stroke-dasharray="4 3"' : ''}/>`;
+        if (pl === '−1' && occ[j] === undefined) o += `<text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" font-weight="700" fill="${D.C.encre2}">−1</text>`;
+        if (occ[j] !== undefined) o += D.ouvrier(id, cx, cy + 4, PCOL[occ[j]], 34, `class="pion" data-p="${occ[j]}"`);
       }
-      const cls = ['spot', closed ? 'closed' : '', d.multi ? 'multi' : '', ui.mode === c ? 'active' : '', t ? 'can' : ''].join(' ');
-      return `<div class="${cls}" data-case="${c}"><h4>${esc(d.nom)}${closed ? ' <span class="tagc">fermé</span>' : ''}</h4>${body}<div class="pawns">${workersOn(c)}</div><div class="foot">${foot}</div></div>`;
-    }).join('');
-    $('#cases').innerHTML = html;
+      o += `<rect class="cadre" width="${TW}" height="${TH}" rx="14" fill="none" stroke="${D.C.encre}" stroke-width="2"/></g>`;
+    });
+    // pistes de prix
+    o += `<text x="${M + 6}" y="${yp + 14}" font-size="12" font-weight="700" fill="${D.C.encre2}" letter-spacing="2">PRIX AU MARCHÉ AUX BIÈRES</text>`;
+    STYLES.forEach((st, r) => {
+      const col2 = portrait ? 0 : Math.floor(r / 2), row = portrait ? r : r % 2;
+      const x0 = M + 6 + col2 * ((W - 2 * M) / 2), y = yp + 26 + row * 40, base = RECETTES[st].prix, cur = v.prix[st];
+      o += `<rect x="${x0}" y="${y}" width="96" height="30" rx="15" fill="${D.STYLE_COL[st]}" stroke="${D.C.encre}" stroke-width="1.5"/><text x="${x0 + 48}" y="${y + 21}" text-anchor="middle" font-size="14" font-weight="700" fill="${st === 'stout' ? '#f6eadb' : D.C.encre}" letter-spacing="1">${SN[st].toUpperCase().replace('BIÈRE DE ', '')}</text>`;
+      for (let n2 = 1; n2 <= 7; n2++) {
+        const cx = x0 + 106 + (n2 - 1) * 50;
+        o += `<rect x="${cx}" y="${y}" width="44" height="30" rx="7" fill="${n2 === base ? '#f9edd2' : D.C.creme2}" stroke="${D.C.encre}" stroke-width="${n2 === base ? 2.4 : 1.2}"/><text x="${cx + 22}" y="${y + 20}" text-anchor="middle" font-size="14" font-weight="700" fill="${D.C.encre2}">${n2}</text>`;
+        if (n2 === cur) o += D.capsule(cx + 22, y + 15, D.STYLE_COL[st], 12);
+      }
+      const px = prixMarche(v, st);
+      o += `<text x="${x0 + 106 + 7 * 50 + 6}" y="${y + 22}" font-size="18" font-weight="700" fill="${D.C.encre}">${px} €${v.demande.includes(st) ? ' ★' : ''}</text>`;
+    });
+    el.innerHTML = o + '</svg>';
     $('#modebox').innerHTML = renderModeBox();
   }
 
@@ -138,17 +182,17 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
       const btns = can ? (cl.style ? `<button class="btn primary mini2" data-act="poser" data-case="tournee" data-client="${cl.id}" data-style="${cl.style}">Livrer</button>`
         : can.styles.map((st) => `<button class="btn primary mini2" data-act="poser" data-case="tournee" data-client="${cl.id}" data-style="${st}">${SN[st]}</button>`).join('')) : '';
       const enSaison = cl.kind === 'fest' && cl.saison === saisonIdx(v);
-      return `<div class="client ${cl.kind} ${can ? 'can' : ''} ${k === 0 ? 'oldest' : ''}"><div class="ck">${KIND[cl.kind]}${cl.kind === 'fest' ? ` · ${SAISON_NOM[SAISONS[cl.saison]]}${enSaison ? ' <span class="dem">maintenant</span>' : ''}` : ''}</div>
-        <b>${esc(cl.nom)}</b><div class="cs">${plural(cl.n, 'unité')} de ${cl.style ? schip(cl.style) + ' ' + SN[cl.style] : 'n’importe quel style'}</div>
-        <div class="cpay"><span>${cl.style ? `${cl.n * (RECETTES[cl.style].prix + cl.bonus + v.prixBonus)} €` : `base${cl.bonus ? ' +' + cl.bonus : ''}`}</span><span>+${val ? val.rep : cl.rep + (enSaison ? 2 : 0)} rép.</span></div>
-        ${k === 0 ? '<small class="old">part en fin de saison</small>' : ''}<div class="mrow">${btns}</div></div>`;
-    }).join('') + `<div class="client deck"><b>${v.deck}</b><small>dans la pioche</small>${ui.mode === 'tournee' ? '<button class="btn ghost" data-act="cancel">Annuler</button>' : ''}</div>`;
+      const prix = cl.style ? `${cl.n * (RECETTES[cl.style].prix + cl.bonus + v.prixBonus)} €` : `base${cl.bonus ? ' +' + cl.bonus : ''}`;
+      return `<div class="ccard ${can ? 'can' : ''}" style="--kc:${D.KIND_COL[cl.kind]};--kf:${D.KIND_FOND[cl.kind]}">
+        <div class="bandeau"><span>${KIND[cl.kind]}</span>${cl.kind === 'fest' ? `<i>${SAISON_NOM[SAISONS[cl.saison]]}${enSaison ? ' · maintenant' : ''}</i>` : ''}</div>
+        <div class="art">${D.pictoClient(cl.kind)}</div>
+        <b>${esc(cl.nom)}</b>
+        <div class="veut">${Array.from({ length: cl.n }, () => `<span class="u" style="--sc:${cl.style ? D.STYLE_COL[cl.style] : D.C.pierre}"></span>`).join('')} ${cl.style ? SN[cl.style] : 'tous styles'}</div>
+        <div class="pied"><span class="piece">${prix}</span>${D.etoile(val ? val.rep : cl.rep + (enSaison ? 2 : 0))}</div>
+        ${k === 0 ? '<div class="old">part en fin de saison</div>' : ''}${btns ? `<div class="mrow">${btns}</div>` : ''}</div>`;
+    }).join('') + `<div class="ccard deck"><b>${v.deck}</b><small>dans la pioche</small>${ui.mode === 'tournee' ? '<button class="btn ghost mini2" data-act="cancel">Annuler</button>' : ''}</div>`;
   }
 
-  function renderPrix() {
-    const v = view;
-    $('#prix').innerHTML = STYLES.map((st) => `<div class="track"><span class="rl">${schip(st)}${SN[st]}${v.demande.includes(st) ? ' <span class="dem">+2</span>' : ''}</span><div class="steps">${[1, 2, 3, 4, 5, 6, 7].map((n) => `<span class="${n === RECETTES[st].prix ? 'base' : ''} ${n === v.prix[st] ? 'cur' : ''}">${n}</span>`).join('')}</div><b>${prixMarche(v, st)} €</b></div>`).join('');
-  }
 
   /* ---------- fenêtres ---------- */
 
@@ -269,22 +313,29 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
   function renderBrasserie() {
     const p = my();
     if (!p) { $('#brasserie').innerHTML = ''; return; }
-    const slots = Array.from({ length: FERMENTEURS_MAX }, (_, i) => {
-      if (i >= p.nferm) return '<div class="ferm none" title="Fermenteur à acheter au Chantier">—</div>';
+    const libres = view.restants[me()] ?? 0;
+    const cuves = Array.from({ length: FERMENTEURS_MAX }, (_, i) => {
+      if (i >= p.nferm) return `<div title="Fermenteur à acheter au Chantier">${D.cuve(0, '#ccc', 'à acheter', '')}</div>`.replace('class="cuve"', 'class="cuve vide"');
       const f = p.ferms[i];
-      if (!f) return '<div class="ferm empty">libre</div>';
-      return `<div class="ferm" style="--rc:${SCOL[f.st]};--rt:${STXT[f.st]}" title="${SN[f.st]} : ${plural(f.u, 'unité')}, prête dans ${plural(f.left, 'saison')}"><b>${SN[f.st]}</b><span>${f.u} u · ${f.left} sais.</span></div>`;
+      if (!f) return `<div>${D.cuve(0, '#ccc', 'libre', '')}</div>`;
+      return `<div title="${SN[f.st]} : ${plural(f.u, 'unité')}, prête dans ${plural(f.left, 'saison')}">${D.cuve(Math.min(1, 0.35 + f.u * 0.2), D.STYLE_COL[f.st], SN[f.st].replace('Bière de garde', 'Garde'), `${f.u} u · ${f.left} s.`)}</div>`;
     }).join('');
-    const stock = STYLES.filter((st) => p.stock[st] > 0);
-    $('#brasserie').innerHTML = `<div class="hand">${RES.map((r) => `<div class="res ${p.res[r] ? '' : 'zero'}" style="--rc:${RCOL[r]};--rt:${RTXT[r]}"><b>${p.res[r]}</b><span>${RN[r]}</span></div>`).join('')}
-      <div class="res" style="--rc:${RCOL.argent};--rt:${RTXT.argent}"><b>${p.argent}</b><span>Argent</span></div>
-      <div class="res" style="--rc:var(--panel2);--rt:var(--ink)"><b>${view.restants[me()] ?? 0}<small>/${p.ouv}</small></b><span>Ouvriers</span></div></div>
-      <div class="sub2">Fermenteurs · cuve de ${cuveUnites(p)} unités</div><div class="ferms">${slots}</div>
-      <div class="sub2">Stock ${unites(p)}/${STOCK_MAX}${unites(p) > STOCK_MAX ? ' · le surplus sera vendu d’office' : ''}</div>
-      <div class="stock">${stock.length ? stock.map((st) => `<span class="stk" style="--rc:${SCOL[st]};--rt:${STXT[st]}"><b>${p.stock[st]}</b> ${SN[st]}</span>`).join('') : '<span class="empty">Rien en stock.</span>'}</div>
-      <div class="sub2">Équipement</div><div class="stock">${p.upg.length || p.nferm > 2 ? [...p.upg.map((u) => AMELIORATIONS[u].nom), ...(p.nferm > 2 ? [`${p.nferm} fermenteurs`] : [])].map((n) => `<span class="eq">${esc(n)}</span>`).join('') : '<span class="empty">Le strict nécessaire.</span>'}</div>
-      <div class="sub2">Styles brassés : ${p.styles.length}/4 (diversité ${pointsDiversite(p.styles.length)} pt${pointsDiversite(p.styles.length) > 1 ? 's' : ''})</div>`;
+    const futs = STYLES.flatMap((st) => Array(p.stock[st]).fill(st));
+    $('#brasserie').innerHTML = `<div class="bandeau" style="--pc:${PCOL[me()]}"><span>Ta brasserie</span><span>${p.rep} réputation</span></div>
+      <div class="zone"><div class="zt">Réserve</div><div class="reserve">
+        <div title="Malt">${D.sacSvg()}<span>${p.res.malt} Malt</span></div>
+        <div title="Houblon">${D.coneSvg()}<span>${p.res.houb} Houblon</span></div>
+        <div title="Argent">${D.piecesSvg()}<span>${p.argent} €</span></div>
+        <div title="Ouvriers"><span class="ouvs">${Array.from({ length: p.ouv }, (_, k) => D.ouvrierSvg(PCOL[me()]).replace('class="ouvsvg"', `class="ouvsvg ${k < libres ? '' : 'pose'}"`)).join('')}</span><span>${libres}/${p.ouv} ouvr.</span></div>
+      </div></div>
+      <div class="zone"><div class="zt">Fermenteurs · cuve de ${cuveUnites(p)} unités</div><div class="cuves">${cuves}</div></div>
+      <div class="zone"><div class="zt">Cave · ${unites(p)}/${STOCK_MAX}${unites(p) > STOCK_MAX ? ' · le surplus sera vendu d’office' : ''}</div>
+        <div class="etagere">${futs.length ? futs.map((st) => `<span title="${SN[st]}">${D.futSvg(D.STYLE_COL[st])}</span>`).join('') : '<span class="muted">Rien en cave.</span>'}</div>
+        <div class="muted">${STYLES.filter((st) => p.stock[st]).map((st) => `${p.stock[st]} ${SN[st]}`).join(' · ')}</div></div>
+      <div class="zone"><div class="zt">Équipement</div><div class="eqs">${p.upg.length || p.nferm > 2 ? [...p.upg.map((u) => AMELIORATIONS[u].nom), ...(p.nferm > 2 ? [`${p.nferm} fermenteurs`] : [])].map((n) => `<span>${esc(n)}</span>`).join('') : '<span class="muted">Le strict nécessaire.</span>'}</div>
+        <div class="muted" style="margin-top:6px">Styles brassés : ${p.styles.length}/4 (diversité ${pointsDiversite(p.styles.length)} pt${pointsDiversite(p.styles.length) > 1 ? 's' : ''})</div></div>`;
   }
+
 
   function renderBrasser() {
     const v = view, p = my();
@@ -370,12 +421,12 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
     el.classList.toggle('on', !!b);
     if (!b) return;
     if (b.case) {
-      const spot = document.querySelector(`.spot[data-case="${b.case}"]`);
+      const spot = document.querySelector(`#plateau [data-case="${b.case}"]`);
       spot?.classList.add('flash');
-      const pions = spot ? [...spot.querySelectorAll(`.pawn[data-p="${b.p}"]`)] : [];
+      const pions = spot ? [...spot.querySelectorAll(`.pion[data-p="${b.p}"]`)] : [];
       pions.at(-1)?.classList.add('drop');
     }
-    if (b.saison) document.querySelectorAll('#saison .die').forEach((d) => d.classList.add('roll'));
+    if (b.saison) document.querySelectorAll('#saison .desvg').forEach((d) => d.classList.add('roll'));
   }
 
   function renderBilan() {
@@ -396,7 +447,7 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
     L = mine() ? legalActions(view, me()) : [];
     if (view.trade?.id !== ui.counterFor) { ui.counter = null; ui.counterFor = view.trade?.id; }
     if (ui.mode && !poseSur(ui.mode)) { ui.mode = null; ui.sel = null; }
-    renderSaison(); renderCases(); renderFile(); renderPrix();
+    renderSaison(); renderCases(); renderFile();
     renderPlayers(); renderTurn(); renderBrasserie(); renderBrasser(); renderTrade();
     renderHint(); renderLog(); renderBilan(); renderModal();
     afficherScene();
@@ -437,6 +488,18 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
   });
   document.addEventListener('change', (e) => { if (e.target.id === 'offersOn') act({ type: 'setOffers', on: e.target.checked }); });
   $('#modalBox').addEventListener('click', onModalClick);
+  // Plateau : une case jouable se clique (récolte directe, sinon choix dans la boîte ou la file)
+  function choisirCase(c) {
+    if (!poseSur(c)) return;
+    if (CASES[c].recolte) return act({ type: 'poser', case: c });
+    ui.mode = ui.mode === c ? null : c; ui.sel = null; render();
+    if (c === 'tournee') document.querySelector('#file')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    else document.querySelector('#modebox')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  $('#plateau').addEventListener('click', (e) => { const t = e.target.closest('[data-case]'); if (t) choisirCase(t.dataset.case); });
+  $('#plateau').addEventListener('keydown', (e) => { if (e.key !== 'Enter' && e.key !== ' ') return; const t = e.target.closest('[data-case]'); if (t) { e.preventDefault(); choisirCase(t.dataset.case); } });
+  let largeur = 0;
+  addEventListener('resize', () => { const w = $('#plateau').clientWidth; if (view && (w < 640) !== (largeur < 640)) render(); largeur = w; });
 
   return {
     update(v, o = {}) { view = v; opts = o; render(); },

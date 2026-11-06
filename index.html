@@ -20,6 +20,8 @@
 }
 [hidden]{display:none!important}
 html,body{background:var(--table);color:var(--ink)}
+/* la table en bois : lattes horizontales, joints sombres */
+html,body{background-color:#4f321f;background-image:repeating-linear-gradient(180deg,transparent 0 126px,rgba(30,18,10,.55) 126px 129px),linear-gradient(90deg,#5a3a24,#6e472b 50%,#58381f);background-attachment:fixed}
 body{margin:0}
 body{font-family:var(--font-body);font-size:15px;line-height:1.45}
 .app{max-width:1300px;margin:0 auto;padding-block:16px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
@@ -273,6 +275,60 @@ input.code{text-transform:uppercase;letter-spacing:.2em;font-family:var(--font-n
 .steps span.base{border-color:var(--ink)}
 .steps span.cur{background:var(--copper);color:var(--dark);border-color:var(--copper)}
 @keyframes pulse{50%{opacity:.55}}
+/* plateau illustré */
+.plateau svg{display:block;width:100%;height:auto}
+.plateau text{font-family:var(--font-num)}
+.tuile.can{cursor:pointer}
+.tuile.can .cadre{stroke:var(--copper);stroke-width:5;animation:luit 1.6s ease-in-out infinite}
+.tuile.active .cadre{stroke:var(--copper);stroke-width:6}
+.tuile.can:focus{outline:none}.tuile.can:focus-visible .cadre{stroke:#fff}
+@keyframes luit{50%{stroke-opacity:.45}}
+.tuile.flash .cadre{animation:flashsvg 1.4s ease-out}
+@keyframes flashsvg{0%{stroke:var(--copper);stroke-width:12}100%{stroke-width:2}}
+.pion{transform-box:fill-box;transform-origin:center bottom}
+.pion.drop{animation:drop .55s cubic-bezier(.3,1.6,.5,1)}
+.desvg.roll{animation:roll .7s ease-out}
+.sdice .desvg{flex:none}
+/* cartes Client */
+.filetitre{font:600 13px var(--font-num);letter-spacing:.12em;text-transform:uppercase;color:#f0e2c8;display:flex;gap:10px;align-items:baseline}
+.filetitre small{letter-spacing:.02em;text-transform:none;color:#d8c4a4;font-weight:500}
+.ccard{background:#f4e9d4;color:#2b1d14;border:2px solid #2b1d14;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-width:0;box-shadow:0 4px 10px rgba(0,0,0,.35);transition:transform .15s}
+.ccard:nth-child(odd){transform:rotate(-1deg)}.ccard:nth-child(even){transform:rotate(1deg)}
+.ccard.can{box-shadow:0 0 0 3px var(--copper),0 6px 14px rgba(0,0,0,.4);transform:none}
+.ccard .bandeau{background:var(--kc);color:#fff;font:700 11px var(--font-num);letter-spacing:.14em;text-transform:uppercase;padding:5px 9px;display:flex;justify-content:space-between;gap:4px}
+.ccard .bandeau i{font-style:normal;letter-spacing:.02em;text-transform:none;font-weight:600;opacity:.95}
+.ccard .art{background:var(--kf);margin:6px 6px 0;border-radius:8px;display:grid;place-items:center;height:62px}
+.ccard .picto{height:54px;width:auto}
+.ccard b{font:700 15px var(--font-num);text-align:center;padding:5px 6px 0;line-height:1.15}
+.ccard .veut{display:flex;justify-content:center;align-items:center;gap:4px;font-size:12px;color:#6b5442;padding:2px 6px;flex-wrap:wrap}
+.ccard .u{width:14px;height:14px;border-radius:50%;border:1.5px solid #2b1d14;background:var(--sc)}
+.ccard .pied{display:flex;justify-content:space-between;align-items:center;padding:4px 8px 6px;margin-top:auto;font:700 13px var(--font-num)}
+.ccard .piece{background:#d38b46;border:1.5px solid #2b1d14;border-radius:999px;padding:1px 7px;color:#2b1d14}
+.ccard .etoile{width:26px;height:26px}
+.ccard .old{background:#c8553d;color:#fff;font:600 10.5px var(--font-num);text-align:center;padding:2px}
+.ccard .mrow{padding:0 6px 6px;justify-content:center}
+.ccard.deck{background:#b56d2e;color:#f4e9d4;align-items:center;justify-content:center;gap:6px;border-color:#2b1d14;min-height:150px}
+.ccard.deck b{font-size:26px;color:#f4e9d4}
+.ccard.deck small{color:#f4e9d4}
+/* plateau de la brasserie */
+.carton{background:#f1e2c4;color:#2b1d14;border-radius:14px;overflow:hidden;box-shadow:0 6px 16px rgba(0,0,0,.45)}
+.carton .bandeau{background:var(--pc);color:#fff;font:700 15px var(--font-num);letter-spacing:.12em;text-transform:uppercase;padding:9px 14px;display:flex;justify-content:space-between}
+.carton .zone{padding:8px 14px}
+.carton .zt{font:700 11.5px var(--font-num);letter-spacing:.12em;text-transform:uppercase;color:#6b5442;margin:2px 0 4px}
+.carton .reserve{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;text-align:center}
+.carton .reserve div{display:flex;flex-direction:column;align-items:center;font:700 14px var(--font-num)}
+.carton .ressvg{height:44px;width:auto}
+.carton .ouvs{display:flex;gap:2px;height:44px;align-items:flex-end}
+.carton .ouvsvg{height:36px;width:auto}
+.carton .ouvsvg.pose{opacity:.25}
+.carton .cuves{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.carton .cuve{width:100%;height:auto;max-height:120px}
+.carton .cuve.vide{opacity:.35}
+.carton .etagere{display:flex;gap:4px;align-items:flex-end;min-height:46px;border-bottom:6px solid #a0612f;border-radius:2px;padding:0 4px;flex-wrap:wrap}
+.carton .futsvg{height:40px;width:auto}
+.carton .muted{color:#6b5442;font-size:12.5px}
+.carton .eqs{display:flex;gap:4px;flex-wrap:wrap}
+.carton .eqs span{background:#eadcc0;border:1px solid #c9b48f;border-radius:999px;padding:1px 8px;font-size:12px}
 </style>
 </head>
 <body>
@@ -296,17 +352,17 @@ input.code{text-transform:uppercase;letter-spacing:.2em;font-family:var(--font-n
     <section class="boardWrap">
       <div id="scene" class="scene" aria-live="polite"></div>
       <div id="saison" aria-label="Saison en cours"></div>
-      <div id="bilan" hidden></div>
-      <div id="cases" class="cases" aria-label="Cases du plateau"></div>
+      <div id="plateau" class="plateau" aria-label="Plateau de jeu"></div>
       <div id="modebox"></div>
+      <div class="filetitre">La file des clients <small>le plus ancien part en fin de saison</small></div>
       <div id="file" class="file" aria-label="File des clients"></div>
-      <div id="prix" class="prix" aria-label="Prix du Marché aux bières"></div>
+      <div id="bilan" hidden></div>
       <div id="hint" class="hint" aria-live="polite"></div>
     </section>
     <aside class="side">
       <div class="card"><h2>Brasseries</h2><div id="players"></div></div>
       <div class="card"><h2>Ton tour</h2><div class="turnrow" id="turn"></div><div id="chrono" class="chrono" hidden></div></div>
-      <div class="card"><h2>Ta brasserie</h2><div id="brasserie" class="tsec"></div></div>
+      <div id="brasserie" class="carton" aria-label="Ta brasserie"></div>
       <div class="card"><h2>Brasser</h2><div class="build" id="brasser"></div></div>
       <div class="card"><h2>Négoce avec les autres brasseries</h2><div class="tsec" id="trade"></div></div>
       <details class="card">

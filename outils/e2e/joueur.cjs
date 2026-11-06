@@ -18,25 +18,27 @@ async function step(page, c) {
     if (/Contre-proposition/.test(title)) { await box.locator('[data-cback]').click(); return true; }
     throw new Error('fenêtre inconnue : ' + title);
   }
-  if (!(await page.locator('[data-act="end"]:not(:disabled)').count()) && !(await page.locator('.spot.can').count())) return false;
+  if (!(await page.locator('[data-act="end"]:not(:disabled)').count()) && !(await page.locator('#plateau .tuile.can').count())) return false;
+  // Une case jouable du plateau dessiné
+  const tuile = async (sel, k) => { const t = page.locator(`#plateau .tuile.can${sel}`); if (await t.count()) { bump(k); await t.first().click(); return true; } return false; };
   // Boîte de choix ouverte : valider ou annuler
   if (await page.locator('#modebox .modebox').count()) {
     if (await click('#modebox [data-act="sel"][data-d="1"]', 'plus')) return true;
     if (await click('#modebox [data-act="poser"]', 'validation')) return true;
     return click('#modebox [data-act="cancel"]', 'annulation');
   }
-  if (await page.locator('#file .client.can').count()) {
+  if (await page.locator('#file .ccard.can').count()) {
     if (await click('#file [data-act="poser"]', 'livraison')) return true;
     return click('#file [data-act="cancel"]', 'annulation');
   }
   if (await click('#brasser [data-act="brasser"]', 'brassin')) return true;
   if (await click('[data-act="salle"]', 'salle')) return true;
-  if (await click('[data-mode="tournee"]', 'tournée')) return true;
-  const stock = (await page.locator('#brasserie .stk b').allTextContents()).reduce((n, t) => n + +t, 0);
-  if (stock > 3 && await click('[data-mode="marcheBieres"]', 'marché aux bières')) return true;
-  if (await click('.spot.can [data-act="poser"]', 'récolte')) return true;
-  if (await click('[data-mode="chantier"]', 'chantier')) return true;
-  if (await click('[data-mode="marcheMat"]', 'marché aux matières')) return true;
+  if (await tuile('[data-case="tournee"]', 'tournée')) return true;
+  const stock = await page.locator('#brasserie .etagere .futsvg').count();
+  if (stock > 3 && await tuile('[data-case="marcheBieres"]', 'marché aux bières')) return true;
+  if (await tuile('[data-case^="champ"]', 'récolte') || await tuile('[data-case^="houb"]', 'récolte')) return true;
+  if (await tuile('[data-case="chantier"]', 'chantier')) return true;
+  if (await tuile('[data-case="marcheMat"]', 'marché aux matières')) return true;
   bump('tours');
   if (c.tours % 5 === 3 && c.dernierePropo !== c.tours && await page.locator('[data-act="og"][data-d="1"]:not(:disabled)').count()) {
     c.dernierePropo = c.tours;
