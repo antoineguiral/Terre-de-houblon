@@ -10,7 +10,7 @@ const dir = process.env.CAPTURES || require('node:os').tmpdir();
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !/ERR_TUNNEL|net::/.test(m.text())) errors.push('console: ' + m.text()); });
   await page.goto('http://localhost:8642/#solo');
-  await page.evaluate(() => localStorage.clear());
+  await page.evaluate(() => { localStorage.clear(); localStorage.setItem('brassins-rythme', 'rapide'); }); // l'ordinateur au rythme rapide
   await page.reload();
   await page.waitForSelector('#cases .spot');
   const counts = {};

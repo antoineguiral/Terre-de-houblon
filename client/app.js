@@ -31,6 +31,7 @@ const ui = createUi({
   send: (a) => (mode === 'solo' ? solo.send(a) : sendAction(a)),
   onNewGame: () => solo?.newGame(soloOpts()),
   onHome: () => go('#accueil'),
+  onStep: () => solo?.step(),
 });
 
 /* ---------- réseau ---------- */
