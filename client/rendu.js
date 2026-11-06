@@ -7,7 +7,7 @@
 
 import {
   RES, STYLES, ITEMS, RECETTES, CASES, ACHAT, ACHAT_MAX, AMELIORATIONS, EVT, SAISONS, NB_SAISONS, STOCK_MAX, FERMENTEURS_MAX, OUVRIERS_MAX,
-  DEMANDE, ZI, total, legalActions, saisonIdx, unites, cuveUnites, prixMarche, valeurLivraison, pointsDiversite,
+  DEMANDE, ARGENT_PAR_POINT, ZI, total, legalActions, saisonIdx, unites, cuveUnites, prixMarche, valeurLivraison, pointsDiversite,
 } from '../moteur/index.js';
 import { RN, RI, SN, SI, SAISON_NOM, KIND, nomItem, nomSaison, meteoTexte, fmt, logLines, plural } from './textes.js';
 import { RYTHMES, rythme, choisirRythme, facteur, DUREE_BULLE } from './rythme.js';
@@ -78,6 +78,35 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
     if (v.ferme.includes(c)) return 0;
     return t?.recolte ?? Math.max(0, d.recolte[si] ? d.recolte[si] + ({ 1: -1, 6: 1 }[v.meteo] ?? 0) + (v.evt === 'recolte' ? 1 : 0) - (v.occ[c]?.length ?? 0) : 0);
   }
+  // Cases 0 à 50 le long d'un rectangle (sens des aiguilles d'une montre depuis le coin haut gauche),
+  // un marqueur par joueur ; au-delà de 50, le marqueur repart de 0 avec un « +50 »
+  function pisteReputation(v, WT, HT, RM, id) {
+    const t = RM / 2, w = WT - 2 * t, h = HT - 2 * t, L = 2 * (w + h), N = 51, c = Math.min(26, L / N - 3);
+    const pos = (n) => {
+      let d = (n / N) * L;
+      if (d < w) return [t + d, t]; d -= w;
+      if (d < h) return [t + w, t + d]; d -= h;
+      if (d < w) return [t + w - d, t + h]; d -= w;
+      return [t, t + h - d];
+    };
+    let o = '';
+    for (let n = 0; n < N; n++) {
+      const [x, y] = pos(n), cinq = n % 5 === 0;
+      o += `<rect x="${x - c / 2}" y="${y - c / 2}" width="${c}" height="${c}" rx="5" fill="${cinq ? '#f9edd2' : D.C.creme}" stroke="${D.C.encre}" stroke-width="${cinq ? 1.8 : 1}"/>`;
+      o += `<text x="${x}" y="${y + 4}" text-anchor="middle" font-size="${cinq ? 12 : 10}" font-weight="700" fill="${cinq ? D.C.encre : D.C.encre2}">${n}</text>`;
+    }
+    const groupes = {};
+    P().forEach((p, i) => { const k = p.rep % N; (groupes[k] ??= []).push(i); });
+    for (const [k, js] of Object.entries(groupes)) {
+      const [x, y] = pos(+k);
+      js.forEach((i, j) => {
+        const dx = (j - (js.length - 1) / 2) * 9, tours = Math.floor(P()[i].rep / N);
+        o += `<g class="marq" data-p="${i}" filter="url(#${id}-o2)"><title>${esc(P()[i].name)} : ${P()[i].rep} Réputation</title><circle cx="${x + dx}" cy="${y - 2 - j * 3}" r="9" fill="${PCOL[i]}" stroke="${D.C.encre}" stroke-width="1.8"/>${tours ? `<text x="${x + dx}" y="${y + 1 - j * 3}" text-anchor="middle" font-size="8" font-weight="700" fill="${D.C.encre}">+${tours * N}</text>` : ''}</g>`;
+      });
+    }
+    return o;
+  }
+
   function renderCases() {
     const v = view, el = $('#plateau'), id = 'pl';
     const portrait = (el.clientWidth || innerWidth) < 640;
@@ -85,8 +114,13 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
     const cases = Object.keys(CASES), rows = Math.ceil(cases.length / cols);
     const y0 = M + 78, yp = y0 + rows * (TH + GAP) + 4, trackRows = portrait ? 4 : 2;
     const H = yp + 26 + trackRows * 40 + M;
-    let o = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Plateau de jeu">${D.defs(id)}`;
-    o += `<rect x="4" y="4" width="${W - 8}" height="${H - 8}" rx="20" fill="url(#${id}-pap)" filter="url(#${id}-o)"/>`;
+    // Piste de réputation (0 à 50) sur le pourtour : une bande de RM autour du plateau
+    const RM = 40, WT = W + 2 * RM, HT = H + 2 * RM;
+    let o = `<svg viewBox="0 0 ${WT} ${HT}" role="img" aria-label="Plateau de jeu">${D.defs(id)}`;
+    o += `<rect x="4" y="4" width="${WT - 8}" height="${HT - 8}" rx="24" fill="${D.C.creme2}" filter="url(#${id}-o)"/>`;
+    o += pisteReputation(v, WT, HT, RM, id);
+    o += `<g transform="translate(${RM - 4},${RM - 4})">`;
+    o += `<rect x="4" y="4" width="${W - 8}" height="${H - 8}" rx="20" fill="url(#${id}-pap)"/>`;
     o += `<rect x="12" y="12" width="${W - 24}" height="${H - 24}" rx="15" fill="none" stroke="${D.C.encre}" stroke-width="2" opacity=".25"/>`;
     // calendrier : 12 saisons, marqueur sur la saison en cours
     const step = (W - 2 * M - 28) / 12;
@@ -114,7 +148,8 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
         o += closed ? `<g transform="translate(${TW / 2},64)"><rect x="-52" y="-16" width="104" height="32" rx="16" fill="${D.C.encre}"/><text y="6" text-anchor="middle" font-size="16" font-weight="700" fill="#f4e9d4" letter-spacing="2">FERMÉ</text></g>`
           : `<g transform="translate(12,12)"><rect width="${q ? 104 : 86}" height="30" rx="15" fill="#f4e9d4" stroke="${D.C.encre}" stroke-width="1.5"/><text x="${q ? 52 : 43}" y="20" text-anchor="middle" font-size="16" font-weight="700" fill="${D.C.encre}">${q ? `+${q} ${RN[d.res]}` : 'épuisé'}</text></g>`;
       } else o += `<text x="14" y="175" font-size="14" font-weight="500" fill="${D.C.encre2}">${SOUS[c]}</text>`;
-      if (t) o += `<g transform="translate(${TW - 12},142)"><rect x="-96" y="0" width="96" height="26" rx="13" fill="${D.C.cuivre}" stroke="${D.C.encre}" stroke-width="1.5"/><text x="-48" y="18" text-anchor="middle" font-size="14" font-weight="700" fill="${D.C.encre}">${d.recolte ? 'Récolter' : ACTION[c]}</text></g>`;
+      // étiquette d'action, collée sur l'illustration (jamais sur le titre)
+      if (t) o += `<g transform="translate(${TW - 12},92)" filter="url(#${id}-o2)"><rect x="-100" y="0" width="100" height="28" rx="14" fill="${D.C.cuivre}" stroke="${D.C.encre}" stroke-width="1.5"/><text x="-50" y="19" text-anchor="middle" font-size="15" font-weight="700" fill="${D.C.encre}">${d.recolte ? 'Récolter' : ACTION[c]}</text></g>`;
       // places et ouvriers
       const occ = c === 'tournee' ? v.tournee : v.occ[c] ?? [];
       const places = d.recolte ? ['1', '−1'] : c === 'marcheMat' ? ['1'] : c === 'tournee' ? P().map(() => 'j') : ['m', 'm', 'm'];
@@ -141,7 +176,7 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
       const px = prixMarche(v, st);
       o += `<text x="${x0 + 106 + 7 * 50 + 6}" y="${y + 22}" font-size="18" font-weight="700" fill="${D.C.encre}">${px} €${v.demande.includes(st) ? ' ★' : ''}</text>`;
     });
-    el.innerHTML = o + '</svg>';
+    el.innerHTML = o + '</g></svg>';
     $('#modebox').innerHTML = renderModeBox();
   }
 
@@ -207,9 +242,8 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
       if (ui.winClosed) return null;
       const w = v.winner, P0 = P();
       const order = P0.map((_, i) => i).sort((a, b) => P0[b].score.total - P0[a].score.total || P0[b].argent - P0[a].argent);
-      return { key: 'win', html: `<h2>${you(w) ? 'Trois ans ont passé : tu l’emportes !' : esc(P0[w].name) + ' l’emporte'}</h2>
-        <div class="scores"><span></span><span>Brasserie</span><span>Rép.</span><span>Div.</span><span>Argent</span><span>Total</span>
-        ${order.map((i) => `${sw(i)}<span>${esc(P0[i].name)}</span><span>${P0[i].score.rep}</span><span>${P0[i].score.diversite}</span><span>${P0[i].score.argent}</span><b>${P0[i].score.total}</b>`).join('')}</div>
+      return { key: 'win', large: true, html: `<h2>${you(w) ? 'Trois ans ont passé : tu l’emportes !' : esc(P0[w].name) + ' l’emporte'}</h2>
+        <div class="fms">${order.map((i) => feuilleDeMarque(i, true)).join('')}</div>
         <div class="mrow">${opts.rejouer ? '<button class="btn primary" data-again>Rejouer</button>' : '<button class="btn primary" data-home>Retour à l’accueil</button>'}<button class="btn ghost" data-close>Voir le plateau</button></div>` };
     }
     if (!p) return null;
@@ -251,6 +285,7 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
     if (!m) { modalNow = null; ui.modalKey = null; $('#modal').hidden = true; return; }
     const fresh = m.key !== ui.modalKey;
     ui.modalKey = m.key; modalNow = m;
+    box.classList.toggle('large', !!m.large);
     box.innerHTML = m.html;
     $('#modal').hidden = false;
     if (fresh) box.querySelector('button:not(:disabled)')?.focus();
@@ -312,7 +347,7 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
 
   function renderBrasserie() {
     const p = my();
-    if (!p) { $('#brasserie').innerHTML = ''; return; }
+    if (!p) { $('#brasserie').innerHTML = ''; $('#feuille').innerHTML = ''; return; }
     const libres = view.restants[me()] ?? 0;
     const cuves = Array.from({ length: FERMENTEURS_MAX }, (_, i) => {
       if (i >= p.nferm) return `<div title="Fermenteur à acheter au Chantier">${D.cuve(0, '#ccc', 'à acheter', '')}</div>`.replace('class="cuve"', 'class="cuve vide"');
@@ -333,7 +368,23 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
         <div class="etagere">${futs.length ? futs.map((st) => `<span title="${SN[st]}">${D.futSvg(D.STYLE_COL[st])}</span>`).join('') : '<span class="muted">Rien en cave.</span>'}</div>
         <div class="muted">${STYLES.filter((st) => p.stock[st]).map((st) => `${p.stock[st]} ${SN[st]}`).join(' · ')}</div></div>
       <div class="zone"><div class="zt">Équipement</div><div class="eqs">${p.upg.length || p.nferm > 2 ? [...p.upg.map((u) => AMELIORATIONS[u].nom), ...(p.nferm > 2 ? [`${p.nferm} fermenteurs`] : [])].map((n) => `<span>${esc(n)}</span>`).join('') : '<span class="muted">Le strict nécessaire.</span>'}</div>
-        <div class="muted" style="margin-top:6px">Styles brassés : ${p.styles.length}/4 (diversité ${pointsDiversite(p.styles.length)} pt${pointsDiversite(p.styles.length) > 1 ? 's' : ''})</div></div>`;
+</div>`;
+    $('#feuille').innerHTML = feuilleDeMarque(me(), false);
+  }
+
+  // Feuille de marque (une par joueur et par partie) : styles cochés, puis décompte. En cours de partie, le décompte
+  // est une projection « si la partie s'arrêtait maintenant » ; à la fin, c'est le résultat.
+  function feuilleDeMarque(i, fin) {
+    const p = P()[i], sc = p.score, arg = Math.floor(p.argent / ARGENT_PAR_POINT);
+    return `<div class="fm ${fin && view.winner === i ? 'gagne' : ''}">
+      <div class="fmh"><b>${esc(p.name)}</b><span>${fin ? (view.winner === i ? 'l’emporte' : 'feuille de marque') : 'Ta feuille de marque'}</span></div>
+      <div class="fmt2">Styles brassés <small>+1 Réputation au premier brassin</small></div>
+      <div class="fmstyles">${STYLES.map((st) => `<span class="${p.styles.includes(st) ? 'ok' : ''}"><i class="box" style="--sc:${D.STYLE_COL[st]};--ck:${st === 'stout' || st === 'garde' ? '#fff' : '#2b1d14'}">${p.styles.includes(st) ? '✓' : ''}</i>${SN[st]}</span>`).join('')}</div>
+      <div class="fmt2">${fin ? 'Décompte final' : 'Décompte si la partie s’arrêtait maintenant'}</div>
+      <div class="fmrow"><span>Réputation <small>sur la piste</small></span><b>${sc.rep}</b></div>
+      <div class="fmrow"><span>Diversité <small>3 styles +2 · les 4 +5</small></span><b>${sc.diversite}</b></div>
+      <div class="fmrow"><span>Argent <small>${p.argent} ÷ ${ARGENT_PAR_POINT}</small></span><b>${arg}</b></div>
+      <div class="fmrow tot"><span>Total</span><b>${sc.total}</b></div></div>`;
   }
 
 

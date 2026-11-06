@@ -69,6 +69,28 @@ th { background: #eee6d8; font-weight: 600; }
 ul { margin: 0 0 1.5mm; padding-left: 5mm; }
 li { margin-bottom: .8mm; }
 .rules p, .rules li { font-size: 9.8pt; }
+/* piste de réputation */
+.repstrip { display: grid; grid-template-columns: repeat(17, 1fr); gap: 1mm; }
+.repstrip div { border: 1px solid #1a120d; border-radius: 1.2mm; text-align: center; font-size: 8.5pt; padding: 1.2mm 0; }
+.repstrip div.cinq { background: #eee6d8; font-weight: 700; }
+/* feuilles de marque */
+.fms { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
+.fm { border: 1.4px solid #1a120d; border-radius: 3mm; padding: 4mm; display: flex; flex-direction: column; gap: 1.6mm; break-inside: avoid; height: 128mm; }
+.fmh { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1.4px solid #1a120d; padding-bottom: 1.5mm; }
+.fmh b { font-size: 16pt; }
+.fmh span { text-transform: uppercase; letter-spacing: .12em; font-size: 8.5pt; }
+.fml { font-size: 10pt; display: flex; align-items: flex-end; gap: 1.5mm; }
+.fml i { flex: 1; border-bottom: 1px dotted #1a120d; height: 4.5mm; }
+.fml i.court { flex: .5; }
+.fm h4 { margin: 2mm 0 0; font-size: 10pt; }
+.fmstyles { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5mm 4mm; font-size: 10.5pt; }
+.fmstyles div { display: flex; align-items: center; gap: 2mm; }
+.box { width: 4.5mm; height: 4.5mm; border: 1.4px solid #1a120d; border-radius: .8mm; display: inline-block; }
+.fmt td { border: none; border-bottom: 1px solid #b9a98f; padding: 1.6mm 1mm; font-size: 10pt; }
+.fmt td.case { width: 16mm; border: 1.4px solid #1a120d; }
+.fmt tr.tot td { font-weight: 700; font-size: 12pt; border-bottom: none; }
+.fmt tr.tot td.case { border-bottom: 1.4px solid #1a120d; }
+.trou { display: inline-block; width: 14mm; border-bottom: 1px dotted #1a120d; }
 </style>
 </head>
 <body>
@@ -163,7 +185,14 @@ li { margin-bottom: .8mm; }
     <tr><td>5</td><td><b>Critique gastronomique</b> : +3 Réputation au premier qui livre une Cave</td><td><b>Pénurie</b> : Marché aux matières fermé</td><td><b>Concours régional</b> : +5 / +2</td><td><b>Marché de Noël</b> : 2 clients de plus</td></tr>
     <tr><td>6</td><td><b>Brasseur invité</b> : le Stout se brasse sans Touraille</td><td><b>Inspection</b> : −1 unité sur chaque brassin en cours</td><td><b>Salon des brasseurs</b> : concours à +8 / +3</td><td><b>Fête au village</b> : 2 clients de plus, tous les prix +1</td></tr>
   </table>
-  <p><small>Réputation : une piste de 0 à 50 sur le bord de la table, ou des jetons.</small></p>
+  <h3 style="margin-top:3mm">Piste de réputation <small>· un marqueur par joueur, à 0 au départ (1 pour le dernier joueur de la première saison)</small></h3>
+  <div class="repstrip"></div>
+</section>
+
+<!-- ========== FEUILLES DE MARQUE (carnet, ou à imprimer) ========== -->
+<section class="page">
+  <h1>Feuilles de marque <small style="font-size:10pt;font-weight:400">· une par joueur et par partie, à découper ou en carnet</small></h1>
+  <div class="fms" id="feuilles"></div>
 </section>
 
 <!-- ========== PAGES 3-4 : PLATEAUX BRASSERIE ========== -->
@@ -230,8 +259,25 @@ const pb = (n) => `<div class="pboard"><h3>Brasserie ${n}</h3>
     <div><b>Embauche · 7</b>un 3ᵉ ouvrier</div>
     <div><b>Salle de dégustation · 7</b>1 unité par saison au prix de base +1, sans ouvrier ; chaque hiver +1 Réputation</div>
   </div>
-  <h3 style="margin-top:3mm">Styles brassés</h3><small>☐ Blonde &nbsp; ☐ IPA &nbsp; ☐ Stout &nbsp; ☐ Bière de garde &nbsp; — première fois : +1 Réputation</small></div>`;
+  <p style="margin-top:3mm"><small>Plateau réutilisable : on n'y écrit rien. Les styles brassés et le décompte se notent sur la feuille de marque.</small></p></div>`;
 document.getElementById('pboards').innerHTML = pb('A') + pb('B');
+// Piste de réputation : 0 à 50
+document.querySelector('.repstrip').innerHTML = Array.from({ length: 51 }, (_, n) => `<div class="${n % 5 === 0 ? 'cinq' : ''}">${n}</div>`).join('');
+// Feuilles de marque : 4 par page, une par joueur et par partie
+const feuille = () => `<div class="fm">
+  <div class="fmh"><b>Brassins</b><span>Feuille de marque</span></div>
+  <div class="fml">Brasserie <i></i></div><div class="fml">Joueur <i></i> &nbsp; Date <i class="court"></i></div>
+  <h4>Styles brassés <small>· cocher au premier brassin du style : +1 Réputation sur la piste</small></h4>
+  <div class="fmstyles">${['Blonde', 'IPA', 'Stout', 'Bière de garde'].map((st) => `<div><span class="box"></span>${st}</div>`).join('')}</div>
+  <h4>Décompte final <small>· après l'hiver de l'an 3</small></h4>
+  <table class="fmt">
+    <tr><td>Réputation <small>(lue sur la piste)</small></td><td class="case"></td></tr>
+    <tr><td>Diversité <small>(3 styles cochés : +2 · les 4 : +5)</small></td><td class="case"></td></tr>
+    <tr><td>Argent <span class="trou"></span> ÷ 8 <small>(arrondi en dessous)</small></td><td class="case"></td></tr>
+    <tr class="tot"><td>Total</td><td class="case"></td></tr>
+  </table>
+  <small>Égalité : le plus riche l'emporte, puis celui qui a le plus de bière. La bière restante ne rapporte rien.</small></div>`;
+document.getElementById('feuilles').innerHTML = feuille().repeat(4);
 document.getElementById('pboards2').innerHTML = pb('C') + pb('D');
 </script>
 </body>

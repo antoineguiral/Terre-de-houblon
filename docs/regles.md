@@ -10,10 +10,12 @@ Entre deux poses, on brasse. La bière fermente une à trois saisons selon le st
 
 ## Le matériel
 
-- **Le plateau** : 8 cases d'action, la file des 5 clients, 4 pistes de prix (une par style), le calendrier des 12 saisons avec la table des événements.
+- **Le plateau** : 8 cases d'action, la file des 5 clients, 4 pistes de prix (une par style), le calendrier des 12 saisons avec la table des événements, et sur le pourtour la **piste de réputation** (0 à 50).
 - **2 dés de saison** (météo, événement) et **1 dé de brassage**.
 - **40 cartes Client** : bars, caves, festivals.
 - **Par brasserie** : 2 ouvriers (un troisième à embaucher), 2 fermenteurs (jusqu'à 4), une cuve, les tuiles Recette et Équipement.
+- **Par brasserie** aussi : un plateau Brasserie réutilisable (on n'y écrit rien) et un **marqueur de réputation**.
+- **Un carnet de feuilles de marque** (ou à imprimer) : une feuille par joueur et par partie, pour cocher les styles brassés et faire le décompte final.
 - **Jetons** : Malt, Houblon, Argent, et la bière en quatre couleurs.
 
 Deux matières, quatre styles, une monnaie. Tout le reste est dans les mains des joueurs.
@@ -27,7 +29,7 @@ Deux matières, quatre styles, une monnaie. Tout le reste est dans les mains des
 | Stout | 3 | 1 | 2 saisons | 6 | 3 |
 | Bière de garde | 4 | 1 | 3 saisons | 7 | 4 |
 
-Le Stout demande une **Touraille**. Un brassin donne **2 unités** (3 avec la Grande cuve), corrigées par le dé de brassage : **1**, brassin raté, une unité en moins ; **6**, cuvée exceptionnelle, une unité en plus. La première fois qu'on brasse un style, **+1 Réputation**.
+Le Stout demande une **Touraille**. Un brassin donne **2 unités** (3 avec la Grande cuve), corrigées par le dé de brassage : **1**, brassin raté, une unité en moins ; **6**, cuvée exceptionnelle, une unité en plus. La première fois qu'on brasse un style, on le **coche sur sa feuille de marque** et on avance son marqueur : **+1 Réputation**.
 
 ## Mise en place
 
@@ -104,10 +106,10 @@ Pendant son tour, une brasserie peut proposer **une** offre aux autres : ce qu'e
 
 ## Le décompte
 
-Après l'hiver de l'an 3 :
+Après l'hiver de l'an 3, chacun remplit le décompte de sa **feuille de marque** :
 
-- la **Réputation** ;
-- la **diversité** : +2 pour trois styles brassés au moins une fois, +5 pour les quatre ;
+- la **Réputation**, lue sur la piste ;
+- la **diversité** : +2 pour trois styles cochés sur la feuille, +5 pour les quatre ;
 - **1 point par 8 Argent**.
 
 La bière restante ne vaut rien. En cas d'égalité, la brasserie la plus riche, puis celle qui a le plus de bière.
