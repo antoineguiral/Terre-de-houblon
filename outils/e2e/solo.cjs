@@ -12,7 +12,7 @@ const dir = process.env.CAPTURES || require('node:os').tmpdir();
   await page.goto('http://localhost:8642/#solo');
   await page.evaluate(() => { localStorage.clear(); localStorage.setItem('brassins-rythme', 'rapide'); }); // l'ordinateur au rythme rapide
   await page.reload();
-  await page.waitForSelector('#cases .spot');
+  await page.waitForSelector('#plateau .tuile');
   const counts = {};
   let shots = 0, lastSeason = '', r = null;
   for (let i = 0; i < 8000 && r !== 'fini'; i++) {
