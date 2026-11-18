@@ -15,6 +15,9 @@ p { margin: 0 0 1.5mm; }
 .page:last-child { page-break-after: auto; }
 .land { width: 277mm; height: 190mm; }
 small { font-size: 8.5pt; color: #4a3a30; }
+.rules { font-size: 9.6pt; line-height: 1.25; }
+.rules ul, .rules ol { margin: 1mm 0; }
+.rules h2 { margin: 2.5mm 0 1.5mm; }
 table { border-collapse: collapse; width: 100%; font-size: 9.5pt; }
 th, td { border: 1px solid #1a120d; padding: 1mm 2mm; text-align: left; vertical-align: top; }
 th { background: #eee6d8; font-weight: 600; }
@@ -58,19 +61,19 @@ th { background: #eee6d8; font-weight: 600; }
 .seasons div { border: 1px solid #1a120d; border-radius: 1.5mm; text-align: center; font-size: 8.5pt; padding: 1.5mm 0; height: 11mm; }
 .seasons div b { display: block; font-size: 10pt; }
 /* plateau joueur */
-.pboard { border: 1.5px solid #1a120d; border-radius: 3mm; padding: 4mm; height: 275mm; display: flex; flex-direction: column; gap: 2mm; }
+.pboard { border: 1.5px solid #1a120d; border-radius: 3mm; padding: 4mm; height: 274mm; display: flex; flex-direction: column; gap: 2mm; overflow: hidden; }
 .pbh { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1.5px solid #1a120d; padding-bottom: 1mm; }
 .pbh b { font-size: 16pt; }
-.grille { display: grid; grid-template-columns: 14mm repeat(3, 41mm) 8mm 41mm; grid-auto-rows: 55mm; gap: 2.5mm; align-items: stretch; }
+.grille { display: grid; grid-template-columns: 12mm repeat(3, 40mm) 5mm 40mm; grid-auto-rows: 47mm; gap: 2mm; align-items: stretch; }
 .grille .lab { writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font-size: 8.5pt; text-transform: uppercase; letter-spacing: .1em; color: #4a3a30; }
 .grille .head { grid-row: auto; height: auto; }
 .slot2 { border: 1.5px solid #1a120d; border-radius: 3mm; display: flex; align-items: flex-end; justify-content: center; font-size: 8pt; color: #4a3a30; padding-bottom: 1.5mm; text-align: center; }
 .slot2.locked { border-style: dashed; }
 .slot2.stock { background: #f7f2e8; }
-.ghead { display: grid; grid-template-columns: 14mm repeat(3, 41mm) 8mm 41mm; gap: 2.5mm; font-size: 8.5pt; text-transform: uppercase; letter-spacing: .1em; color: #4a3a30; text-align: center; }
+.ghead { display: grid; grid-template-columns: 12mm repeat(3, 40mm) 5mm 40mm; gap: 2mm; font-size: 8.5pt; text-transform: uppercase; letter-spacing: .1em; color: #4a3a30; text-align: center; }
 .ghead .arrow { font-size: 14pt; color: #1a120d; letter-spacing: 0; }
-.equip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2mm; margin-top: auto; }
-.equip div { border: 1px dashed #1a120d; border-radius: 2mm; padding: 1.5mm 2mm; font-size: 8pt; min-height: 15mm; }
+.equip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2mm; margin-top: 1mm; }
+.equip div { border: 1px dashed #1a120d; border-radius: 2mm; padding: 1.5mm 2mm; font-size: 8pt; min-height: 20mm; }
 .equip b { display: block; font-size: 9pt; }
 .bieres { display: grid; grid-template-columns: repeat(4, 38mm); grid-auto-rows: 52mm; gap: 3mm; justify-content: center; }
 .biere { border: 1.2px solid #1a120d; border-radius: 3mm; display: flex; flex-direction: column; overflow: hidden; break-inside: avoid; }
