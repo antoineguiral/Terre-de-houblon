@@ -13,10 +13,10 @@ Entre deux poses, on brasse. La bière fermente une à trois saisons selon le st
 - **Le plateau** : 8 cases d'action, la file des 5 clients, 4 pistes de prix (une par style), le calendrier des 12 saisons avec la table des événements, et sur le pourtour la **piste de réputation** (0 à 50).
 - **2 dés de saison** (météo, événement) et **1 dé de brassage**.
 - **40 cartes Client** : bars, caves, festivals.
-- **Par brasserie** : 2 ouvriers (un troisième à embaucher), 2 fermenteurs (jusqu'à 4), une cuve, les tuiles Recette et Équipement.
-- **Par brasserie** aussi : un plateau Brasserie réutilisable (on n'y écrit rien) et un **marqueur de réputation**.
+- **Par brasserie** : 2 ouvriers (un troisième à embaucher), un **marqueur de réputation**, et un plateau Brasserie réutilisable (on n'y écrit rien) : une ligne par fermenteur (2 ouverts, jusqu'à 4), trois colonnes « prête dans 3, 2, 1 saisons », et le stock.
+- **60 cartes Bière** (15 par style) : une carte, une unité.
 - **Un carnet de feuilles de marque** (ou à imprimer) : une feuille par joueur et par partie, pour cocher les styles brassés et faire le décompte final.
-- **Jetons** : Malt, Houblon, Argent, et la bière en quatre couleurs.
+- **Jetons** : Malt, Houblon, Argent.
 
 Deux matières, quatre styles, une monnaie. Tout le reste est dans les mains des joueurs.
 
@@ -29,7 +29,7 @@ Deux matières, quatre styles, une monnaie. Tout le reste est dans les mains des
 | Stout | 3 | 1 | 2 saisons | 6 | 3 |
 | Bière de garde | 4 | 1 | 3 saisons | 7 | 4 |
 
-Le Stout demande une **Touraille**. Un brassin donne **2 unités** (3 avec la Grande cuve), corrigées par le dé de brassage : **1**, brassin raté, une unité en moins ; **6**, cuvée exceptionnelle, une unité en plus. La première fois qu'on brasse un style, on le **coche sur sa feuille de marque** et on avance son marqueur : **+1 Réputation**.
+Le Stout demande une **Touraille**. Un brassin donne **2 unités** (3 avec la Grande cuve), corrigées par le dé de brassage : **1**, brassin raté, une unité en moins ; **6**, cuvée exceptionnelle, une unité en plus. On empile les cartes Bière sur une ligne libre du plateau Brasserie, dans la colonne de la recette : « prête dans 1 » pour la Blonde, « 2 » pour l'IPA et le Stout, « 3 » pour la Bière de garde. La première fois qu'on brasse un style, on le **coche sur sa feuille de marque** et on avance son marqueur : **+1 Réputation**.
 
 ## Mise en place
 
@@ -57,7 +57,7 @@ Les **styles en demande** ne dépendent pas des dés : Blonde et IPA au printemp
 
 ### 2. Les brassins mûrs sortent
 
-Les brassins dont la fermentation est finie passent en stock.
+Rien à faire : les cartes arrivées au stock à la fin de la saison précédente sont disponibles.
 
 ### 3. La pose des ouvriers
 
@@ -74,7 +74,7 @@ Le premier joueur change à chaque saison : il tourne d'un cran vers la gauche. 
 
 ### 4. Fin de saison
 
-Les fermentations avancent d'une saison. Chaque piste de prix remonte d'un cran vers son prix de base. **Le client le plus ancien de la file part**, et on complète la file à 5. On ne garde pas plus de **6 unités** en stock : le surplus est vendu d'office au Marché. Les ouvriers reviennent.
+Chaque piste de prix remonte d'un cran vers son prix de base. **Le client le plus ancien de la file part**, et on complète la file à 5. On ne garde pas plus de **6 unités** en stock : le surplus est vendu d'office au Marché. Puis chacun fait glisser ses brassins d'une colonne vers la droite ; ce qui sort de « prête dans 1 » va au stock et libère le fermenteur. Les ouvriers reviennent.
 
 ## Les clients
 

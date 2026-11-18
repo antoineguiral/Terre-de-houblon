@@ -58,14 +58,26 @@ th { background: #eee6d8; font-weight: 600; }
 .seasons div { border: 1px solid #1a120d; border-radius: 1.5mm; text-align: center; font-size: 8.5pt; padding: 1.5mm 0; height: 11mm; }
 .seasons div b { display: block; font-size: 10pt; }
 /* plateau joueur */
-.pboards { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
-.pboard { border: 1.5px solid #1a120d; border-radius: 3mm; padding: 4mm; height: 128mm; }
-.ferms { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm; margin: 2mm 0; }
-.ferms div { border: 1.5px solid #1a120d; border-radius: 3mm; height: 20mm; display: flex; align-items: flex-end; justify-content: center; font-size: 8.5pt; padding-bottom: 1.5mm; color: #4a3a30; }
-.ferms div.locked { border-style: dashed; }
-.equip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm; }
-.equip div { border: 1px dashed #1a120d; border-radius: 2mm; padding: 1.5mm 2mm; font-size: 8.5pt; min-height: 16mm; }
-.equip b { display: block; font-size: 9.5pt; }
+.pboard { border: 1.5px solid #1a120d; border-radius: 3mm; padding: 4mm; height: 275mm; display: flex; flex-direction: column; gap: 2mm; }
+.pbh { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1.5px solid #1a120d; padding-bottom: 1mm; }
+.pbh b { font-size: 16pt; }
+.grille { display: grid; grid-template-columns: 14mm repeat(3, 41mm) 8mm 41mm; grid-auto-rows: 55mm; gap: 2.5mm; align-items: stretch; }
+.grille .lab { writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font-size: 8.5pt; text-transform: uppercase; letter-spacing: .1em; color: #4a3a30; }
+.grille .head { grid-row: auto; height: auto; }
+.slot2 { border: 1.5px solid #1a120d; border-radius: 3mm; display: flex; align-items: flex-end; justify-content: center; font-size: 8pt; color: #4a3a30; padding-bottom: 1.5mm; text-align: center; }
+.slot2.locked { border-style: dashed; }
+.slot2.stock { background: #f7f2e8; }
+.ghead { display: grid; grid-template-columns: 14mm repeat(3, 41mm) 8mm 41mm; gap: 2.5mm; font-size: 8.5pt; text-transform: uppercase; letter-spacing: .1em; color: #4a3a30; text-align: center; }
+.ghead .arrow { font-size: 14pt; color: #1a120d; letter-spacing: 0; }
+.equip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2mm; margin-top: auto; }
+.equip div { border: 1px dashed #1a120d; border-radius: 2mm; padding: 1.5mm 2mm; font-size: 8pt; min-height: 15mm; }
+.equip b { display: block; font-size: 9pt; }
+.bieres { display: grid; grid-template-columns: repeat(4, 38mm); grid-auto-rows: 52mm; gap: 3mm; justify-content: center; }
+.biere { border: 1.2px solid #1a120d; border-radius: 3mm; display: flex; flex-direction: column; overflow: hidden; break-inside: avoid; }
+.biere .band { height: 16mm; border-bottom: 1.2px solid #1a120d; }
+.biere .bn { font-size: 12pt; font-weight: 700; padding: 2mm 2.5mm 0; line-height: 1.1; }
+.biere .bu { font-size: 8.5pt; padding: 0 2.5mm; color: #4a3a30; }
+.biere .bp { margin-top: auto; padding: 0 2.5mm 2mm; font-size: 8pt; color: #4a3a30; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
 ul { margin: 0 0 1.5mm; padding-left: 5mm; }
 li { margin-bottom: .8mm; }
@@ -112,9 +124,9 @@ li { margin-bottom: .8mm; }
       <h2>Une saison</h2>
       <ol style="padding-left:5mm">
         <li><b>Les dés.</b> Le premier joueur lance le dé météo (1 : mauvaise saison, champs et houblonnières −1 ; 6 : belle saison, +1 ; sinon normale) et le dé événement, lu dans la colonne de la saison sur le plateau. L'événement s'applique tout de suite. Les styles en demande sont fixes par saison, imprimés sur le plateau.</li>
-        <li><b>Brassins mûrs.</b> Les fermenteurs dont le dé est à 0 sortent : bière en stock.</li>
-        <li><b>Pose des ouvriers.</b> Le premier joueur tourne d'un cran à chaque saison, puis vers la gauche. Chacun pose <b>un</b> ouvrier et fait l'action tout de suite. On continue jusqu'à ce que tous soient posés. <b>Brasser ne demande pas d'ouvrier</b> : à tout moment de son tour, recette + fermenteur libre = on brasse. On lance le <b>dé de brassage</b> : 1 = brassin raté, 1 unité en moins ; 6 = cuvée exceptionnelle, 1 unité en plus. Puis un dé sur la durée de fermentation, la bière de la couleur du style dessus. Première fois qu'on brasse un style : on le coche sur sa feuille de marque, <b>+1 Réputation</b>.</li>
-        <li><b>Fin de saison.</b> Les dés baissent de 1. Les prix remontent d'un cran vers leur base. Le client le plus à gauche de la file est défaussé, on complète. Plus de 6 unités en stock : le surplus est vendu au prix de la piste. Les ouvriers reviennent.</li>
+        <li><b>Brassins mûrs.</b> Rien à faire : les cartes Bière arrivées en stock à la fin de la saison précédente sont disponibles.</li>
+        <li><b>Pose des ouvriers.</b> Le premier joueur tourne d'un cran à chaque saison, puis vers la gauche. Chacun pose <b>un</b> ouvrier et fait l'action tout de suite. On continue jusqu'à ce que tous soient posés. <b>Brasser ne demande pas d'ouvrier</b> : à tout moment de son tour, recette + fermenteur libre = on brasse. On lance le <b>dé de brassage</b> : 1 = brassin raté, 1 unité en moins ; 6 = cuvée exceptionnelle, 1 unité en plus. On empile autant de cartes Bière du style sur une ligne libre de son plateau Brasserie, dans la colonne de la recette : <b>prête dans 1</b> (Blonde), <b>2</b> (IPA, Stout) ou <b>3</b> saisons (Garde). Première fois qu'on brasse un style : on le coche sur sa feuille de marque, <b>+1 Réputation</b>.</li>
+        <li><b>Fin de saison.</b> Les prix remontent d'un cran vers leur base. Le client le plus à gauche de la file est défaussé, on complète. Plus de 6 cartes en stock : le surplus est vendu au prix de la piste. Puis chacun <b>fait glisser ses brassins d'une colonne vers la droite</b> ; ce qui sort de la colonne « prête dans 1 » va au stock, la ligne est libre. Les ouvriers reviennent.</li>
       </ol>
       <h2>Fin de partie</h2>
       <p>Après l'hiver de l'an 3 : <b>Réputation + diversité</b> (3 styles brassés : +2 ; les 4 : +5) <b>+ 1 point par 8 Argent</b>. La bière restante ne vaut rien. Égalité : le plus riche, puis celui qui a le plus de bière.</p>
@@ -145,7 +157,7 @@ li { margin-bottom: .8mm; }
     <tr><td><b>Stout</b> (noir)</td><td>3</td><td>1</td><td>2 saisons</td><td>6</td><td>3</td><td>Touraille</td></tr>
     <tr><td><b>Bière de garde</b> (brun)</td><td>4</td><td>1</td><td>3 saisons</td><td>7</td><td>4</td><td>–</td></tr>
   </table>
-  <p><small>Un brassin donne 2 unités (3 avec la Grande cuve). Matériel : cubes Malt / Houblon, pièces, jetons bière en 4 couleurs, 1 dé par fermenteur, 2 dés pour la saison et 1 dé de brassage, 3 pions par joueur, 4 marqueurs de prix, 1 marqueur de réputation par joueur.</small></p>
+  <p><small>Un brassin donne 2 unités (3 avec la Grande cuve). Matériel : cubes Malt / Houblon, pièces, 60 cartes Bière (15 par style, une carte = une unité), 2 dés pour la saison et 1 dé de brassage, 3 pions par joueur, 4 marqueurs de prix, 1 marqueur de réputation par joueur, un plateau Brasserie par joueur.</small></p>
 </section>
 
 <!-- ========== PAGE 2 : PLATEAU ========== -->
@@ -196,13 +208,8 @@ li { margin-bottom: .8mm; }
 </section>
 
 <!-- ========== PAGES 3-4 : PLATEAUX BRASSERIE ========== -->
-<section class="page">
-  <h1>Plateaux Brasserie</h1>
-  <div class="pboards" id="pboards"></div>
-</section>
-<section class="page">
-  <div class="pboards" id="pboards2"></div>
-</section>
+<div id="pboards"></div>
+<div id="bieres"></div>
 
 <!-- ========== CARTES CLIENT ========== -->
 <div id="clients"></div>
@@ -247,20 +254,7 @@ function seasonCard([s, nom, meteo, dem, evt]) {
 }
 
 
-const pb = (n) => `<div class="pboard"><h3>Brasserie ${n}</h3>
-  <small>Cuve : <b>2 unités</b> par brassin (3 avec la Grande cuve). Stock maximum en fin de saison : 6 unités.</small>
-  <div class="ferms"><div>fermenteur 1</div><div>fermenteur 2</div><div class="locked">fermenteur 3</div><div class="locked">fermenteur 4</div></div>
-  <small>Au brassage, lancer le dé : 1 = une unité en moins, 6 = une unité en plus. Dans chaque fermenteur : un dé sur la durée restante, les jetons bière du brassin dessus.</small>
-  <h3 style="margin-top:3mm">Équipement</h3>
-  <div class="equip">
-    <div><b>Grande cuve · 6</b>3 unités par brassin</div>
-    <div><b>Fermenteur · 4</b>ouvre le 3ᵉ, puis le 4ᵉ</div>
-    <div><b>Touraille · 4</b>permet le Stout</div>
-    <div><b>Embauche · 7</b>un 3ᵉ ouvrier</div>
-    <div><b>Salle de dégustation · 7</b>1 unité par saison au prix de base +1, sans ouvrier ; chaque hiver +1 Réputation</div>
-  </div>
-  <p style="margin-top:3mm"><small>Plateau réutilisable : on n'y écrit rien. Les styles brassés et le décompte se notent sur la feuille de marque.</small></p></div>`;
-document.getElementById('pboards').innerHTML = pb('A') + pb('B');
+
 // Piste de réputation : 0 à 50
 document.querySelector('.repstrip').innerHTML = Array.from({ length: 51 }, (_, n) => `<div class="${n % 5 === 0 ? 'cinq' : ''}">${n}</div>`).join('');
 // Feuilles de marque : 4 par page, une par joueur et par partie
@@ -278,7 +272,27 @@ const feuille = () => `<div class="fm">
   </table>
   <small>Égalité : le plus riche l'emporte, puis celui qui a le plus de bière. La bière restante ne rapporte rien.</small></div>`;
 document.getElementById('feuilles').innerHTML = feuille().repeat(4);
-document.getElementById('pboards2').innerHTML = pb('C') + pb('D');
+// Plateaux Brasserie : un par page. Lignes = fermenteurs, colonnes = saisons avant d'être prête ; les cartes Bière glissent d'une colonne à chaque fin de saison.
+const pb = (n) => `<section class="page"><div class="pboard">
+  <div class="pbh"><b>Brasserie ${n}</b><small>Cuve : <b>2 cartes</b> par brassin (3 avec la Grande cuve) · dé de brassage : 1 = une de moins, 6 = une de plus</small></div>
+  <div class="ghead"><span></span><span>Prête dans 3</span><span>Prête dans 2</span><span>Prête dans 1</span><span class="arrow">→</span><span>Stock · 6 max</span></div>
+  <div class="grille">${[1, 2, 3, 4].map((f) => `<div class="lab">Fermenteur ${f}</div>${['Garde', 'IPA · Stout', 'Blonde'].map((t) => `<div class="slot2 ${f > 2 ? 'locked' : ''}">${f > 2 ? 'à ouvrir au Chantier · 4' : t}</div>`).join('')}<span></span><div class="slot2 stock">${['Blonde', 'IPA', 'Stout', 'Bière de garde'][f - 1]}</div>`).join('')}</div>
+  <small>Fin de saison : vendre d'abord le surplus au-delà de 6 cartes en stock, puis faire glisser chaque brassin d'une colonne vers la droite. Ce qui sort de « prête dans 1 » va au stock. Contamination, canicule, inspection : retirer une carte d'un brassin.</small>
+  <div class="equip">
+    <div><b>Grande cuve · 6</b>3 cartes par brassin</div>
+    <div><b>Fermenteur · 4</b>ouvre le 3ᵉ, puis le 4ᵉ</div>
+    <div><b>Touraille · 4</b>permet le Stout</div>
+    <div><b>Embauche · 7</b>un 3ᵉ ouvrier</div>
+    <div><b>Salle de dégustation · 7</b>1 carte par saison au prix de base +1, sans ouvrier ; chaque hiver +1 Réputation</div>
+  </div>
+  <small>Plateau réutilisable : on n'y écrit rien. Les styles brassés et le décompte se notent sur la feuille de marque.</small></div></section>`;
+document.getElementById('pboards').innerHTML = ['A', 'B', 'C', 'D'].map(pb).join('');
+// Cartes Bière : une carte = une unité, 15 par style, 20 par page
+const BIERES = [['Blonde', '#e8c15a', 3, 1], ['IPA', '#d98b3a', 5, 2], ['Stout', '#2b1b14', 6, 3], ['Bière de garde', '#8a4b2a', 7, 4]];
+const cartesBiere = BIERES.flatMap(([nom, col, prix, rep]) => Array.from({ length: 15 }, () => `<div class="biere"><div class="band" style="background:${col}"></div><div class="bn">${nom}</div><div class="bu">1 unité</div><div class="bp">Prix de base ${prix} · ${rep} Réputation chez un client</div></div>`));
+let hb = '';
+for (let i = 0; i < cartesBiere.length; i += 20) hb += `<section class="page"><div class="bieres">${cartesBiere.slice(i, i + 20).join('')}</div></section>`;
+document.getElementById('bieres').innerHTML = hb;
 </script>
 </body>
 </html>
