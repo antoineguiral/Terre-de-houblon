@@ -34,7 +34,8 @@ th { background: #eee6d8; font-weight: 600; }
 .dem span { display: inline-block; border: 1px solid #1a120d; border-radius: 2mm; padding: .5mm 2mm; margin: 0 1mm 1mm 0; font-size: 10pt; }
 /* plateau */
 .board { display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: auto auto; gap: 3mm; }
-.spot { border: 1.5px solid #1a120d; border-radius: 3mm; padding: 2mm 3mm; min-height: 36mm; position: relative; }
+.spot { border: 1.5px solid #1a120d; border-radius: 3mm; padding: 2mm 3mm 12mm; min-height: 26mm; position: relative; }
+.spot.multi { padding-bottom: 2mm; }
 .spot.multi { border-style: dashed; }
 .spot h4 { margin: 0 0 1.5mm; font-size: 11.5pt; }
 .spot .slot { position: absolute; bottom: 3mm; right: 3mm; width: 10mm; height: 10mm; border: 1.5px dashed #1a120d; border-radius: 50%; }
@@ -48,19 +49,19 @@ th { background: #eee6d8; font-weight: 600; }
 .track { border: 1.5px solid #1a120d; border-radius: 3mm; padding: 2mm 3mm; }
 .track h4 { margin: 0 0 1.5mm; font-size: 10.5pt; }
 .steps { display: flex; gap: 1.5mm; }
-.steps div { flex: 1; border: 1px solid #1a120d; border-radius: 1.5mm; text-align: center; padding: 1mm 0; font-size: 10pt; min-height: 7mm; }
+.steps div { flex: 1; border: 1px solid #1a120d; border-radius: 1.5mm; text-align: center; padding: 1mm 0; font-size: 10pt; min-height: 6mm; }
 .steps div.base { background: #eee6d8; font-weight: 700; }
 .file { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2mm; }
-.file div { border: 1.5px dashed #1a120d; border-radius: 3mm; height: 30mm; display: flex; align-items: flex-end; justify-content: center; padding: 2mm; font-size: 8.5pt; color: #4a3a30; text-align: center; }
+.file div { border: 1.5px dashed #1a120d; border-radius: 3mm; height: 20mm; display: flex; align-items: flex-end; justify-content: center; padding: 2mm; font-size: 8.5pt; color: #4a3a30; text-align: center; }
 .file div.deck { border-style: solid; }
 .seasons { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1.5mm; }
-.seasons div { border: 1px solid #1a120d; border-radius: 1.5mm; text-align: center; font-size: 8.5pt; padding: 1.5mm 0; height: 14mm; }
+.seasons div { border: 1px solid #1a120d; border-radius: 1.5mm; text-align: center; font-size: 8.5pt; padding: 1.5mm 0; height: 11mm; }
 .seasons div b { display: block; font-size: 10pt; }
 /* plateau joueur */
 .pboards { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
 .pboard { border: 1.5px solid #1a120d; border-radius: 3mm; padding: 4mm; height: 128mm; }
 .ferms { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm; margin: 2mm 0; }
-.ferms div { border: 1.5px solid #1a120d; border-radius: 3mm; height: 30mm; display: flex; align-items: flex-end; justify-content: center; font-size: 8.5pt; padding-bottom: 1.5mm; color: #4a3a30; }
+.ferms div { border: 1.5px solid #1a120d; border-radius: 3mm; height: 20mm; display: flex; align-items: flex-end; justify-content: center; font-size: 8.5pt; padding-bottom: 1.5mm; color: #4a3a30; }
 .ferms div.locked { border-style: dashed; }
 .equip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm; }
 .equip div { border: 1px dashed #1a120d; border-radius: 2mm; padding: 1.5mm 2mm; font-size: 8.5pt; min-height: 16mm; }
@@ -112,17 +113,17 @@ li { margin-bottom: .8mm; }
       <ol style="padding-left:5mm">
         <li><b>Les dés.</b> Le premier joueur lance le dé météo (1 : mauvaise saison, champs et houblonnières −1 ; 6 : belle saison, +1 ; sinon normale) et le dé événement, lu dans la colonne de la saison sur le plateau. L'événement s'applique tout de suite. Les styles en demande sont fixes par saison, imprimés sur le plateau.</li>
         <li><b>Brassins mûrs.</b> Les fermenteurs dont le dé est à 0 sortent : bière en stock.</li>
-        <li><b>Pose des ouvriers.</b> Le premier joueur tourne d'un cran à chaque saison, puis vers la gauche. Chacun pose <b>un</b> ouvrier et fait l'action tout de suite. On continue jusqu'à ce que tous soient posés. <b>Brasser ne demande pas d'ouvrier</b> : à tout moment de son tour, recette + fermenteur libre = on brasse. On lance le <b>dé de brassage</b> : 1 = brassin raté, 1 unité en moins ; 6 = cuvée exceptionnelle, 1 unité en plus. Puis un dé sur la durée de fermentation, la bière de la couleur du style dessus.</li>
+        <li><b>Pose des ouvriers.</b> Le premier joueur tourne d'un cran à chaque saison, puis vers la gauche. Chacun pose <b>un</b> ouvrier et fait l'action tout de suite. On continue jusqu'à ce que tous soient posés. <b>Brasser ne demande pas d'ouvrier</b> : à tout moment de son tour, recette + fermenteur libre = on brasse. On lance le <b>dé de brassage</b> : 1 = brassin raté, 1 unité en moins ; 6 = cuvée exceptionnelle, 1 unité en plus. Puis un dé sur la durée de fermentation, la bière de la couleur du style dessus. Première fois qu'on brasse un style : on le coche sur sa feuille de marque, <b>+1 Réputation</b>.</li>
         <li><b>Fin de saison.</b> Les dés baissent de 1. Les prix remontent d'un cran vers leur base. Le client le plus à gauche de la file est défaussé, on complète. Plus de 6 unités en stock : le surplus est vendu au prix de la piste. Les ouvriers reviennent.</li>
       </ol>
       <h2>Fin de partie</h2>
-      <p>Après l'hiver de l'an 3 : <b>Réputation + diversité</b> (3 styles brassés : +2 ; les 4 : +5) <b>+ 1 point par 8 Argent</b>. La bière restante ne vaut rien. Égalité : le plus riche.</p>
+      <p>Après l'hiver de l'an 3 : <b>Réputation + diversité</b> (3 styles brassés : +2 ; les 4 : +5) <b>+ 1 point par 8 Argent</b>. La bière restante ne vaut rien. Égalité : le plus riche, puis celui qui a le plus de bière.</p>
     </div>
     <div>
       <h2>Les cases du plateau</h2>
-      <p>Une case pleine = un ouvrier par saison, sauf les cases en pointillé (plusieurs ouvriers).</p>
+      <p>Un rond = une place d'ouvrier pour la saison. Les cases en pointillé accueillent tout le monde.</p>
       <ul>
-        <li><b>Champs et houblonnières</b> : récolter selon la saison (chiffre de la case), modifié par la météo. Fermés en hiver.</li>
+        <li><b>Champs et houblonnières</b> : récolter selon la saison (chiffre de la case), modifié par la météo. <b>Deux places</b> : le second ouvrier récolte 1 de moins. Fermés en hiver.</li>
                 <li><b>Marché aux matières</b> : acheter jusqu'à 3 matières (Malt 2, Houblon 2).</li>
         <li><b>Tournée</b> : une place par joueur. Livrer 1 client de la file : prendre la carte, donner la bière, encaisser l'Argent et la Réputation. Le premier posé choisit en premier.</li>
         <li><b>Marché aux bières</b> (pointillé) : vendre autant d'unités qu'on veut, au prix de la piste ; chaque unité vendue baisse le prix de 1 pour tout le monde. Style en demande : +2.</li>
@@ -131,14 +132,14 @@ li { margin-bottom: .8mm; }
       <h2>Les clients</h2>
       <p>Style voulu, nombre d'unités, ce que ça paie, ce que ça rapporte. Style en demande : <b>+1 Réputation</b>. Festival livré pendant sa saison : <b>+2 Réputation</b>.</p>
       <h2>Échanges</h2>
-      <p>Une offre par pose d'ouvrier : matières, bière, Argent, dans les deux sens, avec qui on veut. À négocier à voix haute.</p>
+      <p>Une offre par tour (à chaque pose d'ouvrier) : matières, bière, Argent, dans les deux sens, avec qui on veut. À négocier à voix haute. On ne peut pas donner et demander la même chose.</p>
       <h2>Événements (dé)</h2>
-      <p>1 et 2 : rien. Les autres faces dépendent de la saison, voir la table sur le plateau. <b>Concours</b> : chacun présente 1 unité (consommée), score = réputation du style +1 si en demande ; meilleur +5, deuxième +2 (Salon : +8 / +3), égalité : chacun prend. <b>Contamination, Canicule</b> : 1 unité en moins sur un brassin en cours, au choix. <b>Commande de la mairie</b> : poser un client spécial sur la file (3 unités d'un style tiré au sort, prix +2, 4 Réputation).</p>
+      <p>1 et 2 : rien. Les autres faces dépendent de la saison, voir la table sur le plateau. <b>Concours</b> : chacun présente 1 unité (consommée), score = réputation du style +1 si en demande ; meilleur +5, deuxième +2 (Salon : +8 / +3), égalité : chacun prend. <b>Contamination, Canicule</b> : 1 unité en moins sur un brassin en cours, au choix. <b>Commande de la mairie</b> : poser un client spécial sur la file (3 unités d'un style tiré au sort, prix de base +2, 4 Réputation). <b>Douanes</b> : 1 Argent par tranche de 3 unités en stock.</p>
     </div>
   </div>
   <h2>Recettes</h2>
   <table>
-    <tr><th>Style</th><th>Malt</th><th>Houblon</th><th>Fermentation</th><th>Prix de base</th><th>Réputation</th><th>Condition</th></tr>
+    <tr><th>Style</th><th>Malt</th><th>Houblon</th><th>Fermentation</th><th>Prix de base</th><th>Réputation chez un client</th><th>Condition</th></tr>
     <tr><td><b>Blonde</b> (jaune)</td><td>2</td><td>1</td><td>1 saison</td><td>3</td><td>1</td><td>–</td></tr>
     <tr><td><b>IPA</b> (orange)</td><td>2</td><td>2</td><td>2 saisons</td><td>5</td><td>2</td><td>–</td></tr>
     <tr><td><b>Stout</b> (noir)</td><td>3</td><td>1</td><td>2 saisons</td><td>6</td><td>3</td><td>Touraille</td></tr>
@@ -151,12 +152,12 @@ li { margin-bottom: .8mm; }
 <section class="page">
   <h1>Plateau</h1>
   <div class="board">
-    <div class="spot"><h4>Champ d'orge</h4><small>Malt</small><div class="yield"><div>Pr<b>3</b></div><div>Été<b>4</b></div><div>Aut<b>4</b></div><div>Hiv<b>–</b></div></div><div class="slot"></div></div>
-    <div class="spot"><h4>Champ d'orge</h4><small>Malt</small><div class="yield"><div>Pr<b>3</b></div><div>Été<b>4</b></div><div>Aut<b>4</b></div><div>Hiv<b>–</b></div></div><div class="slot"></div></div>
-    <div class="spot"><h4>Houblonnière</h4><small>Houblon</small><div class="yield"><div>Pr<b>2</b></div><div>Été<b>2</b></div><div>Aut<b>4</b></div><div>Hiv<b>–</b></div></div><div class="slot"></div></div>
-    <div class="spot"><h4>Houblonnière</h4><small>Houblon</small><div class="yield"><div>Pr<b>2</b></div><div>Été<b>2</b></div><div>Aut<b>4</b></div><div>Hiv<b>–</b></div></div><div class="slot"></div></div>
+    <div class="spot"><h4>Champ d'orge</h4><small>Malt · 2 places, le 2<sup>e</sup> récolte 1 de moins</small><div class="yield"><div>Pr<b>3</b></div><div>Été<b>4</b></div><div>Aut<b>4</b></div><div>Hiv<b>–</b></div></div><div class="slot"></div><div class="slot two"></div></div>
+    <div class="spot"><h4>Champ d'orge</h4><small>Malt · 2 places, le 2<sup>e</sup> récolte 1 de moins</small><div class="yield"><div>Pr<b>3</b></div><div>Été<b>4</b></div><div>Aut<b>4</b></div><div>Hiv<b>–</b></div></div><div class="slot"></div><div class="slot two"></div></div>
+    <div class="spot"><h4>Houblonnière</h4><small>Houblon · 2 places, le 2<sup>e</sup> récolte 1 de moins</small><div class="yield"><div>Pr<b>2</b></div><div>Été<b>2</b></div><div>Aut<b>4</b></div><div>Hiv<b>–</b></div></div><div class="slot"></div><div class="slot two"></div></div>
+    <div class="spot"><h4>Houblonnière</h4><small>Houblon · 2 places, le 2<sup>e</sup> récolte 1 de moins</small><div class="yield"><div>Pr<b>2</b></div><div>Été<b>2</b></div><div>Aut<b>4</b></div><div>Hiv<b>–</b></div></div><div class="slot"></div><div class="slot two"></div></div>
     <div class="spot"><h4>Marché aux matières</h4><small>Jusqu'à 3 matières<br>Malt 2 · Houblon 2</small><div class="slot"></div></div>
-    <div class="spot"><h4>Tournée</h4><small>Une place par joueur. Livrer 1 client de la file. Le premier posé choisit en premier.</small><div class="slot"></div><div class="slot two"></div><div class="slot three"></div><div class="slot four"></div></div>
+    <div class="spot"><h4>Tournée</h4><small>Une place par joueur. Livrer 1 client de la file.</small><div class="slot"></div><div class="slot two"></div><div class="slot three"></div><div class="slot four"></div></div>
     <div class="spot multi"><h4>Marché aux bières</h4><small>Vendre au prix de la piste, chaque unité baisse le prix de 1. En demande : +2.</small></div>
     <div class="spot multi"><h4>Chantier</h4><small>Acheter 1 équipement : Grande cuve 6 · Fermenteur 4 · Touraille 4 · Embauche 7 · Salle de dégustation 7</small></div>
     <div class="spot" style="border-style:dotted"><h4>Premier joueur</h4><small>Tourne d'un cran à chaque saison. Poser le marqueur ici.</small></div>
@@ -176,16 +177,15 @@ li { margin-bottom: .8mm; }
     <div><b>Pr</b>an 2</div><div><b>Été</b>an 2</div><div><b>Aut</b>an 2</div><div><b>Hiv</b>an 2</div>
     <div><b>Pr</b>an 3</div><div><b>Été</b>an 3</div><div><b>Aut</b>an 3</div><div><b>Hiv</b>an 3</div>
   </div>
-  <h3 style="margin-top:3mm">Dé événement <small>· dé météo : 1 = champs et houblonnières −1, 6 = +1</small></h3>
-  <table style="font-size:8.5pt">
+  <h3 style="margin-top:3mm">Dé événement <small>· 1 et 2 : rien · dé météo : 1 = champs et houblonnières −1, 6 = +1</small></h3>
+  <table style="font-size:8pt">
     <tr><th style="width:8mm">Dé</th><th>Printemps <small>· en demande : Blonde, IPA</small></th><th>Été <small>· Blonde, IPA</small></th><th>Automne <small>· Stout, IPA</small></th><th>Hiver <small>· Stout, Garde</small></th></tr>
-    <tr><td>1–2</td><td>Rien</td><td>Rien</td><td>Rien</td><td>Rien</td></tr>
-    <tr><td>3</td><td><b>Mildiou</b> : houblonnières fermées</td><td><b>Canicule</b> : −1 unité sur un brassin en cours</td><td><b>Belle récolte</b> : champs et houblonnières +1</td><td><b>Grève des transporteurs</b> : pas de Tournée</td></tr>
+        <tr><td>3</td><td><b>Mildiou</b> : houblonnières fermées</td><td><b>Canicule</b> : −1 unité sur un brassin en cours</td><td><b>Belle récolte</b> : champs et houblonnières +1</td><td><b>Grève des transporteurs</b> : pas de Tournée</td></tr>
     <tr><td>4</td><td><b>Contamination</b> : −1 unité sur un brassin en cours</td><td><b>Fête de la bière</b> : tous les prix +1</td><td><b>Commande de la mairie</b> : client spécial sur la file</td><td><b>Douanes</b> : 1 Argent par 3 unités en stock</td></tr>
     <tr><td>5</td><td><b>Critique gastronomique</b> : +3 Réputation au premier qui livre une Cave</td><td><b>Pénurie</b> : Marché aux matières fermé</td><td><b>Concours régional</b> : +5 / +2</td><td><b>Marché de Noël</b> : 2 clients de plus</td></tr>
     <tr><td>6</td><td><b>Brasseur invité</b> : le Stout se brasse sans Touraille</td><td><b>Inspection</b> : −1 unité sur chaque brassin en cours</td><td><b>Salon des brasseurs</b> : concours à +8 / +3</td><td><b>Fête au village</b> : 2 clients de plus, tous les prix +1</td></tr>
   </table>
-  <h3 style="margin-top:3mm">Piste de réputation <small>· un marqueur par joueur, à 0 au départ (1 pour le dernier joueur de la première saison)</small></h3>
+  <h3 style="margin-top:3mm">Piste de réputation <small>· un marqueur par joueur, à 0 (1 pour le dernier de la première saison)</small></h3>
   <div class="repstrip"></div>
 </section>
 
