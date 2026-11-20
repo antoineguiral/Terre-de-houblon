@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Jetons Bière à imprimer en 3D : une silhouette de verre par style, à plat, 3 mm d'épaisseur.
+"""Le matériel de Brassins à imprimer en 3D : jetons Bière (une silhouette de verre par style, à plat),
+pièces d'Argent, ouvriers, pions Brasserie, marqueurs de prix et de saison.
 
     python3 docs/prototype/pintes/pintes.py
 
-Écrit pintes.scad (paramétrable dans OpenSCAD), un STL par style, un STL « plateau » avec 12 pièces
-de chaque, et apercu.png. Dépend de trimesh, shapely, mapbox_earcut, matplotlib.
+Écrit pintes.scad (les verres, paramétrables dans OpenSCAD), un STL par pièce, des plaques prêtes à
+imprimer (une couleur par plaque) et apercu.png. Dépend de trimesh, shapely, mapbox_earcut, matplotlib.
 
 Chaque jeton : la silhouette extrudée (EPAISSEUR), un chanfrein sur le dessus (CHANFREIN), et la
 mousse en relief (RELIEF) pour sentir le style au doigt et distinguer le dessus du dessous.
@@ -60,6 +61,62 @@ def garde():
     return verre, mousse
 
 STYLES = {'blonde': blonde, 'ipa': ipa, 'stout': stout, 'garde': garde}
+COULEURS_JOUEURS = ['rouge', 'bleu', 'jaune', 'blanc']   # comme en ligne
+PIECES = {1: 60, 5: 42, 10: 42}                           # valeurs et quantités (large : jusqu'à 200 Argent par joueur vus en partie)
+
+def texte(t, taille):
+    """Un texte en polygones (shapely), centré, pour les reliefs."""
+    import matplotlib; matplotlib.use('Agg')
+    from matplotlib.textpath import TextPath
+    from matplotlib.font_manager import FontProperties
+    path = TextPath((0, 0), t, size=taille, prop=FontProperties(family='DejaVu Sans', weight='bold'))
+    polys = [Polygon(pts) for pts in path.to_polygons() if len(pts) > 2]
+    # les trous (intérieur du 0, du 5…) sont les polygones contenus dans un autre
+    ext = [q for q in polys if not any(o is not q and o.contains(q) for o in polys)]
+    g = unary_union([q.difference(unary_union([o for o in polys if o is not q and q.contains(o)] or [Polygon()])) for q in ext])
+    b = g.bounds
+    from shapely.affinity import translate
+    return translate(g, -(b[0] + b[2]) / 2, -(b[1] + b[3]) / 2)
+
+def piece(valeur):
+    """Pièce ronde de 18 mm, 2,5 mm, la valeur en relief sur le dessus, un bord en relief pour le doigt."""
+    from shapely.geometry import Point
+    d = Point(0, 0).buffer(9, resolution=32)
+    corps = extrude(d, 2.0)
+    bord = extrude(d.difference(Point(0, 0).buffer(7.8, resolution=32)), 0.5, 2.0)
+    chiffre = extrude(texte(str(valeur), 9 if valeur < 10 else 7.5).buffer(0.15), 0.6, 2.0)
+    return trimesh.util.concatenate([corps, bord, chiffre])
+
+def meeple():
+    """Ouvrier : silhouette de meeple, 16 mm de haut, 5 mm d'épaisseur, imprimé à plat, se tient debout."""
+    droite = [(1.3, 0), (5.2, 0), (5.6, 1.2), (4.2, 5.6), (8.2, 6.6), (8.5, 9.2), (6.6, 9.6), (4.2, 8.6), (3.6, 10.2), (3.2, 11.6), (3.4, 13.2), (2.4, 15.3), (0, 16)]
+    pts = droite + [(-x, y) for x, y in reversed(droite[:-1])] + [(0, 1.6)]
+    return extrude(Polygon(pts).buffer(0.4, join_style=1).buffer(-0.4, join_style=1), 5.0)
+
+def pion_brasserie():
+    """Pion Brasserie pour la piste de réputation : une bouteille, 22 mm, pied de 6 mm, 6 mm d'épaisseur."""
+    pts = [(-3.5, 0), (3.5, 0), (3.5, 11), (1.6, 15), (1.6, 20), (2.2, 20), (2.2, 22), (-2.2, 22), (-2.2, 20), (-1.6, 20), (-1.6, 15), (-3.5, 11)]
+    return extrude(Polygon(pts).buffer(0.5, join_style=1).buffer(-0.5, join_style=1), 6.0)
+
+def marqueur_prix():
+    """Marqueur de prix : un petit fût à plat, 10 × 12 mm, 3 mm, à imprimer dans la couleur du style."""
+    pts = [(-4, 0), (4, 0), (5, 2), (5, 10), (4, 12), (-4, 12), (-5, 10), (-5, 2)]
+    corps = extrude(Polygon(pts), 2.4)
+    cercles = extrude(Polygon([(-5, 3), (5, 3), (5, 4), (-5, 4)]).union(Polygon([(-5, 8), (5, 8), (5, 9), (-5, 9)])), 0.6, 2.4)
+    return trimesh.util.concatenate([corps, cercles])
+
+def marqueur_saison():
+    """Marqueur de saison : un disque de 14 mm avec un houblon en relief, à poser sur le calendrier."""
+    from shapely.geometry import Point
+    d = Point(0, 0).buffer(7, resolution=32)
+    cone = Polygon([(0, 5), (3, 2.5), (3.5, -1), (2, -4.5), (0, -5.5), (-2, -4.5), (-3.5, -1), (-3, 2.5)])
+    return trimesh.util.concatenate([extrude(d, 2.4), extrude(cone, 0.6, 2.4)])
+
+def grille(mesh, n, cols, pas_x, pas_y):
+    out = []
+    for i in range(n):
+        c = mesh.copy(); c.apply_translation(((i % cols) * pas_x, (i // cols) * pas_y, 0)); out.append(c)
+    return trimesh.util.concatenate(out)
 
 def poly(p):
     return Polygon(p) if isinstance(p, list) else p
@@ -140,8 +197,23 @@ if __name__ == '__main__':
         pieces = []
         for i in range(24):
             c = mesh.copy(); c.apply_translation(((i % 6) * 26, (i // 6) * 32, 0)); pieces.append(c)
+        fut = marqueur_prix(); fut.apply_translation((0, -24, 0)); pieces.append(fut)   # le marqueur de prix du style, même couleur
         trimesh.util.concatenate(pieces).export(os.path.join(ICI, f'plaque-{st}-24.stl'))
+    # pièces : une plaque par valeur, 42 par plaque (7 × 6, 147 × 126 mm), deux pour les 1
+    for val, n in PIECES.items():
+        m = piece(val); m.export(os.path.join(ICI, f'piece-{val}.stl'))
+        for k in range(math.ceil(n / 42)):
+            grille(m, min(42, n - 42 * k), 7, 21, 21).export(os.path.join(ICI, f'plaque-pieces-{val}{chr(97 + k) if n > 42 else ""}.stl'))
+    # ouvriers et pion Brasserie : une plaque par couleur de joueur (3 ouvriers + 1 pion), identique pour les quatre
+    me, pb = meeple(), pion_brasserie()
+    me.export(os.path.join(ICI, 'ouvrier.stl')); pb.export(os.path.join(ICI, 'pion-brasserie.stl'))
+    joueur = grille(me, 3, 3, 20, 0)
+    bouteille = pb.copy(); bouteille.apply_translation((62, 0, 0))
+    trimesh.util.concatenate([joueur, bouteille]).export(os.path.join(ICI, 'plaque-joueur.stl'))
+    # marqueurs : un fût de prix par style (à ajouter sur la plaque du style), un marqueur de saison
+    marqueur_prix().export(os.path.join(ICI, 'marqueur-prix.stl'))
+    marqueur_saison().export(os.path.join(ICI, 'marqueur-saison.stl'))
     with open(os.path.join(ICI, 'pintes.scad'), 'w') as f:
         f.write(scad(formes))
     apercu(formes)
-    print('écrit : pintes.scad, pinte-*.stl, plateau-48.stl, plaque-*-24.stl, apercu.png')
+    print('écrit : pintes.scad, pinte-*.stl, plateau-48.stl, plaque-*-24.stl, piece-*.stl, plaque-pieces-*.stl, ouvrier.stl, pion-brasserie.stl, plaque-joueur.stl, marqueur-prix.stl, marqueur-saison.stl, apercu.png')
