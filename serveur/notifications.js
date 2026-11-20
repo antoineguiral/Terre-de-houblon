@@ -89,9 +89,9 @@ export function creerNotifier({ publicUrl, envoyer, base, now, setTimeout, clear
         lignes: [`${esc(nom)}, la partie est lancée : choisis l'objectif secret que tu gardes parmi tes deux cartes.`, limite] };
     }
     if (evt) {
-      const EVT = { contamination: ['Contamination', 'une levure sauvage s’est invitée : choisis le brassin qui perd 1 unité'], canicule: ['Canicule', 'il fait trop chaud : choisis le brassin qui perd 1 unité'], concours: ['Concours régional', 'présente une unité de ton stock'], salon: ['Salon des brasseurs', 'présente une unité de ton stock'] };
+      const EVT = { contamination: ['Contamination', 'une levure sauvage s’est invitée : choisis le brassin qui perd 1 unité'], canicule: ['Canicule', 'il fait trop chaud : choisis le brassin qui perd 1 unité'], concours: ['Concours régional', 'présente une unité de ton stock'], salon: ['Salon des brasseurs', 'présente une unité de ton stock'], levureSauvage: ['Levure sauvage', 'un adversaire a joué une Levure sauvage : choisis le brassin qui perd 1 unité'] };
       const [titre, txt] = EVT[evt];
-      return { sujet: `${titre} : à toi de décider (partie ${salle.code}, ${saison})`, titre, bouton: 'Décider',
+      return { sujet: `${titre} : à toi de décider (partie ${salle.code}, ${saison}${s.pending.type === 'dev' ? `, tour ${s.turn}` : ''})`, titre, bouton: 'Décider',
         lignes: [`${esc(nom)}, ${txt}.`, limite] };
     }
     const prev = s.log.filter((e) => e.k === 'endTurn').at(-1);

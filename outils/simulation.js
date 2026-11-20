@@ -3,7 +3,7 @@
 //   npm run simulation -- 500 maitre 4
 //   Réglages à l'essai par variables d'environnement : FIN_REP (0 = durée fixe), NB_SAISONS, OBJECTIFS=0
 
-import { createGame, aiStep, waitingFor, STYLES, AMELIORATIONS, CASES, EVT, OBJECTIFS, FIN_REP, NB_SAISONS } from '../moteur/index.js';
+import { createGame, aiStep, waitingFor, STYLES, AMELIORATIONS, CASES, EVT, OBJECTIFS, DEVELOPPEMENTS, FIN_REP, NB_SAISONS } from '../moteur/index.js';
 
 const N = +(process.argv[2] ?? 100), NIVEAU = process.argv[3] ?? 'compagnon', NJ = +(process.argv[4] ?? 4), FROM = +(process.argv[5] ?? 1);
 const REGLAGES = { finRep: process.env.FIN_REP === undefined ? FIN_REP : +process.env.FIN_REP, nbSaisons: +(process.env.NB_SAISONS ?? NB_SAISONS), objectifs: process.env.OBJECTIFS !== '0' };
@@ -35,6 +35,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const cases = Object.fromEntries(Object.keys(CASES).map((c) => [c, 0])), evts = {};
   const src = { rep: [], diversite: [], argent: [] };
   let unfinished = 0, clients = 0, partis = 0, vendu = 0, argentMarche = 0, forces = 0, passes = 0, rates = 0, cuvees = 0, echanges = 0, offres = 0, brassins = 0;
+  const devs = Object.fromEntries(Object.keys(DEVELOPPEMENTS).map((k) => [k, 0])), argentFin = [];
+  let devAchetees = 0;
   const parKind = {}, objs = Object.fromEntries(Object.keys(OBJECTIFS).map((o) => [o, { n: 0, ok: 0 }])), fins = {}, saisons = [];
   const t0 = Date.now();
   for (let g = FROM; g < FROM + N; g++) {
@@ -42,6 +44,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const { s } = playOut(g, { niveau: NIVEAU, n: NJ, journal, ...REGLAGES });
     if (s.phase !== 'over') { unfinished++; continue; }
     fins[s.finie] = (fins[s.finie] || 0) + 1; saisons.push(s.saison + 1);
+    s.players.forEach((p) => argentFin.push(p.argent));
     s.players.forEach((p) => { if (p.objectif) { objs[p.objectif].n++; if (s.scores && OBJECTIFS[p.objectif].test(p)) objs[p.objectif].ok++; } });
     const tot = s.scores.map((x) => x.total);
     scores.push(...tot); spreads.push(Math.max(...tot) - Math.min(...tot));
@@ -63,6 +66,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       if (e.k === 'saison' && e.evt) evts[e.evt] = (evts[e.evt] || 0) + 1;
       if (e.k === 'tradeDone') echanges++;
       if (e.k === 'tradeOffer') offres++;
+      if (e.k === 'dev') devs[e.carte]++;
+      if (e.k === 'poser' && e.case === 'chantier' && e.u === 'dev') devAchetees += e.n;
     }
   }
   const P = N * NJ, G = N - unfinished;
@@ -76,6 +81,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   console.log(`Clients livrés par joueur : ${f1(clients / P)} (${Object.entries(parKind).map(([k, v]) => `${k} ${f1(v / P)}`).join(', ')}) ; clients partis sans être livrés par partie : ${f1(partis / G)}`);
   console.log(`Marché aux bières : ${f1(vendu / P)} u par joueur à ${f1(argentMarche / Math.max(1, vendu))} (dont vendues d'office ${f1(forces / P)}) ; ouvriers perdus ${f1(passes / P)} ; offres ${f1(offres / P)}, échanges ${f1(echanges / P)}`);
   console.log(`Cases (poses par joueur) : ${Object.keys(CASES).map((c) => `${c} ${f1(cases[c] / P)}`).join(', ')}`);
+  console.log(`Argent en fin de partie : ${f1(mean(argentFin))} par joueur (max ${Math.max(...argentFin)}) ; cartes Développement achetées ${f1(devAchetees / P)} par joueur, jouées : ${Object.entries(devs).filter(([, v]) => v).map(([k, v]) => `${DEVELOPPEMENTS[k].nom} ${f1(v / G)}`).join(', ')}`);
   console.log(`Équipements (part des joueurs) : ${Object.keys(AMELIORATIONS).map((u) => `${u} ${pct(upg[u] / P)}`).join(', ')}`);
   console.log(`Événements par partie : ${Object.entries(evts).sort().map(([k, v]) => `${EVT[k].nom} ${(v / G).toFixed(2)}`).join(', ')}`);
 }

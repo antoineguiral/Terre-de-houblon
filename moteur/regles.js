@@ -17,11 +17,11 @@ import {
   SAISONS, NB_SAISONS, FIN_REP, RES, STYLES, ITEMS, RECETTES, REP_PREMIERE, CUVE, DE_BRASSAGE, CASES, ACHAT, ACHAT_MAX, PRIX_PLANCHER,
   PRIX_REMONTEE, DEMANDE_BONUS, DEMANDE_REP, DEMANDE, FILE, FEST_REP, CRITIQUE_REP, CLIENTS, CLIENT_MAIRIE, OBJECTIFS, OBJECTIFS_PIOCHE, OBJECTIFS_GARDE,
   METEO, EVENEMENTS, CONCOURS, DOUANES_PAR, OUVRIERS_DEPART, CAMION_LIVRAISONS, FERMENTEURS_DEPART, FERMENTEURS_MAX, STOCK_MAX, SALLE_BONUS,
-  SALLE_REP_HIVER, AMELIORATIONS, DEPART, REP_DERNIER, ARGENT_PAR_POINT, Z, ZS, ZI, total,
+  SALLE_REP_HIVER, AMELIORATIONS, DEVELOPPEMENTS, DEV_PRIX, DEV_PAR_POSE, DEV_EXEMPLAIRES, DEV, DEPART, REP_DERNIER, ARGENT_PAR_POINT, Z, ZS, ZI, total,
 } from './constantes.js';
 import { hashSeed, int, shuffle } from './alea.js';
 
-export const VERSION = 4;
+export const VERSION = 5;
 
 /* ---------- création ---------- */
 
@@ -37,7 +37,7 @@ export function createGame({ seed = Date.now(), players, aiOffersToHumans = true
     opts: { aiOffersToHumans, niveau, ordre, finRep, nbSaisons, objectifs },
     saison: -1, meteo: 0, de: 0, evt: null, demande: [], ferme: [], prixBonus: 0, critique: false, invite: false,
     prixMatiere: null, bonusKind: null, marcheFixe: false, recolteBonus: {},
-    deck: [], file: [], defausse: [],
+    deck: [], file: [], defausse: [], devs: [], devDefausse: [],
     prix: Object.fromEntries(STYLES.map((st) => [st, RECETTES[st].prix])),
     players: players.map((p) => ({
       name: p.name, ai: !!p.ai,
@@ -45,14 +45,16 @@ export function createGame({ seed = Date.now(), players, aiOffersToHumans = true
       ouv: OUVRIERS_DEPART, nferm: FERMENTEURS_DEPART, ferms: [], cuve: 0, stock: ZS(), upg: [],
       rep: 0, styles: [], clients: [], salle: false, offersOn: true,
       objectifs: [], objectif: null, cpt: { bar: 0, cave: 0, fest: 0, mairie: 0, festSaison: 0, marche: 0, medailles: 0, livre: ZS() },
+      dev: [], primeur: false, foire: false,
     })),
     phase: 'main',
     first: 0, cur: 0, restants: {}, tournee: [], occ: {}, place: false, turn: 0,
-    pending: null, trade: null, tradeSeq: 0, tradesThisTurn: 0, turnActions: 0,
+    pending: null, trade: null, tradeSeq: 0, tradesThisTurn: 0, turnActions: 0, devJoue: false,
     winner: null, scores: null,
     log: [],
   };
   state.deck = shuffle(state, CLIENTS.map((c) => ({ ...c })));
+  state.devs = shuffle(state, Object.keys(DEVELOPPEMENTS).flatMap((k) => Array(DEV_EXEMPLAIRES).fill(k)));
   for (let k = 0; k < FILE; k++) state.file.push(state.deck.pop());
   state.first = int(state, n);
   // le dernier joueur de la première saison commence avec 1 Réputation
@@ -107,13 +109,14 @@ export const peutBrasser = (s, p, st) => {
 export const stylesClient = (client) => (client.style ? [client.style] : client.styles ?? STYLES);
 // Ce qu'une livraison rapporterait : { argent, rep, style } ou null. `stock` permet d'évaluer avec un stock déjà entamé.
 export function valeurLivraison(s, pi, client, style, stock = s.players[pi].stock) {
+  if (client.reserve && client.reserve.p !== pi) return null; // réservé par un autre
   const st = client.style ?? style;
   if (!st || !stylesClient(client).includes(st)) return null;
   if (stock[st] < client.n) return null;
   let rep = client.rep + (enDemande(s, st) ? DEMANDE_REP : 0);
   if (client.kind === 'fest' && client.saison === saisonIdx(s)) rep += FEST_REP;
   if (client.kind === 'cave' && s.critique) rep += CRITIQUE_REP;
-  const argent = client.n * (RECETTES[st].prix + client.bonus + s.prixBonus + (s.bonusKind?.[client.kind] ?? 0));
+  const argent = client.n * (RECETTES[st].prix + client.bonus + s.prixBonus + (s.bonusKind?.[client.kind] ?? 0) + (s.players[pi].foire ? DEV.grandeFoire : 0));
   return { argent, rep, style: st };
 }
 // Styles avec lesquels ce joueur peut livrer ce client
@@ -166,7 +169,11 @@ export function posesPossibles(s, pi) {
       continue;
     }
     if (c === 'marcheBieres') { const styles = STYLES.filter((st) => p.stock[st] > 0); if (styles.length) out.push({ case: c, styles }); continue; }
-    if (c === 'chantier') { const targets = ameliorationsPossibles(p).filter((u) => AMELIORATIONS[u].cout <= p.argent); if (targets.length) out.push({ case: c, targets }); }
+    if (c === 'chantier') {
+      const targets = ameliorationsPossibles(p).filter((u) => AMELIORATIONS[u].cout <= p.argent);
+      const devs = Math.min(DEV_PAR_POSE, s.devs.length + s.devDefausse.length, Math.floor(p.argent / DEV_PRIX));
+      if (targets.length || devs > 0) out.push({ case: c, targets, devs });
+    }
   }
   return out;
 }
@@ -228,6 +235,10 @@ function piocher(s) {
   if (!s.deck.length && s.defausse.length) { s.deck = shuffle(s, s.defausse); s.defausse = []; }
   return s.deck.pop() ?? null;
 }
+function piocherDev(s) {
+  if (!s.devs.length && s.devDefausse.length) { s.devs = shuffle(s, s.devDefausse); s.devDefausse = []; }
+  return s.devs.pop() ?? null;
+}
 function remplirFile(s) {
   while (s.file.length < FILE) { const c = piocher(s); if (!c) break; s.file.push(c); }
 }
@@ -242,7 +253,7 @@ function startSaison(s) {
   s.ferme = []; s.prixBonus = 0; s.critique = false; s.invite = false;
   s.prixMatiere = null; s.bonusKind = null; s.marcheFixe = false; s.recolteBonus = {};
   s.pending = null; s.trade = null; s.occ = {}; s.tournee = [];
-  s.players.forEach((p) => { p.salle = false; });
+  s.players.forEach((p) => { p.salle = false; p.foire = false; });
   // brassins mûrs
   const finis = [];
   s.players.forEach((p, i) => {
@@ -298,7 +309,7 @@ function beginPoses(s) {
   } else s.first0 = s.first;
   s.restants = Object.fromEntries(s.players.map((p, i) => [i, p.ouv]));
   s.cur = s.first; s.place = false; s.turn++; s.tour = 0;
-  s.tradesThisTurn = 0; s.turnActions = 0;
+  s.tradesThisTurn = 0; s.turnActions = 0; s.devJoue = false;
   log(s, { k: 'ordre', first: s.first });
 }
 
@@ -341,7 +352,8 @@ function endSaison(s) {
     }
   });
   STYLES.forEach((st) => { s.prix[st] = Math.min(RECETTES[st].prix, s.prix[st] + PRIX_REMONTEE); });
-  if (s.file.length) { const vieux = s.file.shift(); s.defausse.push(vieux); log(s, { k: 'clientParti', client: vieux }); }
+  s.file.forEach((c) => { if (c.reserve && c.reserve.jusqu <= s.saison) delete c.reserve; });
+  if (s.file.length) { const vieux = s.file.shift(); delete vieux.reserve; s.defausse.push(vieux); log(s, { k: 'clientParti', client: vieux }); }
   remplirFile(s);
   const finRep = s.opts.finRep ?? FIN_REP, nb = s.opts.nbSaisons ?? NB_SAISONS;
   if (finRep > 0 && s.players.some((p) => p.rep >= finRep)) return finir(s, 'reputation');
@@ -376,11 +388,11 @@ function finPose(s, pi) {
   const nx = suivant(s, pi);
   if (nx === null) { endSaison(s); return; }
   s.cur = nx; s.place = false; s.turn++;
-  s.tradesThisTurn = 0; s.turnActions = 0;
+  s.tradesThisTurn = 0; s.turnActions = 0; s.devJoue = false;
 }
 
 const HANDLERS = {
-  brasser(s, pi, { style }) {
+  brasser(s, pi, { style }, sansDe = false) {
     const g = monTour(s, pi);
     if (g) return g;
     if (!STYLES.includes(style)) return 'Style inconnu.';
@@ -388,13 +400,79 @@ const HANDLERS = {
     if (p.ferms.length >= p.nferm) return 'Tous tes fermenteurs sont occupés.';
     if (!peutBrasser(s, p, style)) return r.exige && !a(p, r.exige) && !(s.invite && style === 'stout') ? `Ce style demande : ${AMELIORATIONS[r.exige].nom}.` : 'Il te manque des matières pour cette recette.';
     RES.forEach((x) => { p.res[x] -= r[x]; });
-    const de = 1 + int(s, 6);
-    let u = cuveUnites(p);
+    const de = sansDe ? 0 : 1 + int(s, 6);
+    let u = sansDe ? DEV.coupDeMain : cuveUnites(p);
     if (de === DE_BRASSAGE.rate) u--; else if (de === DE_BRASSAGE.cuvee) u++;
     p.ferms.push({ st: style, left: r.ferm, u });
     let premiere = false;
     if (!p.styles.includes(style)) { p.styles.push(style); p.rep += REP_PREMIERE; premiere = true; }
     log(s, { k: 'brasser', p: pi, style, de, u, ferm: r.ferm, premiere });
+    return null;
+  },
+
+  // Jouer une carte Développement de sa main : une par tour, pendant son tour
+  jouer(s, pi, act) {
+    const g = monTour(s, pi);
+    if (g) return g;
+    if (s.devJoue) return 'Une seule carte Développement par tour.';
+    const p = s.players[pi], k = act.carte, d = DEVELOPPEMENTS[k];
+    if (!d || !p.dev.includes(k)) return "Tu n'as pas cette carte.";
+    const autres = s.players.map((_, i) => i).filter((i) => i !== pi);
+    const ev = { k: 'dev', p: pi, carte: k };
+    if (k === 'monopole') {
+      if (!RES.includes(act.res)) return 'Annonce Malt ou Houblon.';
+      const pris = autres.filter((i) => s.players[i].res[act.res] > 0);
+      pris.forEach((i) => { s.players[i].res[act.res]--; p.res[act.res]++; });
+      ev.res = act.res; ev.de = pris;
+    } else if (k === 'rachat') {
+      const q = s.players[act.de], st = act.style;
+      if (!q || act.de === pi || !STYLES.includes(st) || q.stock[st] < 1) return "Choisis un adversaire et un style qu'il a en stock.";
+      if (p.argent < RECETTES[st].prix) return `Il te faut ${RECETTES[st].prix} Argent.`;
+      q.stock[st]--; p.stock[st]++; p.argent -= RECETTES[st].prix; q.argent += RECETTES[st].prix;
+      ev.de = act.de; ev.style = st; ev.argent = RECETTES[st].prix;
+    } else if (k === 'controle') {
+      ev.paie = autres.map((i) => { const q = s.players[i], n = Math.min(DEV.controleMax, Math.floor(unites(q) / DEV.controlePar), q.argent); q.argent -= n; p.argent += n; return { p: i, n }; });
+    } else if (k === 'levureSauvage') {
+      const need = {};
+      autres.forEach((i) => { if (s.players[i].ferms.some((f) => f.u > 0)) need[i] = true; });
+      if (Object.keys(need).length) s.pending = { type: 'dev', kind: 'levureSauvage', need, resp: {}, par: pi };
+    } else if (k === 'reservation') {
+      const cl = s.file.find((c) => c.id === act.client);
+      if (!cl) return 'Ce client n’est pas dans la file.';
+      if (cl.reserve) return 'Ce client est déjà réservé.';
+      cl.reserve = { p: pi, jusqu: s.saison + 1 };
+      ev.client = cl;
+    } else if (k === 'levureVive') {
+      const f = p.ferms[act.ferm];
+      if (!f) return 'Choisis un de tes brassins en cours.';
+      f.left--;
+      if (f.left <= 0) { p.stock[f.st] += f.u; p.ferms.splice(act.ferm, 1); ev.sorti = true; }
+      ev.style = f.st;
+    } else if (k === 'saisonnier') {
+      s.restants[pi]++;
+    } else if (k === 'primeur') {
+      p.primeur = true;
+    } else if (k === 'coupDeMain') {
+      const why = HANDLERS.brasser(s, pi, { style: act.style }, true);
+      if (why) return why;
+      ev.style = act.style;
+    } else if (k === 'fournisseur') {
+      const ach = readCounts(act.achats, RES, ACHAT_MAX);
+      if (!ach || !total(ach)) return 'Indique ce que tu achètes.';
+      if (total(ach) > ACHAT_MAX) return `Au plus ${ACHAT_MAX} matières.`;
+      const cout = total(ach) * DEV.fournisseurPrix;
+      if (p.argent < cout) return `Il te faut ${cout} Argent.`;
+      p.argent -= cout; RES.forEach((r) => { p.res[r] += ach[r]; });
+      ev.achats = ach; ev.cout = cout;
+    } else if (k === 'boucheAOreille') {
+      p.rep += DEV.boucheAOreille;
+    } else if (k === 'grandeFoire') {
+      p.foire = true;
+    }
+    p.dev.splice(p.dev.indexOf(k), 1);
+    s.devDefausse.push(k);
+    s.devJoue = true;
+    log(s, ev);
     return null;
   },
 
@@ -461,18 +539,32 @@ const HANDLERS = {
       if (!v || !total(v)) return 'Indique ce que tu vends.';
       if (STYLES.some((st) => p.stock[st] < v[st])) return "Tu n'as pas autant d'unités.";
       let gain = 0;
-      for (const st of STYLES) for (let k = 0; k < v[st]; k++) { gain += prixMarche(s, st); if (!s.marcheFixe) s.prix[st] = Math.max(PRIX_PLANCHER, s.prix[st] - 1); p.stock[st]--; }
+      const fixe = s.marcheFixe || p.primeur;
+      for (const st of STYLES) for (let k = 0; k < v[st]; k++) { gain += prixMarche(s, st); if (!fixe) s.prix[st] = Math.max(PRIX_PLANCHER, s.prix[st] - 1); p.stock[st]--; }
       p.argent += gain; p.cpt.marche += total(v);
+      if (p.primeur) { p.primeur = false; ev.primeur = true; }
       ev.ventes = v; ev.gain = gain;
     } else if (c === 'chantier') {
-      const u = act.u, d = AMELIORATIONS[u];
-      if (!d) return 'Amélioration inconnue.';
-      if (!ameliorationsPossibles(p).includes(u)) return 'Tu as déjà cette amélioration.';
-      if (p.argent < d.cout) return `Il te faut ${d.cout} Argent.`;
-      p.argent -= d.cout;
-      if (u === 'ferm') p.nferm++;
-      else { p.upg.push(u); if (u === 'cuve') p.cuve = 1; }
-      ev.u = u;
+      const u = act.u;
+      if (u === 'dev') {
+        const n = Number.isInteger(act.n) ? act.n : 1;
+        if (n < 1 || n > DEV_PAR_POSE) return `Une ou ${DEV_PAR_POSE} cartes par passage.`;
+        if (p.argent < n * DEV_PRIX) return `Il te faut ${n * DEV_PRIX} Argent.`;
+        const cartes = [];
+        for (let k = 0; k < n; k++) { const c2 = piocherDev(s); if (!c2) break; cartes.push(c2); }
+        if (!cartes.length) return 'Plus de cartes Développement.';
+        p.argent -= cartes.length * DEV_PRIX; p.dev.push(...cartes);
+        ev.u = u; ev.n = cartes.length; ev.cout = cartes.length * DEV_PRIX; ev.cartes = cartes;
+      } else {
+        const d = AMELIORATIONS[u];
+        if (!d) return 'Amélioration inconnue.';
+        if (!ameliorationsPossibles(p).includes(u)) return 'Tu as déjà cette amélioration.';
+        if (p.argent < d.cout) return `Il te faut ${d.cout} Argent.`;
+        p.argent -= d.cout;
+        if (u === 'ferm') p.nferm++;
+        else { p.upg.push(u); if (u === 'cuve') p.cuve = 1; }
+        ev.u = u;
+      }
     }
     if (!CASES[c].multi) s.occ[c] = [...(s.occ[c] ?? []), pi];
     s.place = true; s.restants[pi]--;
@@ -496,13 +588,13 @@ const HANDLERS = {
   // Contamination ou canicule : choisir le brassin qui perd 1 unité
   evenement(s, pi, { ferm }) {
     const pend = s.pending;
-    if (pend?.type !== 'saison' || !['contamination', 'canicule'].includes(pend.kind) || !pend.need[pi]) return "Tu n'as rien à décider.";
+    if (!pend || !['contamination', 'canicule', 'levureSauvage'].includes(pend.kind) || !pend.need[pi]) return "Tu n'as rien à décider.";
     const p = s.players[pi];
     if (!Number.isInteger(ferm) || !p.ferms[ferm] || p.ferms[ferm].u <= 0) return 'Choisis un de tes brassins en cours.';
     p.ferms[ferm].u--;
     log(s, { k: 'perte', p: pi, evt: pend.kind, style: p.ferms[ferm].st });
     delete pend.need[pi];
-    if (!Object.keys(pend.need).length) { s.pending = null; beginPoses(s); }
+    if (!Object.keys(pend.need).length) { s.pending = null; if (pend.type === 'saison') beginPoses(s); }
     return null;
   },
 
@@ -590,6 +682,26 @@ const HANDLERS = {
 
 /* ---------- actions légales ---------- */
 
+// Une carte Développement et ses cibles possibles pour ce joueur, ou null si elle n'a pas d'effet maintenant
+export function jouable(s, pi, k) {
+  const p = s.players[pi], autres = s.players.map((_, i) => i).filter((i) => i !== pi);
+  switch (k) {
+    case 'monopole': return { carte: k, res: RES.filter((r) => autres.some((i) => s.players[i].res[r] > 0)) };
+    case 'rachat': { const cibles = autres.flatMap((i) => STYLES.filter((st) => s.players[i].stock[st] > 0 && p.argent >= RECETTES[st].prix).map((st) => ({ de: i, style: st }))); return cibles.length ? { carte: k, cibles } : null; }
+    case 'controle': return autres.some((i) => unites(s.players[i]) >= DEV.controlePar) ? { carte: k } : null;
+    case 'levureSauvage': return autres.some((i) => s.players[i].ferms.some((f) => f.u > 0)) ? { carte: k } : null;
+    case 'reservation': { const clients = s.file.filter((c) => !c.reserve).map((c) => c.id); return clients.length ? { carte: k, clients } : null; }
+    case 'levureVive': { const ferms = p.ferms.map((f, i) => i); return ferms.length ? { carte: k, ferms } : null; }
+    case 'saisonnier': return s.restants[pi] !== undefined ? { carte: k } : null;
+    case 'primeur': return p.primeur ? null : { carte: k };
+    case 'coupDeMain': { const styles = p.ferms.length < p.nferm ? STYLES.filter((st) => peutBrasser(s, p, st)) : []; return styles.length ? { carte: k, styles } : null; }
+    case 'fournisseur': return p.argent >= DEV.fournisseurPrix ? { carte: k, max: Math.min(ACHAT_MAX, Math.floor(p.argent / DEV.fournisseurPrix)) } : null;
+    case 'boucheAOreille': return { carte: k };
+    case 'grandeFoire': return p.foire ? null : { carte: k };
+    default: return null;
+  }
+}
+
 export function legalActions(s, pi) {
   if (s.phase === 'over') return [];
   const out = [], p = s.players[pi];
@@ -610,6 +722,10 @@ export function legalActions(s, pi) {
   }
   const brassables = STYLES.filter((st) => peutBrasser(s, p, st));
   if (p.ferms.length < p.nferm && brassables.length) out.push({ type: 'brasser', styles: brassables });
+  if (p.dev.length && !s.devJoue) {
+    const cartes = [...new Set(p.dev)].map((k) => jouable(s, pi, k)).filter(Boolean);
+    if (cartes.length) out.push({ type: 'jouer', cartes });
+  }
   if (a(p, 'salle') && !p.salle) { const styles = STYLES.filter((st) => p.stock[st] > 0); if (styles.length) out.push({ type: 'salle', styles }); }
   const poses = !s.place && s.restants[pi] > 0 ? posesPossibles(s, pi) : [];
   if (poses.length) out.push({ type: 'poser', targets: poses });
@@ -627,6 +743,7 @@ export function viewFor(s, pi) {
   delete v.seed; delete v.rng;
   v.deck = s.deck.length;
   v.defausse = s.defausse.length;
+  v.devs = s.devs.length; v.devDefausse = s.devDefausse.length;
   v.me = pi;
   v.waiting = waitingFor(s);
   v.players = s.players.map((p, i) => {
@@ -635,6 +752,7 @@ export function viewFor(s, pi) {
       q.objectifs = p.objectifs.length; q.objectif = p.objectif ? true : null;
       q.score = { rep: p.rep, objectif: null, argent: q.score.argent, total: p.rep + q.score.argent }; // sans l'objectif, secret
     } else q.objectifOk = objectifAtteint(p, p.objectif);
+    if (i !== pi) { q.res = Z(); q.cartes = total(p.res); q.dev = p.dev.length; } // mains cachées : on ne voit que le nombre
     return q;
   });
   return v;

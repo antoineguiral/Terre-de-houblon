@@ -75,7 +75,7 @@ export const OBJECTIFS = {
   grossiste:   { nom: 'Grossiste', txt: 'Vendre 10 unités au Marché aux bières.', pts: 4, test: (p) => p.cpt.marche >= 10 },
   officiel:    { nom: 'Fournisseur officiel', txt: 'Livrer la Commande de la mairie.', pts: 5, test: (p) => p.cpt.mairie >= 1 },
   laine:       { nom: 'Bas de laine', txt: 'Finir avec 50 Argent ou plus.', pts: 4, test: (p) => p.argent >= 50 },
-  installe:    { nom: 'Belle installation', txt: 'Avoir la Grande cuve, la Salle de dégustation et le Camion.', pts: 4, test: (p) => ['cuve', 'salle', 'camion'].every((u) => p.upg.includes(u)) },
+  installe:    { nom: 'Belle installation', txt: 'Avoir la Grande cuve, la Salle de dégustation et le Camion.', pts: 6, test: (p) => ['cuve', 'salle', 'camion'].every((u) => p.upg.includes(u)) },
   gardien:     { nom: 'Maître de garde', txt: 'Livrer 4 unités de Bière de garde à des clients.', pts: 4, test: (p) => p.cpt.livre.garde >= 4 },
   varie:       { nom: 'Carte variée', txt: 'Livrer des clients avec 3 styles différents.', pts: 4, test: (p) => STYLES.filter((st) => p.cpt.livre[st] > 0).length >= 3 },
 };
@@ -128,19 +128,41 @@ export const STOCK_MAX = 6;
 export const SALLE_BONUS = 1;             // sur le prix de base
 export const SALLE_REP_HIVER = 1;
 export const AMELIORATIONS = {
-  cuve:      { cout: 6, nom: 'Grande cuve',           txt: '3 unités par brassin.' },
-  ferm:      { cout: 4, nom: 'Fermenteur',            txt: 'Un fermenteur de plus, jusqu’à 4.', multiple: true },
-  touraille: { cout: 4, nom: 'Touraille',             txt: 'Permet le Stout.' },
-  camion:    { cout: 6, nom: 'Camion',                txt: 'La Tournée livre jusqu’à 2 clients.' },
-  salle:     { cout: 7, nom: 'Salle de dégustation',  txt: 'Chaque saison, vendre 1 unité au prix de base +1 sans ouvrier ; chaque hiver, +1 Réputation.' },
+  cuve:      { cout: 9, nom: 'Grande cuve',           txt: '3 unités par brassin.' },
+  ferm:      { cout: 5, nom: 'Fermenteur',            txt: 'Un fermenteur de plus, jusqu’à 4.', multiple: true },
+  touraille: { cout: 5, nom: 'Touraille',             txt: 'Permet le Stout.' },
+  camion:    { cout: 8, nom: 'Camion',                txt: 'La Tournée livre jusqu’à 2 clients.' },
+  salle:     { cout: 10, nom: 'Salle de dégustation', txt: 'Chaque saison, vendre 1 unité au prix de base +1 sans ouvrier ; chaque hiver, +1 Réputation.' },
 };
 
-// Départ et compensation
+// Cartes Développement : achetées au Chantier (avec l'ouvrier, jusqu'à 2 d'un coup), gardées en main, une jouée par tour.
+// `cible` dit ce que l'action `jouer` doit préciser.
+export const DEV_PRIX = 6;
+export const DEV_PAR_POSE = 2;
+export const DEV_EXEMPLAIRES = 2;
+export const DEVELOPPEMENTS = {
+  monopole:     { nom: 'Monopole', txt: 'Annonce Malt ou Houblon : chaque adversaire t’en donne une carte.', cible: 'res' },
+  rachat:       { nom: 'Rachat', txt: 'Prends une unité du stock d’un adversaire, au prix de base du style. Il ne peut pas refuser.', cible: 'stock' },
+  controle:     { nom: 'Contrôle', txt: 'Chaque adversaire te donne 1 Argent par tranche de 3 unités en stock (2 au plus).' },
+  levureSauvage:{ nom: 'Levure sauvage', txt: 'Chaque adversaire retire 1 unité d’un de ses brassins en cours, à son choix.' },
+  reservation:  { nom: 'Réservation', txt: 'Pose la carte sur un client de la file : toi seul peux le livrer, jusqu’à la fin de la saison prochaine.', cible: 'client' },
+  levureVive:   { nom: 'Levure vive', txt: 'Un de tes brassins en cours gagne une saison.', cible: 'ferm' },
+  saisonnier:   { nom: 'Saisonnier', txt: 'Un ouvrier de plus cette saison.' },
+  primeur:      { nom: 'Primeur', txt: 'Ta prochaine vente au Marché aux bières ne fait pas baisser les prix.' },
+  coupDeMain:   { nom: 'Coup de main', txt: 'Brasse sans lancer le dé : 3 unités d’office.', cible: 'style' },
+  fournisseur:  { nom: 'Fournisseur', txt: 'Achète jusqu’à 3 matières à 1 Argent, sans ouvrier, même si le Marché est pris ou fermé.', cible: 'achats' },
+  boucheAOreille:{ nom: 'Bouche-à-oreille', txt: '+2 Réputation.' },
+  grandeFoire:  { nom: 'Grande foire', txt: 'Jusqu’à la fin de la saison, les clients te paient 1 Argent de plus par unité.' },
+};
+export const DEV = { fournisseurPrix: 1, controleMax: 2, controlePar: 3, coupDeMain: 3, boucheAOreille: 2, grandeFoire: 1 };
+
+// Départ et compensation. Les matières sont des cartes en main, cachées aux autres (seul leur nombre se voit).
 export const DEPART = { res: { malt: 4, houb: 2 }, argent: 5 };
+export const CARTES_MATIERES = { malt: 40, houb: 30 };
 export const REP_DERNIER = 1;             // le dernier joueur de la première saison commence avec 1 Réputation
 
 // Décompte final : réputation + objectif secret + Argent
-export const ARGENT_PAR_POINT = 8;
+export const ARGENT_PAR_POINT = 10;
 
 export const Z = () => ({ malt: 0, houb: 0 });
 export const ZS = () => Object.fromEntries(STYLES.map((s) => [s, 0]));

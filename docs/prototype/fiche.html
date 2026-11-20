@@ -88,7 +88,7 @@ td b { font-weight: 600; }
 .slot2 { border: 1.6px solid var(--encre); border-radius: 3mm; display: flex; align-items: flex-end; justify-content: center; font: 600 8pt var(--num); letter-spacing: .06em; text-transform: uppercase; color: var(--encre2); padding-bottom: 1.5mm; text-align: center; background: #fffdf7; }
 .slot2.locked { border-style: dashed; background: transparent; }
 .slot2.stock { background: var(--creme2); }
-.equip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2mm; margin-top: 1mm; }
+.equip { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2mm; margin-top: 1mm; }
 .equip div { border: 1.4px dashed var(--encre); border-radius: 2mm; padding: 1.5mm 2mm; font-size: 8pt; min-height: 20mm; background: #fffdf7; }
 .equip b { display: block; font: 700 9.5pt var(--num); letter-spacing: .04em; text-transform: uppercase; }
 
@@ -122,16 +122,16 @@ td b { font-weight: 600; }
 
 <!-- ========== PAGE 1 : RÈGLES ========== -->
 <section class="page rules">
-  <h1>Brassins <small>Prototype à imprimer · deuxième version</small></h1>
+  <h1>Brassins <small>Prototype à imprimer · troisième version</small></h1>
   <p class="intro">2 à 4 joueurs, 8 à 12 saisons, 45 minutes à une heure. Valeurs issues de la simulation : à corriger en jouant.</p>
   <div class="two">
     <div>
       <h2>Mise en place</h2>
       <ul>
-        <li>Chacun prend un plateau Brasserie, <b>3 ouvriers</b>, <b>4 Malt, 2 Houblon, 5 Argent</b>. Les deux premiers fermenteurs sont ouverts.</li>
+        <li>Chacun prend un plateau Brasserie, <b>3 ouvriers</b>, <b>4 Malt, 2 Houblon</b> (des cartes, gardées en main et cachées) et <b>5 Argent</b>. Les deux premiers fermenteurs sont ouverts.</li>
         <li>Chacun pioche <b>2 cartes Objectif, en garde 1</b> face cachée, remet l'autre sous la pile. Révélée au décompte.</li>
         <li>Les 4 marqueurs de prix sur la case en surbrillance de leur piste. Les marqueurs de réputation à 0.</li>
-        <li>Mélanger les clients (la Commande de la mairie à part) ; en retourner 5 sur la file. Deux dés de couleurs différentes : météo et événement.</li>
+        <li>Mélanger les clients (la Commande de la mairie à part) ; en retourner 5 sur la file. Mélanger les cartes Développement, pioche face cachée. Deux dés de couleurs différentes : météo et événement.</li>
         <li>Tirer au sort le premier joueur de la première saison. <b>Le dernier joueur de cette première saison commence avec 1 Réputation</b>.</li>
       </ul>
       <h2>Une saison</h2>
@@ -142,7 +142,7 @@ td b { font-weight: 600; }
         <li><b>Fin de saison.</b> Les prix remontent d'un cran vers leur base. Le client le plus à gauche de la file est défaussé, on complète. Plus de 6 cartes en stock : le surplus est vendu au prix de la piste. Puis chacun <b>fait glisser ses brassins d'une colonne vers la droite</b> ; ce qui sort de « prête dans 1 » va au stock, la ligne est libre. Les ouvriers reviennent.</li>
       </ol>
       <h2>Fin de partie</h2>
-      <p>Dès qu'un joueur atteint <b>30 de réputation</b>, on termine la saison (fin de saison comprise) et on compte ; sinon après l'hiver de l'an 3. Chacun révèle son objectif : <b>Réputation + objectif</b> (s'il est rempli) <b>+ 1 point par 8 Argent</b>. La bière restante ne vaut rien. Égalité : le plus riche, puis celui qui a le plus de bière.</p>
+      <p>Dès qu'un joueur atteint <b>30 de réputation</b>, on termine la saison (fin de saison comprise) et on compte ; sinon après l'hiver de l'an 3. Chacun révèle son objectif : <b>Réputation + objectif</b> (s'il est rempli) <b>+ 1 point par 10 Argent</b>. La bière restante ne vaut rien. Égalité : le plus riche, puis celui qui a le plus de bière.</p>
     </div>
     <div>
       <h2>Les cases du plateau</h2>
@@ -152,10 +152,12 @@ td b { font-weight: 600; }
         <li><b>Marché aux matières</b> : acheter jusqu'à 3 matières (Malt 2, Houblon 2). Une place.</li>
         <li><b>Tournée</b> (pointillé) : livrer 1 client de la file (2 avec le Camion) : prendre la carte, donner la bière, encaisser l'Argent et la Réputation, compléter la file.</li>
         <li><b>Marché aux bières</b> (pointillé) : vendre autant d'unités qu'on veut, au prix de la piste ; chaque unité vendue baisse le prix de 1 pour tout le monde. Style en demande : +2.</li>
-        <li><b>Chantier</b> (pointillé) : acheter 1 équipement.</li>
+        <li><b>Chantier</b> (pointillé) : acheter 1 équipement, ou 1 ou 2 cartes Développement à 6 Argent, face cachée.</li>
       </ul>
       <h2>Les clients</h2>
       <p>Style voulu (les caves prennent Stout ou Garde, au choix), nombre d'unités, ce que ça paie, ce que ça rapporte. Style en demande : <b>+1 Réputation</b>. Festival livré pendant sa saison : <b>+2 Réputation</b>. On garde ses cartes livrées devant soi : elles comptent pour les objectifs.</p>
+      <h2>Cartes Développement</h2>
+      <p>En main, cachées. <b>Une jouée par tour</b>, pendant son tour, avant ou après la pose ; la carte part à la défausse. Monopole, Rachat, Contrôle, Levure sauvage et Réservation touchent les autres ; Levure sauvage se joue comme la Contamination, chacun choisit son brassin. Réservation : la carte reste sur le client jusqu'à la fin de la saison prochaine, ou part avec lui.</p>
       <h2>Échanges</h2>
       <p>Une offre par tour (à chaque pose d'ouvrier) : matières, bière, Argent, dans les deux sens, avec qui on veut. À négocier à voix haute. On ne peut pas donner et demander la même chose.</p>
       <h2>Événements (dé)</h2>
@@ -164,7 +166,7 @@ td b { font-weight: 600; }
   </div>
   <h2>Recettes</h2>
   <table id="recettes"></table>
-  <p><small>Un brassin donne 2 unités (3 avec la Grande cuve). Matériel : cubes Malt / Houblon, pièces, 60 cartes Bière (15 par style, une carte = une unité), 44 cartes Client + la Mairie, 12 cartes Objectif, 2 dés pour la saison et 1 dé de brassage, 3 pions par joueur, 4 marqueurs de prix, 1 marqueur de réputation par joueur, un plateau Brasserie par joueur.</small></p>
+  <p><small>Un brassin donne 2 unités (3 avec la Grande cuve). Matériel : 70 cartes Matière (40 Malt, 30 Houblon), pièces, 60 cartes Bière (15 par style, une carte = une unité), 44 cartes Client + la Mairie, 12 cartes Objectif, 24 cartes Développement, 2 dés pour la saison et 1 dé de brassage, 3 pions par joueur, 4 marqueurs de prix, 1 marqueur de réputation par joueur, un plateau Brasserie par joueur.</small></p>
 </section>
 
 <!-- ========== PAGE 2 : PLATEAU ========== -->
@@ -187,7 +189,7 @@ td b { font-weight: 600; }
 
 <script type="module">
 import * as D from '../../client/dessins.js';
-import { STYLES, RECETTES, CASES, DEMANDE, SAISONS, NB_SAISONS, FIN_REP, EVENEMENTS, EVT, CLIENTS, CLIENT_MAIRIE, OBJECTIFS, AMELIORATIONS } from '../../moteur/index.js';
+import { STYLES, RECETTES, CASES, DEMANDE, SAISONS, NB_SAISONS, FIN_REP, EVENEMENTS, EVT, CLIENTS, CLIENT_MAIRIE, OBJECTIFS, AMELIORATIONS, DEVELOPPEMENTS, DEV_EXEMPLAIRES, DEV_PRIX, CARTES_MATIERES, ARGENT_PAR_POINT } from '../../moteur/index.js';
 
 const SN = { blonde: 'Blonde', ipa: 'IPA', stout: 'Stout', garde: 'Bière de garde' };
 const SAI = ['Printemps', 'Été', 'Automne', 'Hiver'];
@@ -277,7 +279,7 @@ const feuille = () => `<div class="fm">
   <div class="fmt2">Décompte final</div>
   <div class="fmrow"><span>Réputation <small>lue sur la piste</small></span><b></b></div>
   <div class="fmrow"><span>Objectif <span class="trou" style="width:30mm"></span> <small>si rempli</small></span><b></b></div>
-  <div class="fmrow"><span>Argent <span class="trou"></span> ÷ 8 <small>arrondi en dessous</small></span><b></b></div>
+  <div class="fmrow"><span>Argent <span class="trou"></span> ÷ ${ARGENT_PAR_POINT} <small>arrondi en dessous</small></span><b></b></div>
   <div class="fmrow tot"><span>Total</span><b></b></div>
   <p style="margin-top:3mm"><small>Égalité : le plus riche l'emporte, puis celui qui a le plus de bière. La bière restante ne rapporte rien.</small></p></div>`;
 $('#feuilles').innerHTML = feuille().repeat(4);
@@ -288,7 +290,7 @@ const pb = (n) => `<section class="page"><div class="pboard">
   <div class="ghead"><span></span><span>Prête dans 3</span><span>Prête dans 2</span><span>Prête dans 1</span><span class="arrow">→</span><span>Stock · 6 max</span></div>
   <div class="grille">${[1, 2, 3, 4].map((f) => `<div class="lab">Fermenteur ${f}</div>${['Garde', 'IPA · Stout', 'Blonde'].map((t) => `<div class="slot2 ${f > 2 ? 'locked' : ''}">${f > 2 ? 'à ouvrir au Chantier · 4' : t}</div>`).join('')}<span></span><div class="slot2 stock">${SN[STYLES[f - 1]]}</div>`).join('')}</div>
   <small>Fin de saison : vendre d'abord le surplus au-delà de 6 cartes en stock, puis faire glisser chaque brassin d'une colonne vers la droite. Ce qui sort de « prête dans 1 » va au stock. Contamination, canicule, inspection : retirer une carte d'un brassin.</small>
-  <div class="equip">${Object.entries(AMELIORATIONS).map(([u, d]) => `<div><b>${esc(d.nom)} · ${d.cout}</b>${esc(d.txt)}</div>`).join('')}</div>
+  <div class="equip">${Object.entries(AMELIORATIONS).map(([u, d]) => `<div><b>${esc(d.nom)} · ${d.cout}</b>${esc(d.txt)}</div>`).join('')}<div><b>Développement · ${DEV_PRIX}</b>1 ou 2 cartes, face cachée, en main. Une jouée par tour.</div></div>
   <small>Plateau réutilisable : on n'y écrit rien. Les styles brassés et le décompte se notent sur la feuille de marque.</small></div></section>`;
 $('#pboards').innerHTML = ['A', 'B', 'C', 'D'].map(pb).join('');
 
@@ -298,6 +300,27 @@ const cartesBiere = STYLES.flatMap((st) => Array.from({ length: 15 }, () => `<di
 let hb = '';
 for (let i = 0; i < cartesBiere.length; i += 20) hb += `<section class="page"><div class="bieres">${cartesBiere.slice(i, i + 20).join('')}</div></section>`;
 $('#bieres').innerHTML = hb;
+
+/* ---------- cartes développement et matière ---------- */
+const pictoDev = {
+  monopole: `<path d="M-26 10 h52 v12 h-52z" fill="${D.C.orge}" stroke="${D.C.encre}" stroke-width="2"/>${[-14, 0, 14].map((x) => `<rect x="${x - 6}" y="-6" width="12" height="16" rx="2" fill="${D.C.vert}" stroke="${D.C.encre}" stroke-width="1.5"/>`).join('')}<path d="M-20 -22 L0 -34 L20 -22" fill="none" stroke="${D.C.encre}" stroke-width="2.5"/>`,
+  rachat: `${D.fut(-8, 14, 1.1)}${D.pieces(14, -4, 3)}<path d="M-22 -24 h24 l-6 -6 m6 6 l-6 6" fill="none" stroke="${D.C.encre}" stroke-width="2.5"/>`,
+  controle: `<rect x="-24" y="-18" width="48" height="36" rx="4" fill="${D.C.creme}" stroke="${D.C.encre}" stroke-width="2"/><path d="M-16 -6 h32 M-16 4 h22 M-16 14 h12" stroke="${D.C.encre2}" stroke-width="2.5" stroke-linecap="round"/><circle cx="14" cy="10" r="9" fill="${D.C.brique}" stroke="${D.C.encre}" stroke-width="1.5"/>`,
+  levureSauvage: `${[[-14, -6], [8, -14], [2, 10], [-6, 14], [16, 6]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="7" fill="${D.C.vert2}" stroke="${D.C.encre}" stroke-width="1.5"/>`).join('')}<path d="M-26 -26 L26 26" stroke="${D.C.brique}" stroke-width="4"/>`,
+  reservation: `<rect x="-20" y="-26" width="40" height="52" rx="4" fill="${D.C.creme}" stroke="${D.C.encre}" stroke-width="2"/><path d="M-20 -14 h40" stroke="${D.C.encre}" stroke-width="2"/><circle cx="0" cy="8" r="10" fill="${D.C.cuivre}" stroke="${D.C.encre}" stroke-width="1.5"/>`,
+  levureVive: `<path d="M-10 -28 h20 v14 l10 22 a6 6 0 0 1 -5 8 h-30 a6 6 0 0 1 -5 -8 l10 -22z" fill="${D.C.ciel}" stroke="${D.C.encre}" stroke-width="2"/><path d="M-8 14 q8 -8 16 0" fill="none" stroke="${D.C.vert2}" stroke-width="2.5"/><path d="M22 -20 l6 -6 m-6 0 l6 6" stroke="${D.C.cuivre}" stroke-width="2.5"/>`,
+  saisonnier: `<path d="M-15 24 C -15 6, -9 0, -6 -2 L 6 -2 C 9 0, 15 6, 15 24 Z" fill="${D.C.cuivre}" stroke="${D.C.encre}" stroke-width="2"/><circle cx="0" cy="-12" r="9" fill="${D.C.cuivre}" stroke="${D.C.encre}" stroke-width="2"/><path d="M-11 -18 H11 L8 -24 H-8 Z" fill="${D.C.cuivre}" stroke="${D.C.encre}" stroke-width="1.5"/><path d="M20 -16 h10 m-5 -5 v10" stroke="${D.C.encre}" stroke-width="2.5"/>`,
+  primeur: `${D.fut(0, 12, 1.2)}<path d="M-22 -20 h44" stroke="${D.C.encre}" stroke-width="2.5"/><path d="M-22 -26 v12 M22 -26 v12" stroke="${D.C.encre}" stroke-width="2.5"/>`,
+  coupDeMain: `<path d="M-24 8 c0 -12 10 -18 24 -18 s24 6 24 18 v10 h-48z" fill="${D.C.cuivre2}" stroke="${D.C.encre}" stroke-width="2"/><path d="M-20 -8 h40" stroke="${D.C.encre}" stroke-width="2"/><path d="M-6 -30 q6 -8 12 0 M0 -24 q6 -8 12 0" fill="none" stroke="${D.C.encre2}" stroke-width="2"/>`,
+  fournisseur: `${D.sac(-10, 8, 0.9)}${D.cone(14, 2, 0.9)}<path d="M-26 -24 h52" stroke="${D.C.brique}" stroke-width="5"/>`,
+  boucheAOreille: `<path d="M-26 -8 a18 14 0 1 1 10 14 l-10 8 v-10 a18 14 0 0 1 0 -12z" fill="${D.C.creme}" stroke="${D.C.encre}" stroke-width="2"/><path d="M0 -20 a16 12 0 1 1 10 20 l8 6 v-8" fill="${D.C.orge}" stroke="${D.C.encre}" stroke-width="2"/>`,
+  grandeFoire: `<path d="M-28 -6 L0 -28 L28 -6 Z" fill="${D.C.brique}" stroke="${D.C.encre}" stroke-width="2"/>${[-20, -6, 8].map((x) => `<path d="M${x} -6 q7 10 14 0" fill="#fff" stroke="${D.C.encre}" stroke-width="1.2"/>`).join('')}<rect x="-22" y="-2" width="44" height="26" fill="${D.C.creme}" stroke="${D.C.encre}" stroke-width="2"/>${D.pieces(0, 14, 3)}`,
+};
+const devCard = (k) => { const d = DEVELOPPEMENTS[k]; return `<div class="ccard" style="--kc:${D.C.cuivre2};--kf:#e8dcc6">
+    <div class="bandeau"><span>Développement</span><i>${DEV_PRIX} €</i></div><div class="art"><svg viewBox="-40 -40 80 70">${pictoDev[k]}</svg></div>
+    <div class="nom">${esc(d.nom)}</div><div class="txt">${esc(d.txt)}</div>
+    <div class="note">Une carte par tour, pendant ton tour. À la défausse une fois jouée.</div></div>`; };
+const matCard = (r) => `<div class="biere"><div class="band" style="background:${r === 'malt' ? '#f6e3b8' : '#d6ecc6'}">${r === 'malt' ? D.sacSvg() : D.coneSvg()}</div><div class="bn">${r === 'malt' ? 'Malt' : 'Houblon'}</div><div class="bu">1 carte = 1 unité</div><div class="bp">En main, cachée. ${r === 'malt' ? 'Champs d’orge, Marché aux matières.' : 'Houblonnières, Marché aux matières.'}</div></div>`;
 
 /* ---------- cartes client et objectif ---------- */
 const KIND = { bar: 'Bar', cave: 'Cave', fest: 'Festival', mairie: 'Mairie · événement', obj: 'Objectif secret' };
@@ -322,9 +345,11 @@ const objCard = ([, o]) => `<div class="ccard" style="--kc:${KIND_COL.obj};--kf:
     <div class="nom">${esc(o.nom)}</div><div class="txt">${esc(o.txt)}</div>
     <div class="note">Gardé face cachée, révélé au décompte. Les cartes Client livrées restent devant soi pour le prouver.</div>
     <div class="pied"><span class="piece">+${o.pts} points</span></div></div>`;
-const toutes = [...CLIENTS.map(clientCard), clientCard({ ...CLIENT_MAIRIE }), ...Object.entries(OBJECTIFS).map(objCard)];
+const toutes = [...CLIENTS.map(clientCard), clientCard({ ...CLIENT_MAIRIE }), ...Object.entries(OBJECTIFS).map(objCard), ...Object.keys(DEVELOPPEMENTS).flatMap((k) => Array(DEV_EXEMPLAIRES).fill(devCard(k)))];
 let hc = '';
 for (let i = 0; i < toutes.length; i += 9) hc += `<section class="page"><div class="cards">${toutes.slice(i, i + 9).join('')}</div></section>`;
+const mats = [...Array(CARTES_MATIERES.malt).fill(matCard('malt')), ...Array(CARTES_MATIERES.houb).fill(matCard('houb'))];
+for (let i = 0; i < mats.length; i += 20) hc += `<section class="page"><div class="bieres">${mats.slice(i, i + 20).join('')}</div></section>`;
 $('#clients').innerHTML = hc;
 
 await document.fonts.ready;

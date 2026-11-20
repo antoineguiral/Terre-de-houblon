@@ -6,7 +6,7 @@
 //                                                        pasApas : l'ordinateur attend un clic (onStep) pour jouer
 
 import {
-  RES, STYLES, ITEMS, RECETTES, CASES, ACHAT_MAX, AMELIORATIONS, EVT, OBJECTIFS, SAISONS, NB_SAISONS, FIN_REP, STOCK_MAX, FERMENTEURS_MAX,
+  RES, STYLES, ITEMS, RECETTES, CASES, ACHAT_MAX, AMELIORATIONS, EVT, OBJECTIFS, DEVELOPPEMENTS, DEV_PRIX, DEV, SAISONS, NB_SAISONS, FIN_REP, STOCK_MAX, FERMENTEURS_MAX,
   DEMANDE, ARGENT_PAR_POINT, ZI, total, legalActions, saisonIdx, unites, cuveUnites, prixMarche, prixMatiere, valeurLivraison, stylesClient,
 } from '../moteur/index.js';
 import { RN, RI, SN, SI, SAISON_NOM, KIND, nomItem, nomSaison, meteoTexte, fmt, logLines, plural } from './textes.js';
@@ -204,9 +204,22 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
       return `<div class="modebox"><h4>Chantier</h4><div class="build">${Object.entries(AMELIORATIONS).map(([u, d]) => {
         const owned = u === 'ferm' ? p.nferm >= FERMENTEURS_MAX : p.upg.includes(u);
         return `<div class="bname ${owned ? 'owned' : ''}"><b>${esc(d.nom)}${u === 'ferm' ? ` (${p.nferm}/${FERMENTEURS_MAX})` : ''}</b><small>${esc(d.txt)}</small></div><button class="btn" data-act="poser" data-case="chantier" data-u="${u}" ${t?.targets.includes(u) ? '' : 'disabled'}>${owned ? 'Acquis' : d.cout + ' €'}</button>`;
-      }).join('')}</div><div class="mrow"><button class="btn ghost" data-act="cancel">Annuler</button></div></div>`;
+      }).join('')}<div class="bname"><b>Carte Développement</b><small>Pioche face cachée, jouable à ton tour, une par tour. ${view.devs} dans la pioche.</small></div><div class="mrow">${[1, 2].map((n) => `<button class="btn" data-act="poser" data-case="chantier" data-u="dev" data-n="${n}" ${(t?.devs ?? 0) >= n ? '' : 'disabled'}>${n === 1 ? 'Une' : 'Deux'} · ${n * DEV_PRIX} €</button>`).join('')}</div></div><div class="mrow"><button class="btn ghost" data-act="cancel">Annuler</button></div></div>`;
     }
     return '';
+  }
+
+  // Les cartes Développement en main, avec ce qu'on peut jouer maintenant
+  function renderDev() {
+    const p = my();
+    if (!p) return '';
+    const L2 = free() ? legal('jouer')?.cartes ?? [] : [];
+    const vues = [...new Set(p.dev)];
+    if (!vues.length) return `<div class="zone"><div class="zt">Cartes Développement</div><div class="muted">Aucune en main. Elles s'achètent au Chantier, ${DEV_PRIX} € pièce.</div></div>`;
+    return `<div class="zone"><div class="zt">Cartes Développement · une par tour${view.devJoue && free() ? ' · déjà joué ce tour' : ''}</div><div class="devs">${vues.map((k) => {
+      const d = DEVELOPPEMENTS[k], n = p.dev.filter((x) => x === k).length, j = L2.find((x) => x.carte === k);
+      return `<div class="devc"><b>${esc(d.nom)}${n > 1 ? ` ×${n}` : ''}</b><small>${esc(d.txt)}</small><button class="btn mini2" data-act="dev" data-carte="${k}" ${j ? '' : 'disabled'}>Jouer</button></div>`;
+    }).join('')}</div></div>`;
   }
 
   // Livraisons déjà choisies dans la tournée en cours (avec le Camion, jusqu'à 2 avant d'envoyer)
@@ -228,13 +241,14 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
       const enSaison = cl.kind === 'fest' && cl.saison === saisonIdx(v);
       const prix = cl.style ? `${cl.n * (RECETTES[cl.style].prix + cl.bonus + v.prixBonus + (v.bonusKind?.[cl.kind] ?? 0))} €` : `base${cl.bonus + (v.bonusKind?.[cl.kind] ?? 0) ? ' +' + (cl.bonus + (v.bonusKind?.[cl.kind] ?? 0)) : ''}`;
       const veut = cl.style ? SN[cl.style] : cl.styles ? cl.styles.map((st) => SN[st]).join(' ou ') : 'tous styles';
+      const resa = cl.reserve ? `<div class="old" style="background:${PCOL[cl.reserve.p]};color:${cl.reserve.p === 3 ? '#2b1d14' : '#fff'}">Réservé${you(cl.reserve.p) ? ' pour toi' : ' par ' + esc(P()[cl.reserve.p].name)}</div>` : '';
       return `<div class="ccard ${can ? 'can' : ''} ${choisi ? 'sel' : ''}" style="--kc:${D.KIND_COL[cl.kind]};--kf:${D.KIND_FOND[cl.kind]}">
         <div class="bandeau"><span>${KIND[cl.kind]}</span>${cl.kind === 'fest' ? `<i>${SAISON_NOM[SAISONS[cl.saison]]}${enSaison ? ' · maintenant' : ''}</i>` : ''}</div>
         <div class="art">${D.pictoClient(cl.kind)}</div>
         <b>${esc(cl.nom)}</b>
         <div class="veut">${Array.from({ length: cl.n }, () => `<span class="u" style="--sc:${cl.style ? D.STYLE_COL[cl.style] : D.C.pierre}"></span>`).join('')} ${veut}</div>
         <div class="pied"><span class="piece">${prix}</span>${D.etoile(val ? val.rep : cl.rep + (enSaison ? 2 : 0))}</div>
-        ${k === 0 ? '<div class="old">part en fin de saison</div>' : ''}${btns ? `<div class="mrow">${btns}</div>` : ''}</div>`;
+        ${resa}${k === 0 ? '<div class="old">part en fin de saison</div>' : ''}${btns ? `<div class="mrow">${btns}</div>` : ''}</div>`;
     }).join('') + `<div class="ccard deck"><b>${v.deck}</b><small>dans la pioche</small>${choisis.length ? `<button class="btn primary mini2" data-act="livrer">Livrer ${choisis.length === 1 ? 'ce client' : 'ces ' + choisis.length + ' clients'}</button>` : ''}${ui.mode === 'tournee' ? '<button class="btn ghost mini2" data-act="cancel">Annuler</button>' : ''}</div>`;
   }
 
@@ -262,8 +276,23 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
     if (ob) return { key: 'objectif', html: `<h2>Ton objectif secret</h2><p>Garde une de ces deux cartes. Elle rapporte ses points au décompte si tu l'as remplie ; les autres ne la verront qu'à la fin.</p>
       <div class="objs">${ob.cartes.map((id) => `<button class="obj" data-obj="${id}"><b>${esc(OBJECTIFS[id].nom)}</b><span>${esc(OBJECTIFS[id].txt)}</span><i>${OBJECTIFS[id].pts} points</i></button>`).join('')}</div>` };
     const ev = legal('evenement');
-    if (ev) return { key: `evt-${v.saison}`, html: `<h2>${EVT[ev.kind].nom}</h2><p>${EVT[ev.kind].txt} Lequel ?</p>
+    if (ev) return { key: `evt-${v.saison}-${v.turn}`, html: `<h2>${ev.kind === 'levureSauvage' ? DEVELOPPEMENTS.levureSauvage.nom : EVT[ev.kind].nom}</h2><p>${ev.kind === 'levureSauvage' ? `${esc(P()[v.pending.par].name)} a joué une Levure sauvage : un de tes brassins perd 1 unité.` : EVT[ev.kind].txt} Lequel ?</p>
       <div class="mrow">${ev.targets.map((i) => `<button class="btn" data-ferm="${i}">${SN[p.ferms[i].st]} · ${plural(p.ferms[i].u, 'unité')}, prête dans ${p.ferms[i].left}</button>`).join('')}</div>` };
+    if (ui.dev) {
+      const k = ui.dev, d = DEVELOPPEMENTS[k], j = legal('jouer')?.cartes.find((x) => x.carte === k);
+      if (!j) { ui.dev = null; return null; }
+      let corps = '';
+      if (k === 'monopole') corps = j.res.map((r) => `<button class="btn" data-dev-res="${r}">${RN[r]}</button>`).join('');
+      else if (k === 'rachat') corps = j.cibles.map((c) => `<button class="btn" data-dev-de="${c.de}" data-dev-style="${c.style}">${esc(P()[c.de].name)} · ${SN[c.style]} · ${RECETTES[c.style].prix} €</button>`).join('');
+      else if (k === 'reservation') corps = j.clients.map((id) => { const cl = v.file.find((c) => c.id === id); return `<button class="btn" data-dev-client="${id}">${esc(cl.nom)}</button>`; }).join('');
+      else if (k === 'levureVive') corps = j.ferms.map((i) => `<button class="btn" data-dev-ferm="${i}">${SN[p.ferms[i].st]} · ${plural(p.ferms[i].u, 'unité')}, prête dans ${p.ferms[i].left}</button>`).join('');
+      else if (k === 'coupDeMain') corps = j.styles.map((st) => `<button class="btn" data-dev-style="${st}">${SN[st]}</button>`).join('');
+      else if (k === 'fournisseur') {
+        const sel = ui.sel ?? (ui.sel = { malt: 0, houb: 0 }), n = total(sel);
+        corps = `<div class="offer3">${RES.map((r) => `<span class="rl">${chip(r)}${RN[r]} · ${DEV.fournisseurPrix} €</span>${stepper('devsel', r, sel[r], n < j.max ? sel[r] + 1 : sel[r])}`).join('')}</div><button class="btn primary" data-dev-achats ${n ? '' : 'disabled'}>Acheter pour ${n * DEV.fournisseurPrix} €</button>`;
+      }
+      return { key: `dev-${k}`, html: `<h2>${esc(d.nom)}</h2><p>${esc(d.txt)}</p><div class="mrow">${corps}</div><div class="mrow"><button class="btn ghost" data-dev-cancel>Annuler</button></div>` };
+    }
     const cc = legal('concours');
     if (cc) return { key: `concours-${v.saison}`, html: `<h2>${EVT[cc.kind].nom}</h2><p>Présente une unité de ton stock (elle est consommée). Score : réputation du style, +1 s'il est en demande.</p>
       <div class="mrow">${cc.styles.map((st) => `<button class="btn" data-style="${st}">${SN[st]} · ${RECETTES[st].rep + (v.demande.includes(st) ? 1 : 0)}</button>`).join('')}</div>` };
@@ -273,7 +302,7 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
       if (ui.counter) {
         const c = ui.counter, okC = total(c.give) && total(c.get) && ITEMS.every((k) => avoir(p, k) >= c.get[k]);
         return { key: `counter-${t.id}`, html: `<h2>Contre-proposition</h2><p>Ce que ${esc(from.name)} te donnerait, et ce que tu lui donnes.</p>
-          <div class="offer"><span></span><span class="oh">Tu reçois</span><span class="oh">Tu donnes</span>${itemRows(c.give, c.get, (k) => avoir(from, k), (k) => avoir(p, k))}</div>
+          <div class="offer"><span></span><span class="oh">Tu reçois</span><span class="oh">Tu donnes</span>${itemRows(c.give, c.get, (k) => (RES.includes(k) ? 20 : avoir(from, k)), (k) => avoir(p, k))}</div>
           <div class="mrow"><button class="btn primary" data-cok ${okC ? '' : 'disabled'}>Envoyer</button><button class="btn ghost" data-cback>Retour</button></div>` };
       }
       return { key: `offer-${t.id}`, html: `<h2>Offre de ${esc(from.name)}</h2><p>${esc(from.name)} te propose <b>${fmt(t.give)}</b> contre <b>${fmt(t.get)}</b>.</p>
@@ -309,6 +338,17 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
     if (!b || b.disabled || !modalNow) return;
     const ds = b.dataset;
     if (ds.obj !== undefined) return act({ type: 'objectif', garde: ds.obj });
+    if ('devCancel' in ds) { ui.dev = null; ui.sel = null; return render(); }
+    if (ui.dev) {
+      const k = ui.dev, fini = (extra) => { ui.dev = null; ui.sel = null; return act({ type: 'jouer', carte: k, ...extra }); };
+      if (ds.devRes !== undefined) return fini({ res: ds.devRes });
+      if (ds.devDe !== undefined) return fini({ de: +ds.devDe, style: ds.devStyle });
+      if (ds.devClient !== undefined) return fini({ client: /^\d+$/.test(ds.devClient) ? +ds.devClient : ds.devClient });
+      if (ds.devFerm !== undefined) return fini({ ferm: +ds.devFerm });
+      if (ds.devStyle !== undefined) return fini({ style: ds.devStyle });
+      if ('devAchats' in ds) return fini({ achats: { ...ui.sel } });
+      if (ds.act === 'devsel') { ui.sel[ds.r] = Math.max(0, ui.sel[ds.r] + +ds.d); return render(); }
+    }
     if (ds.ferm !== undefined) return act({ type: 'evenement', ferm: +ds.ferm });
     if (ds.style !== undefined) return act({ type: 'concours', style: ds.style });
     if ('again' in ds) return onNewGame?.();
@@ -330,7 +370,7 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
     if (ui.error) return { txt: ui.error, col: 'var(--copper)' };
     if (v.phase === 'over') return { txt: `${you(v.winner) ? 'Tu gagnes' : esc(P()[v.winner].name) + ' gagne'} la partie.`, col: PCOL[v.winner] };
     if (v.pending) {
-      const who = Object.keys(v.pending.need).map(Number), nom = v.pending.kind === 'objectif' ? 'Objectif secret' : EVT[v.pending.kind].nom;
+      const who = Object.keys(v.pending.need).map(Number), nom = v.pending.kind === 'objectif' ? 'Objectif secret' : v.pending.kind === 'levureSauvage' ? 'Levure sauvage' : EVT[v.pending.kind].nom;
       if (mine() && who.includes(me())) return { txt: `${nom} : à toi de décider.`, col: PCOL[me()] };
       return { txt: `${nom} : ${who.map((i) => esc(P()[i].name)).join(', ')} ${who.length > 1 ? 'décident' : 'décide'}…`, col: 'var(--muted)' };
     }
@@ -348,7 +388,7 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
   function renderPlayers() {
     const v = view;
     $('#players').innerHTML = P().map((p, i) => `<div class="pl ${v.cur === i && v.phase !== 'over' && !v.pending ? 'cur' : ''}">${sw(i)}
-      <div class="pn"><b>${esc(p.name)}${you(i) && p.name !== 'Toi' ? ' (toi)' : ''}${v.first === i && v.phase === 'main' ? ' <span class="bdg" title="Premier joueur de la saison">1er</span>' : ''}</b><small>${p.argent} € · ${plural(unites(p), 'unité')} · ${p.ferms.length}/${p.nferm} ferm. · ${v.restants[i] ?? 0}/${p.ouv} ouvr.${p.status ? ' · ' + esc(p.status) : ''}</small></div>
+      <div class="pn"><b>${esc(p.name)}${you(i) && p.name !== 'Toi' ? ' (toi)' : ''}${v.first === i && v.phase === 'main' ? ' <span class="bdg" title="Premier joueur de la saison">1er</span>' : ''}</b><small>${p.argent} € · ${plural(unites(p), 'unité')} · ${you(i) ? plural(p.res.malt + p.res.houb, 'matière') : plural(p.cartes ?? 0, 'matière')} · ${p.ferms.length}/${p.nferm} ferm. · ${v.restants[i] ?? 0}/${p.ouv} ouvr.${(you(i) ? p.dev.length : p.dev) ? ` · ${plural(you(i) ? p.dev.length : p.dev, 'carte')} Dév.` : ''}${p.status ? ' · ' + esc(p.status) : ''}</small></div>
       <div class="vp" title="Réputation">${p.rep}<small>rép.</small></div></div>`).join('');
   }
 
@@ -383,7 +423,7 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
         <div class="etagere">${futs.length ? futs.map((st) => `<span title="${SN[st]}">${D.futSvg(D.STYLE_COL[st])}</span>`).join('') : '<span class="muted">Rien en cave.</span>'}</div>
         <div class="muted">${STYLES.filter((st) => p.stock[st]).map((st) => `${p.stock[st]} ${SN[st]}`).join(' · ')}</div></div>
       <div class="zone"><div class="zt">Équipement</div><div class="eqs">${p.upg.length || p.nferm > 2 ? [...p.upg.map((u) => AMELIORATIONS[u].nom), ...(p.nferm > 2 ? [`${p.nferm} fermenteurs`] : [])].map((n) => `<span>${esc(n)}</span>`).join('') : '<span class="muted">Le strict nécessaire.</span>'}</div>
-</div>`;
+</div>${renderDev()}`;
     $('#feuille').innerHTML = feuilleDeMarque(me(), false);
   }
 
@@ -456,7 +496,7 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
   // Chaque nouvelle entrée du journal jouée par un autre devient une bulle, montrée l'une après l'autre,
   // avec la case concernée mise en lumière (ouvrier qui tombe) ou les dés qui roulent.
   const scene = { seen: null, queue: [], cur: null, timer: null, saison: null };
-  const SCENE_KINDS = new Set(['saison', 'ordre', 'poser', 'brasser', 'salle', 'passe', 'tradeOffer', 'tradeDone', 'perte', 'presente', 'concours', 'douanes', 'bilan', 'clientParti', 'vendre', 'salleRep', 'fin']);
+  const SCENE_KINDS = new Set(['saison', 'ordre', 'poser', 'brasser', 'salle', 'passe', 'tradeOffer', 'tradeDone', 'perte', 'presente', 'concours', 'douanes', 'bilan', 'dev', 'clientParti', 'vendre', 'salleRep', 'fin']);
   function suivreJournal() {
     const last = view.log.at(-1)?.i ?? -1;
     if (scene.seen === null) { scene.seen = last; scene.saison = view.saison; return; }
@@ -533,7 +573,7 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
       const c = b.dataset.case;
       if (c === 'marcheMat') return act({ type: 'poser', case: c, achats: { ...ui.sel } });
       if (c === 'marcheBieres') return act({ type: 'poser', case: c, ventes: { ...ui.sel } });
-      if (c === 'chantier') return act({ type: 'poser', case: c, u: b.dataset.u });
+      if (c === 'chantier') return act({ type: 'poser', case: c, u: b.dataset.u, ...(b.dataset.n ? { n: +b.dataset.n } : {}) });
       if (c === 'tournee') {
         const id = b.dataset.client, client = /^\d+$/.test(id) ? +id : id, max = poseSur('tournee')?.max ?? 1;
         if (max <= 1) return act({ type: 'poser', case: c, client, style: b.dataset.style });
@@ -545,6 +585,11 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
     },
     livrer: () => act({ type: 'poser', case: 'tournee', livraisons: livs() }),
     brasser: (b) => act({ type: 'brasser', style: b.dataset.style }),
+    dev: (b) => {
+      const k = b.dataset.carte;
+      if (DEVELOPPEMENTS[k].cible) { ui.dev = k; ui.sel = null; return render(); }
+      return act({ type: 'jouer', carte: k });
+    },
     salle: (b) => act({ type: 'salle', style: b.dataset.style }),
     og: (b) => { const r = b.dataset.r; ui.offer.give[r] = Math.max(0, ui.offer.give[r] + +b.dataset.d); render(); },
     ow: (b) => { const r = b.dataset.r; ui.offer.get[r] = Math.max(0, ui.offer.get[r] + +b.dataset.d); render(); },
@@ -580,7 +625,7 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
   return {
     update(v, o = {}) { view = v; opts = o; render(); },
     reset() {
-      ui.mode = null; ui.sel = null; ui.offer = { give: ZI(), get: ZI() }; ui.counter = null; ui.modalKey = null; ui.winClosed = false; ui.bilan = null; view = null; $('#modal').hidden = true;
+      ui.mode = null; ui.sel = null; ui.dev = null; ui.offer = { give: ZI(), get: ZI() }; ui.counter = null; ui.modalKey = null; ui.winClosed = false; ui.bilan = null; view = null; $('#modal').hidden = true;
       clearTimeout(scene.timer); scene.seen = null; scene.queue = []; scene.cur = null; scene.saison = null;
     },
   };

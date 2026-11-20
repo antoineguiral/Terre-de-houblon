@@ -135,3 +135,13 @@ Le retour de table : l'événement sortait trop rarement (deux faces sur six à 
 - **Clients** : 44 cartes, les caves acceptent Stout ou Garde, les festivals penchent Blonde et IPA (5 / 5 / 2 / 2).
 
 Victoires selon le rang : 26 / 27 / 23 / 24 %. Score moyen 37 : réputation 26, objectif 2,4, Argent 8,8. L'Argent pèse près d'un quart du score, à surveiller maintenant que la fin se déclenche à la réputation : un joueur riche peut laisser un autre sonner la fin et gagner au décompte. Si ça se voit sur table, passer à 1 point par 10 Argent.
+
+## Troisième version : cartes Développement, mains cachées, argent (novembre 2026)
+
+Deuxième retour de table : les quatre joueurs ont fini avec plus de 120 Argent, l'économie n'avait plus rien à vendre après la sixième saison. Et l'envie de cartes à effet, type Monopole, et de matières en cartes plutôt qu'en cubes.
+
+- **Matières en cartes, main cachée.** Le moteur ne change que la vue : les autres ne voient que le nombre de cartes. Les échanges deviennent du bluff.
+- **24 cartes Développement**, 12 types en deux exemplaires, 6 Argent au Chantier (une ou deux par ouvrier), une jouée par tour. Sept sur douze touchent les adversaires. La Levure sauvage suspend le tour le temps que chacun choisisse son brassin, comme la Contamination.
+- **Prix** : équipements remontés (Grande cuve 9, Fermenteur 5, Touraille 5, Camion 8, Salle 10), **1 point par 10 Argent**.
+
+Simulation, 400 parties à 4, IA Compagnon : 38 Argent par joueur en fin de partie (70 avant), 3,5 points d'Argent sur 31 (8,8 sur 37 avant). 4,6 cartes achetées par joueur, toutes jouées à peu près autant (0,8 à 1,7 par partie chacune). Durée 8,7 saisons, victoires par rang 23 / 29 / 24 / 24 %. L'IA n'achète presque plus le Camion (7 %) ni la Salle (6 %) : elle préfère les cartes ; à voir avec des humains avant de baisser ces deux prix. Objectifs : Belle installation passe à 6 points (4 % de réussite), Bas de laine reste à 50 (23 %).

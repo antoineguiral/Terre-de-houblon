@@ -14,12 +14,14 @@ Entre deux poses, on brasse. La bière fermente une à trois saisons selon le st
 - **2 dés de saison** (météo, événement) et **1 dé de brassage**.
 - **44 cartes Client** : bars, caves, festivals, plus la carte **Commande de la mairie**.
 - **12 cartes Objectif**.
+- **24 cartes Développement** (12 types en deux exemplaires).
+- **70 cartes Matière** : 40 Malt, 30 Houblon. Elles se gardent en main, cachées : les autres ne voient que combien on en a.
 - **Par brasserie** : 3 ouvriers, un **marqueur de réputation**, et un plateau Brasserie réutilisable (on n'y écrit rien) : une ligne par fermenteur (2 ouverts, jusqu'à 4), trois colonnes « prête dans 3, 2, 1 saisons », et le stock.
 - **60 cartes Bière** (15 par style) : une carte, une unité.
 - **Un carnet de feuilles de marque** (ou à imprimer) : une feuille par joueur et par partie, pour cocher les styles brassés et faire le décompte final.
-- **Jetons** : Malt, Houblon, Argent.
+- **Jetons** : Argent.
 
-Deux matières, quatre styles, une monnaie. Tout le reste est dans les mains des joueurs.
+Deux matières, quatre styles, une monnaie. Le reste est dans les mains des joueurs, au sens propre.
 
 ## Les recettes
 
@@ -73,7 +75,7 @@ Le premier joueur change à chaque saison : il tourne d'un cran vers la gauche. 
 | **Marché aux matières** | Acheter jusqu'à 3 matières, 2 Argent chacune. Une place. |
 | **Tournée** | Livrer **un** client de la file (deux avec le Camion). Ouvert à tous : chaque ouvrier posé livre. |
 | **Marché aux bières** | Vendre autant d'unités qu'on veut au prix de la piste. Ouvert à tous. |
-| **Chantier** | Acheter un équipement. Ouvert à tous. |
+| **Chantier** | Acheter un équipement, ou une ou deux cartes Développement à 6 Argent. Ouvert à tous. |
 
 ### 4. Fin de saison
 
@@ -99,11 +101,30 @@ Une piste par style, de 1 à 7, avec le prix de base marqué. Chaque unité vend
 
 | Équipement | Coût | Effet |
 |---|---|---|
-| Grande cuve | 6 | 3 unités par brassin |
-| Fermenteur | 4 | Un fermenteur de plus, jusqu'à 4 |
-| Touraille | 4 | Permet le Stout |
-| Camion | 6 | La Tournée livre jusqu'à 2 clients avec un seul ouvrier |
-| Salle de dégustation | 7 | Chaque saison, vendre 1 unité au prix de base +1 sans ouvrier ; chaque hiver, +1 Réputation |
+| Grande cuve | 9 | 3 unités par brassin |
+| Fermenteur | 5 | Un fermenteur de plus, jusqu'à 4 |
+| Touraille | 5 | Permet le Stout |
+| Camion | 8 | La Tournée livre jusqu'à 2 clients avec un seul ouvrier |
+| Salle de dégustation | 10 | Chaque saison, vendre 1 unité au prix de base +1 sans ouvrier ; chaque hiver, +1 Réputation |
+
+## Les cartes Développement
+
+Au Chantier, avec l'ouvrier, on peut acheter **une ou deux cartes** face cachée, 6 Argent chacune, au lieu d'un équipement. On les garde en main et on en joue **une par tour**, pendant son tour, avant ou après la pose. La carte jouée part à la défausse ; quand la pioche est vide, on la rebat.
+
+| Carte | Effet |
+|---|---|
+| Monopole | Annonce Malt ou Houblon : chaque adversaire t'en donne une carte, s'il en a |
+| Rachat | Prends une unité du stock d'un adversaire, au prix de base du style. Il ne peut pas refuser |
+| Contrôle | Chaque adversaire te donne 1 Argent par tranche de 3 unités en stock, 2 au plus |
+| Levure sauvage | Chaque adversaire retire 1 unité d'un de ses brassins en cours, à son choix |
+| Réservation | Pose la carte sur un client de la file : toi seul peux le livrer, jusqu'à la fin de la saison prochaine. S'il quitte la file, la réservation part avec lui |
+| Levure vive | Un de tes brassins en cours gagne une saison ; s'il était « prête dans 1 », il sort en stock |
+| Saisonnier | Un ouvrier de plus cette saison |
+| Primeur | Ta prochaine vente au Marché aux bières ne fait pas baisser les prix |
+| Coup de main | Brasse sans lancer le dé : 3 unités d'office |
+| Fournisseur | Achète jusqu'à 3 matières à 1 Argent, sans ouvrier, même si le Marché est pris ou fermé |
+| Bouche-à-oreille | +2 Réputation |
+| Grande foire | Jusqu'à la fin de la saison, les clients te paient 1 Argent de plus par unité |
 
 ## Les échanges
 
@@ -122,7 +143,7 @@ Pendant son tour, une brasserie peut proposer **une** offre aux autres : ce qu'e
 | Grossiste | Vendre 10 unités au Marché aux bières | 4 |
 | Fournisseur officiel | Livrer la Commande de la mairie | 5 |
 | Bas de laine | Finir avec 50 Argent ou plus | 4 |
-| Belle installation | Avoir la Grande cuve, la Salle de dégustation et le Camion | 4 |
+| Belle installation | Avoir la Grande cuve, la Salle de dégustation et le Camion | 6 |
 | Maître de garde | Livrer 4 unités de Bière de garde à des clients | 4 |
 | Carte variée | Livrer des clients avec 3 styles différents | 4 |
 
@@ -138,10 +159,10 @@ Chacun révèle son objectif et remplit le décompte de sa **feuille de marque**
 
 - la **Réputation**, lue sur la piste ;
 - les points de l'**objectif**, s'il est rempli ;
-- **1 point par 8 Argent**.
+- **1 point par 10 Argent**.
 
 La bière restante ne vaut rien. En cas d'égalité, la brasserie la plus riche, puis celle qui a le plus de bière.
 
 ## En deux mots, pour expliquer à table
 
-Trois ouvriers, huit cases, cinq clients sous les yeux de tous, un objectif dans la manche. À chaque saison, le premier joueur lance les dés, puis chacun pose un ouvrier à son tour, et brasse quand il veut. Récolte, achète, brasse, livre, vends : ce que tu prends, l'autre ne l'a plus. Le premier à 30 de réputation sonne la fin ; la brasserie qui a le plus de points gagne.
+Trois ouvriers, huit cases, cinq clients sous les yeux de tous, un objectif et quelques cartes dans la manche. À chaque saison, le premier joueur lance les dés, puis chacun pose un ouvrier à son tour, et brasse quand il veut. Récolte, achète, brasse, livre, vends : ce que tu prends, l'autre ne l'a plus. Le premier à 30 de réputation sonne la fin ; la brasserie qui a le plus de points gagne.

@@ -296,6 +296,10 @@ input.code{text-transform:uppercase;letter-spacing:.2em;font-family:var(--font-n
 .ccard:nth-child(odd){transform:rotate(-1deg)}.ccard:nth-child(even){transform:rotate(1deg)}
 .ccard.can{box-shadow:0 0 0 3px var(--copper),0 6px 14px rgba(0,0,0,.4);transform:none}
 .ccard.sel{box-shadow:0 0 0 3px var(--ink),0 6px 14px rgba(0,0,0,.4);opacity:.85}
+.devs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.devc{display:flex;flex-direction:column;gap:4px;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--panel2)}
+.devc b{font-family:var(--font-num);font-weight:700;font-size:14px;letter-spacing:.04em;text-transform:uppercase;color:var(--copper)}
+.devc small{font-size:12px;line-height:1.3;color:var(--muted);flex:1}
 .objs{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:8px 0}
 .obj{display:flex;flex-direction:column;gap:6px;text-align:left;padding:14px;border:2px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--ink);cursor:pointer;font:inherit}
 .obj:hover,.obj:focus-visible{border-color:var(--copper);outline:none}
@@ -396,10 +400,11 @@ input.code{text-transform:uppercase;letter-spacing:.2em;font-family:var(--font-n
       <details class="card">
         <summary>Règles en bref</summary>
         <div class="rules">
-          <p><b>Le but.</b> Être la brasserie la plus réputée. La partie s'arrête à la fin de la saison où quelqu'un atteint 30 de réputation, ou après trois ans. Au décompte : réputation + objectif secret (s'il est rempli) + 1 point par 8 Argent.</p>
+          <p><b>Le but.</b> Être la brasserie la plus réputée. La partie s'arrête à la fin de la saison où quelqu'un atteint 30 de réputation, ou après trois ans. Au décompte : réputation + objectif secret (s'il est rempli) + 1 point par 10 Argent.</p>
           <p><b>Au départ.</b> Chacun pioche 2 objectifs secrets et en garde 1 : livrer 2 caves, brasser les 4 styles, finir avec 50 Argent… Les autres ne le découvrent qu'à la fin.</p>
           <p><b>Une saison.</b> Deux dés : la météo (1 : récoltes −1, 6 : +1) et l'événement, un par face selon la saison. Puis chacun à son tour pose un ouvrier (3 chacun) sur une case, jusqu'à ce que tous soient posés. On peut brasser à tout moment pendant son tour. Le premier joueur tourne à chaque saison.</p>
-          <p><b>Les cases.</b> Champs et houblonnières : 2 places, le second récolte 1 de moins, rien l'hiver. Marché aux matières : une place, jusqu'à 3 matières à 2 Argent. Tournée, Marché aux bières et Chantier : ouverts à tous. La Tournée livre un client de la file (deux avec le Camion) ; le Marché vend au prix de la piste, et chaque unité fait baisser le prix ; le Chantier vend un équipement.</p>
+          <p><b>Les cases.</b> Champs et houblonnières : 2 places, le second récolte 1 de moins, rien l'hiver. Marché aux matières : une place, jusqu'à 3 matières à 2 Argent. Tournée, Marché aux bières et Chantier : ouverts à tous. La Tournée livre un client de la file (deux avec le Camion) ; le Marché vend au prix de la piste, et chaque unité fait baisser le prix ; le Chantier vend un équipement, ou une ou deux cartes Développement à 6 Argent.</p>
+          <p><b>Les cartes Développement.</b> Gardées en main, une jouée par tour : Monopole, Rachat, Contrôle, Levure sauvage, Réservation, Levure vive, Saisonnier, Primeur, Coup de main, Fournisseur, Bouche-à-oreille, Grande foire. Les matières aussi sont en main : les autres ne voient que combien tu en as.</p>
           <p><b>Brasser.</b> Une recette, un fermenteur libre, un dé : 1 c'est une unité en moins, 6 une de plus. Le brassin sort au début de la saison où il est prêt. Première fois qu'on brasse un style : +1 Réputation.</p>
           <p><b>Les clients.</b> Cinq cartes en file : bars, caves (Stout ou Garde au choix), festivals. Ils paient le prix de base du style plus leur bonus, et donnent la réputation. Le plus ancien part à chaque fin de saison. Un festival livré pendant sa saison : +2 Réputation. Style en demande : +1 Réputation chez un client, +2 Argent au Marché.</p>
           <p><b>Fin de saison.</b> Les prix remontent de 1 vers leur base. Au-delà de 6 unités en stock, le surplus est vendu d'office.</p>

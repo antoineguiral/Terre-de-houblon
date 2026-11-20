@@ -17,6 +17,14 @@ async function step(page, c) {
       return false; // on attend les réponses
     }
     if (/Contre-proposition/.test(title)) { await box.locator('[data-cback]').click(); return true; }
+    if (await box.locator('[data-dev-cancel]').count()) {
+      const plus = box.locator('[data-act="devsel"][data-d="1"]:not(:disabled)');
+      if (await plus.count()) { await plus.first().click(); return true; }
+      const cible = box.locator('[data-dev-res], [data-dev-de], [data-dev-client], [data-dev-ferm], [data-dev-style], [data-dev-achats]:not(:disabled)');
+      if (await cible.count()) { bump('carte jouée'); await cible.first().click(); return true; }
+      await box.locator('[data-dev-cancel]').click(); return true;
+    }
+    if (/Levure sauvage/.test(title)) { bump('perte'); await box.locator('[data-ferm]').first().click(); return true; }
     throw new Error('fenêtre inconnue : ' + title);
   }
   if (!(await page.locator('[data-act="end"]:not(:disabled)').count()) && !(await page.locator('#plateau .tuile.can').count())) return false;
@@ -25,6 +33,7 @@ async function step(page, c) {
   // Boîte de choix ouverte : valider ou annuler
   if (await page.locator('#modebox .modebox').count()) {
     if (await click('#modebox [data-act="sel"][data-d="1"]', 'plus')) return true;
+    if (c.tours % 2 === 0 && await click('#modebox [data-u="dev"]', 'achat carte')) return true;
     if (await click('#modebox [data-act="poser"]', 'validation')) return true;
     return click('#modebox [data-act="cancel"]', 'annulation');
   }
@@ -34,6 +43,7 @@ async function step(page, c) {
   }
   if (await click('#file [data-act="livrer"]', 'livraison camion')) return true;
   if (await click('#brasser [data-act="brasser"]', 'brassin')) return true;
+  if (await click('[data-act="dev"]', 'carte')) return true;
   if (await click('[data-act="salle"]', 'salle')) return true;
   if (await tuile('[data-case="tournee"]', 'tournée')) return true;
   const stock = await page.locator('#brasserie .etagere .futsvg').count();
@@ -41,6 +51,7 @@ async function step(page, c) {
   if (await tuile('[data-case^="champ"]', 'récolte') || await tuile('[data-case^="houb"]', 'récolte')) return true;
   if (await tuile('[data-case="chantier"]', 'chantier')) return true;
   if (await tuile('[data-case="marcheMat"]', 'marché aux matières')) return true;
+  if (await tuile('', 'autre case')) return true;
   bump('tours');
   if (c.tours % 5 === 3 && c.dernierePropo !== c.tours && await page.locator('[data-act="og"][data-d="1"]:not(:disabled)').count()) {
     c.dernierePropo = c.tours;

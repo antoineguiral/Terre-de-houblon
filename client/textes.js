@@ -1,6 +1,6 @@
 // Textes du jeu : noms, cases, événements, et rédaction du journal selon le joueur qui lit.
 
-import { RES, STYLES, ITEMS, SAISONS, CASES, EVT, AMELIORATIONS, NIVEAUX, METEO, OBJECTIFS } from '../moteur/index.js';
+import { RES, STYLES, ITEMS, SAISONS, CASES, EVT, AMELIORATIONS, NIVEAUX, METEO, OBJECTIFS, DEVELOPPEMENTS } from '../moteur/index.js';
 
 export const RN = { malt: 'Malt', houb: 'Houblon', argent: 'Argent' };
 export const RI = { malt: 'M', houb: 'H', argent: '€' };
@@ -34,7 +34,20 @@ export function logLines(e, view) {
     }
     case 'ordre': return [{ txt: tu(e.first) ? 'Tu poses en premier cette saison.' : `${P[e.first].name} pose en premier cette saison.`, p: e.first }];
     case 'douanes': { const m = e.paie.find((x) => x.p === me); return [{ txt: `Contrôle des douanes${m?.n ? ` : tu paies ${m.n} Argent` : ''}.`, p: null }]; }
-    case 'perte': return [{ txt: `${tu(e.p) ? 'Ta' : P[e.p].name + ' : sa'} ${SN[e.style]} perd 1 unité (${EVT[e.evt].nom.toLowerCase()}).`, p: e.p }];
+    case 'perte': return [{ txt: `${tu(e.p) ? 'Ta' : P[e.p].name + ' : sa'} ${SN[e.style]} perd 1 unité (${(EVT[e.evt] ?? DEVELOPPEMENTS[e.evt]).nom.toLowerCase()}).`, p: e.p }];
+    case 'dev': {
+      const d = DEVELOPPEMENTS[e.carte].nom, qui = v2(e.p, 'joues', 'joue');
+      switch (e.carte) {
+        case 'monopole': return [{ txt: `${qui} ${d} : ${RN[e.res]}, ${e.de.length ? e.de.map((i) => (tu(i) ? 'toi' : P[i].name)).join(', ') + (e.de.length > 1 ? ' donnent' : ' donne') + ' une carte' : 'personne n’en avait'}.`, p: e.p }];
+        case 'rachat': return [{ txt: `${qui} ${d} : une ${SN[e.style]} prise à ${tu(e.de) ? 'toi' : P[e.de].name} pour ${e.argent} Argent.`, p: e.p }];
+        case 'controle': return [{ txt: `${qui} ${d} : ${e.paie.filter((x) => x.n).map((x) => `${tu(x.p) ? 'tu paies' : P[x.p].name + ' paie'} ${x.n}`).join(', ') || 'personne ne paie'}.`, p: e.p }];
+        case 'reservation': return [{ txt: `${qui} ${d} sur ${e.client.nom}.`, p: e.p }];
+        case 'levureVive': return [{ txt: `${qui} ${d} : ${tu(e.p) ? 'ta' : 'sa'} ${SN[e.style]} gagne une saison${e.sorti ? ' et sort en stock' : ''}.`, p: e.p }];
+        case 'fournisseur': return [{ txt: `${qui} ${d} : ${fmtRes(e.achats)} pour ${e.cout} Argent.`, p: e.p }];
+        case 'coupDeMain': return [{ txt: `${qui} ${d} : une ${SN[e.style]} brassée à 3 unités.`, p: e.p }];
+        default: return [{ txt: `${qui} ${d}.`, p: e.p }];
+      }
+    }
     case 'presente': return [{ txt: `${v2(e.p, 'présentes', 'présente')} une ${SN[e.style]}.`, p: e.p }];
     case 'concours': return e.gains.filter((g) => g.rep).map((g) => ({ txt: `${EVT[e.kind].nom} : ${tu(g.p) ? 'tu gagnes' : P[g.p].name + ' gagne'} ${g.rep} Réputation avec sa ${SN[g.st]}.`, p: g.p }));
     case 'brasser': return [{ txt: `${v2(e.p, 'brasses', 'brasse')} une ${SN[e.style]} : dé ${e.de}${e.de === 1 ? ', brassin raté' : e.de === 6 ? ', cuvée exceptionnelle' : ''}, ${plural(e.u, 'unité')} prête${e.u > 1 ? 's' : ''} dans ${plural(e.ferm, 'saison')}${e.premiere ? ', +1 Réputation pour la première' : ''}.`, p: e.p }];
@@ -44,7 +57,7 @@ export function logLines(e, view) {
       if (c === 'marcheMat') return [{ txt: `${v2(e.p, 'achètes', 'achète')} ${fmtRes(e.achats)} (${e.cout} Argent).`, p: e.p }];
       if (c === 'tournee') return (e.livraisons ?? [e]).map((l) => ({ txt: `${v2(e.p, 'livres', 'livre')} ${l.client.nom} : ${plural(l.client.n, 'unité')} de ${SN[l.style]}, ${l.argent} Argent, ${l.rep} Réputation.`, p: e.p }));
       if (c === 'marcheBieres') return [{ txt: `${v2(e.p, 'vends', 'vend')} ${fmt(e.ventes)} au Marché (${e.gain} Argent).`, p: e.p }];
-      if (c === 'chantier') return [{ txt: `${v2(e.p, "t'équipes", "s'équipe")} : ${AMELIORATIONS[e.u].nom}.`, p: e.p }];
+      if (c === 'chantier') return [{ txt: e.u === 'dev' ? `${v2(e.p, 'achètes', 'achète')} ${plural(e.n, 'carte')} Développement (${e.cout} Argent)${tu(e.p) ? ' : ' + e.cartes.map((k) => DEVELOPPEMENTS[k].nom).join(', ') : ''}.` : `${v2(e.p, "t'équipes", "s'équipe")} : ${AMELIORATIONS[e.u].nom}.`, p: e.p }];
       return [];
     }
     case 'vendre': return e.force ? [{ txt: `${tu(e.p) ? 'Ton stock déborde : une' : P[e.p].name + ' : stock trop plein, une'} ${SN[e.style]} est vendue d'office (${e.gain} Argent).`, p: e.p }] : [];

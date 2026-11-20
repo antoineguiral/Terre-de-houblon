@@ -11,12 +11,13 @@ Issu de [Terres de Houblon](https://github.com/antoineguiral/Terre-de-houblon), 
 - **Brasser.** 4 styles, de la Blonde (1 saison, 3 Argent, 1 réputation) à la Bière de garde (3 saisons, 7 Argent, 4 réputation), le Stout avec une Touraille. Deux matières : Malt et Houblon. Un brassin donne 2 unités (3 avec la Grande cuve), et un dé : 1 c'est une unité en moins, 6 une de plus. La première fois qu'on brasse un style : +1 réputation.
 - **Les clients.** 44 cartes, 5 en file sous les yeux de tous : bars, caves (Stout ou Garde au choix), festivals liés à une saison. Livrer, c'est prendre la carte ; avec le Camion, deux par Tournée. Le plus ancien part à chaque fin de saison.
 - **Le Marché aux bières.** Une piste de prix par style : chaque unité vendue baisse le prix d'un cran, pour tout le monde ; les prix remontent d'un cran par saison. Deux styles en demande par saison : +2 au Marché, +1 réputation chez un client.
-- **S'équiper.** Grande cuve, fermenteurs, Touraille, Camion, Salle de dégustation.
+- **S'équiper.** Grande cuve, fermenteurs, Touraille, Camion, Salle de dégustation. Ou des **cartes Développement** à 6 Argent, gardées en main, une jouée par tour : Monopole, Rachat, Contrôle, Levure sauvage, Réservation, Levure vive, Saisonnier, Primeur, Coup de main, Fournisseur, Bouche-à-oreille, Grande foire.
+- **Les mains.** Matières et cartes Développement sont cachées : les autres ne voient que combien on en a.
 - **Les échanges.** Une offre par tour aux autres brasseries, en matières, bière ou Argent.
 - **L'objectif secret.** Au départ, 2 cartes piochées, 1 gardée : livrer 2 caves, brasser les 4 styles, finir avec 50 Argent… 3 à 5 points au décompte si c'est rempli, révélé à la fin.
-- **La fin.** À la fin de la saison où quelqu'un atteint 30 de réputation, ou après trois ans. Décompte : réputation + objectif + 1 point par 8 Argent.
+- **La fin.** À la fin de la saison où quelqu'un atteint 30 de réputation, ou après trois ans. Décompte : réputation + objectif + 1 point par 10 Argent.
 
-Toutes les valeurs sont dans [`moteur/constantes.js`](moteur/constantes.js). Elles sortent de la simulation (voir [`docs/conception-table.md`](docs/conception-table.md)), à affiner en jouant : l'IPA est le style le moins brassé par l'IA, et l'Argent pèse un quart du score. Les règles pour les joueurs, telles qu'on les expliquerait à table : [`docs/regles.md`](docs/regles.md).
+Toutes les valeurs sont dans [`moteur/constantes.js`](moteur/constantes.js). Elles sortent de la simulation (voir [`docs/conception-table.md`](docs/conception-table.md)), à affiner en jouant : l'IPA est le style le moins brassé par l'IA, et le Camion comme la Salle sont peu achetés par elle depuis la hausse des prix. Les règles pour les joueurs, telles qu'on les expliquerait à table : [`docs/regles.md`](docs/regles.md).
 
 ## Jouer en local
 

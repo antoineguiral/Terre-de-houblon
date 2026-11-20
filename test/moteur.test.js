@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   createGame, applyAction, legalActions, waitingFor, deciders, viewFor, aiStep, aiAction, score, unites,
   STYLES, RES, RECETTES, CASES, STOCK_MAX, CUVE, AMELIORATIONS, NB_SAISONS, FIN_REP, FILE, DEPART, REP_DERNIER, SAISONS, DEMANDE, CONCOURS, EVT, EVENEMENTS,
-  OBJECTIFS, OUVRIERS_DEPART, CLIENTS,
+  OBJECTIFS, OUVRIERS_DEPART, CLIENTS, DEVELOPPEMENTS, DEV_PRIX, DEV, ARGENT_PAR_POINT,
 } from '../moteur/index.js';
 import { playOut } from '../outils/simulation.js';
 
@@ -205,6 +205,15 @@ test('chantier : équipements, fermenteurs jusqu’à 4, camion, salle une fois 
   ko(applyAction(c4, pi, { type: 'poser', case: 'chantier', u: 'ferm' }), /déjà/);
   s = again(s, 'camion');
   assert.ok(s.players[pi].upg.includes('camion'));
+  // cartes Développement : une ou deux par passage, payées
+  const a1 = s.players[pi].argent;
+  s = again(s, 'dev');
+  assert.equal(s.players[pi].dev.length, 1);
+  assert.equal(s.players[pi].argent, a1 - DEV_PRIX);
+  const c2 = structuredClone(s); c2.place = false; c2.restants[pi] = 1;
+  const s2 = ok(applyAction(c2, pi, { type: 'poser', case: 'chantier', u: 'dev', n: 2 }));
+  assert.equal(s2.players[pi].dev.length, 3);
+  ko(applyAction(c2, pi, { type: 'poser', case: 'chantier', u: 'dev', n: 3 }), /par passage/);
   s = again(s, 'salle');
   const a0 = s.players[pi].argent;
   s = ok(applyAction(s, pi, { type: 'salle', style: 'stout' }));
@@ -315,7 +324,7 @@ test('fin de partie : à la réputation de fin ou après 12 saisons, décompte a
   s.players.forEach((p, i) => {
     const sc = score(s, i);
     assert.equal(sc.objectif, OBJECTIFS[p.objectif].test(p) ? OBJECTIFS[p.objectif].pts : 0);
-    assert.equal(sc.total, p.rep + sc.objectif + Math.floor(p.argent / 8));
+    assert.equal(sc.total, p.rep + sc.objectif + Math.floor(p.argent / ARGENT_PAR_POINT));
     assert.deepEqual(s.scores[i], sc);
     assert.equal(typeof viewFor(s, 0).players[i].objectifOk, 'boolean', 'objectifs révélés à la fin');
   });
@@ -326,6 +335,69 @@ test('fin de partie : à la réputation de fin ou après 12 saisons, décompte a
   assert.equal(s.scores[s.winner].total, Math.max(...s.scores.map((x) => x.total)));
   ko(applyAction(s, s.winner, { type: 'endTurn' }), /terminée/);
 });
+
+test('cartes Développement : une par tour, effets, levure sauvage en attente, réservation', () => {
+  let s = calme(prete(31));
+  const pi = s.cur, b = (pi + 1) % 4, c = (pi + 2) % 4;
+  s = dote(s, pi, { res: { malt: 2, houb: 0 }, argent: 20, stock: { blonde: 0 } });
+  s = dote(s, b, { res: { malt: 3, houb: 2 }, argent: 5, stock: { stout: 2, blonde: 1 } });
+  s = dote(s, c, { res: { malt: 0, houb: 1 }, stock: { garde: 3 } });
+  s.players[pi].dev = ['monopole', 'rachat', 'controle', 'levureSauvage', 'reservation', 'boucheAOreille', 'saisonnier'];
+  s.players[c].ferms = [{ st: 'ipa', left: 2, u: 2 }];
+  ko(applyAction(s, pi, { type: 'jouer', carte: 'primeur' }), /pas cette carte/);
+  assert.ok(legalActions(s, pi).find((x) => x.type === 'jouer').cartes.some((x) => x.carte === 'monopole' && x.res.includes('houb')));
+  // monopole : chaque adversaire donne une carte
+  let t = ok(applyAction(s, pi, { type: 'jouer', carte: 'monopole', res: 'houb' }));
+  assert.equal(t.players[pi].res.houb, 3, 'b, c et le quatrième joueur donnent chacun 1');
+  assert.equal(t.players[b].res.houb, 1); assert.equal(t.players[c].res.houb, 0);
+  assert.equal(t.players[pi].dev.length, 6);
+  ko(applyAction(t, pi, { type: 'jouer', carte: 'controle' }), /Une seule carte/);
+  // tour suivant : rachat, contrôle
+  t.devJoue = false;
+  t = ok(applyAction(t, pi, { type: 'jouer', carte: 'rachat', de: b, style: 'stout' }));
+  assert.equal(t.players[pi].stock.stout, 1); assert.equal(t.players[b].stock.stout, 1);
+  assert.equal(t.players[pi].argent, 20 - RECETTES.stout.prix); assert.equal(t.players[b].argent, 5 + RECETTES.stout.prix);
+  t.devJoue = false;
+  const avant = t.players[pi].argent;
+  t = ok(applyAction(t, pi, { type: 'jouer', carte: 'controle' }));
+  assert.equal(t.players[pi].argent, avant + 1, 'c a 3 unités : 1 Argent ; b en a 2 : rien');
+  // levure sauvage : c doit choisir, le tour est suspendu
+  t.devJoue = false;
+  t = ok(applyAction(t, pi, { type: 'jouer', carte: 'levureSauvage' }));
+  assert.deepEqual(waitingFor(t), [c]);
+  ko(applyAction(t, pi, { type: 'poser', case: 'champA' }), /attente/);
+  t = ok(applyAction(t, c, { type: 'evenement', ferm: 0 }));
+  assert.equal(t.players[c].ferms[0].u, 1);
+  assert.equal(t.pending, null); assert.equal(t.cur, pi);
+  // réservation : les autres ne peuvent plus livrer, et ça expire
+  t.devJoue = false;
+  const cl = t.file[1];
+  t = ok(applyAction(t, pi, { type: 'jouer', carte: 'reservation', client: cl.id }));
+  assert.equal(t.file[1].reserve.p, pi);
+  assert.equal(valeurLivraisonDe(t, b, cl), null);
+  // bouche-à-oreille et saisonnier
+  t.devJoue = false; const rep0 = t.players[pi].rep;
+  t = ok(applyAction(t, pi, { type: 'jouer', carte: 'boucheAOreille' }));
+  assert.equal(t.players[pi].rep, rep0 + DEV.boucheAOreille);
+  t.devJoue = false; const r0 = t.restants[pi];
+  t = ok(applyAction(t, pi, { type: 'jouer', carte: 'saisonnier' }));
+  assert.equal(t.restants[pi], r0 + 1);
+  // coup de main : 3 unités sans dé ; primeur : le prix ne bouge pas
+  const u = structuredClone(s); u.players[pi].dev = ['coupDeMain', 'primeur']; u.players[pi].res = { malt: 4, houb: 2 }; u.players[pi].stock.blonde = 3;
+  const u1 = ok(applyAction(u, pi, { type: 'jouer', carte: 'coupDeMain', style: 'blonde' }));
+  assert.equal(u1.players[pi].ferms.at(-1).u, DEV.coupDeMain);
+  u1.devJoue = false;
+  const u2 = ok(applyAction(u1, pi, { type: 'jouer', carte: 'primeur' }));
+  const u3 = ok(applyAction(u2, pi, { type: 'poser', case: 'marcheBieres', ventes: { blonde: 3 } }));
+  assert.equal(u3.prix.blonde, RECETTES.blonde.prix);
+  assert.equal(u3.players[pi].primeur, false);
+  // mains cachées : les autres ne voient que le nombre de cartes
+  const v = viewFor(s, b);
+  assert.equal(v.players[pi].cartes, 2); assert.deepEqual(v.players[pi].res, { malt: 0, houb: 0 }); assert.equal(v.players[pi].dev, 7);
+  assert.equal(v.players[b].res.malt, 3);
+  assert.equal(Object.keys(DEVELOPPEMENTS).length, 12);
+});
+function valeurLivraisonDe(s, pi, cl) { return legalActions(s, pi).find((x) => x.type === 'poser')?.targets.find((t) => t.case === 'tournee')?.clients.find((x) => x.id === cl.id) ?? null; }
 
 test('vue : graine et pioche masquées, scores joints, JSON stable', () => {
   const s = prete(12);

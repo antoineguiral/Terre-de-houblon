@@ -11,10 +11,10 @@
 // Le hasard de l'IA vient d'un générateur dérivé de l'état : la même position donne toujours la même décision.
 
 import {
-  NB_SAISONS, FIN_REP, RES, STYLES, ITEMS, RECETTES, CASES, ACHAT, ACHAT_MAX, AMELIORATIONS, OBJECTIFS, STOCK_MAX, Z, ZI, ZS, total,
+  NB_SAISONS, FIN_REP, RES, STYLES, ITEMS, RECETTES, CASES, ACHAT, ACHAT_MAX, AMELIORATIONS, OBJECTIFS, DEV_PRIX, DEV_PAR_POSE, DEV, STOCK_MAX, Z, ZI, ZS, total,
 } from './constantes.js';
 import { local, next } from './alea.js';
-import { unites, cuveUnites, a, enDemande, prixMatiere, valeurLivraison, stylesPour, stylesClient, livraisonsMax, ameliorationsPossibles, avoirs, legalActions, posesPossibles } from './regles.js';
+import { unites, cuveUnites, a, enDemande, prixMatiere, valeurLivraison, stylesPour, stylesClient, livraisonsMax, ameliorationsPossibles, avoirs, legalActions, posesPossibles, jouable } from './regles.js';
 
 export const NIVEAUX = {
   apprenti: { nom: 'Apprenti', txt: 'Brasse ce qu’il peut et vend au Marché.' },
@@ -222,6 +222,11 @@ function choixPose(s, pi) {
     } else if (c === 'chantier') {
       const am = meilleureAmelioration(s, pi);
       if (am) opts.push({ val: am.val, action: { type: 'poser', case: c, u: am.u } });
+      // cartes Développement : d'autant plus quand l'Argent s'accumule et qu'il reste du temps
+      if (lvl !== 'apprenti' && rem >= 3 && t.devs > 0) {
+        const n = Math.min(t.devs, DEV_PAR_POSE, Math.floor((p.argent - 4) / DEV_PRIX));
+        if (n > 0) opts.push({ val: n * (2.5 + p.argent / 10) - n * DEV_PRIX * 0.35 + rnd(s, pi, 'dev') * 0.5, action: { type: 'poser', case: c, u: 'dev', n } });
+      }
     }
   }
   void w; void rem; void lvl;
@@ -232,10 +237,70 @@ function choixPose(s, pi) {
     if (t.case === 'marcheMat') return { type: 'poser', case: t.case, achats: { [RES.find((x) => p.argent >= prixMatiere(s, x))]: 1 } };
     if (t.case === 'tournee') return { type: 'poser', case: t.case, client: t.clients[0].id, style: t.clients[0].styles[0] };
     if (t.case === 'marcheBieres') return { type: 'poser', case: t.case, ventes: { [t.styles[0]]: 1 } };
-    return { type: 'poser', case: t.case, u: t.targets[0] };
+    return t.targets.length ? { type: 'poser', case: t.case, u: t.targets[0] } : { type: 'poser', case: t.case, u: 'dev', n: 1 };
   }
   opts.sort((x, y) => y.val - x.val);
   return opts[0].action;
+}
+
+/* ---------- cartes Développement ---------- */
+
+// La carte à jouer maintenant, ou null : chaque carte a son moment
+function jouerDev(s, pi) {
+  const p = s.players[pi], w = W(s), rem = restantes(s), autres = s.players.map((_, i) => i).filter((i) => i !== pi);
+  const L = legalActions(s, pi).find((x) => x.type === 'jouer');
+  if (!L) return null;
+  const pl = plan(s, pi);
+  let best = null;
+  const prop = (val, action) => { if (val > 0 && (best === null || val > best.val)) best = { val, action }; };
+  for (const c of L.cartes) {
+    const k = c.carte;
+    if (k === 'monopole') {
+      const need = pl && pl.miss > 0 ? RES.find((r) => pl.manque[r] > 0) : null;
+      const r = c.res.includes(need) ? need : c.res.reduce((b, x) => (b === null || autres.filter((i) => s.players[i].res[x] > 0).length > autres.filter((i) => s.players[i].res[b] > 0).length ? x : b), null);
+      if (r) { const n = autres.filter((i) => s.players[i].res[r] > 0).length; prop(n * 2.2 + (r === need ? 3 : 0) + (rem <= 1 ? 2 : 0), { type: 'jouer', carte: k, res: r }); }
+    } else if (k === 'rachat') {
+      // une unité qui débloque une livraison, sinon rien
+      for (const cl of s.file) for (const st of stylesClient(cl)) {
+        if (p.stock[st] + 1 < cl.n || p.stock[st] >= cl.n) continue;
+        const cible = c.cibles.find((x) => x.style === st);
+        if (!cible) continue;
+        const v = valeurLivraison(s, pi, cl, st, { ...p.stock, [st]: p.stock[st] + 1 });
+        if (v) prop(v.argent + w * v.rep - RECETTES[st].prix, { type: 'jouer', carte: k, de: cible.de, style: st });
+      }
+      if (rem <= 1) for (const cible of c.cibles) prop(1, { type: 'jouer', carte: k, de: cible.de, style: cible.style });
+    } else if (k === 'controle') {
+      const gain = autres.reduce((n, i) => n + Math.min(DEV.controleMax, Math.floor(unites(s.players[i]) / DEV.controlePar), s.players[i].argent), 0);
+      prop(gain >= 3 || rem <= 1 ? gain : 0, { type: 'jouer', carte: k });
+    } else if (k === 'levureSauvage') {
+      const n = autres.filter((i) => s.players[i].ferms.some((f) => f.u > 0)).length;
+      prop(n >= 2 || rem <= 2 ? n * 2.5 : 0, { type: 'jouer', carte: k });
+    } else if (k === 'reservation') {
+      // un client qu'on ne peut pas livrer maintenant mais qu'on pourra la saison prochaine
+      const bientot = { ...p.stock }; p.ferms.filter((f) => f.left <= 1).forEach((f) => { bientot[f.st] += f.u; });
+      for (const cl of s.file) {
+        if (!c.clients.includes(cl.id) || stylesPour(s, pi, cl).length) continue;
+        for (const st of stylesPour(s, pi, cl, bientot)) { const v = valeurLivraison(s, pi, cl, st, bientot); if (v) prop(v.argent + w * v.rep - 3, { type: 'jouer', carte: k, client: cl.id }); }
+      }
+    } else if (k === 'levureVive') {
+      const i = c.ferms.reduce((b, x) => (b === null || p.ferms[x].u * RECETTES[p.ferms[x].st].prix > p.ferms[b].u * RECETTES[p.ferms[b].st].prix ? x : b), null);
+      if (i !== null) prop(p.ferms[i].u * 2 + (rem <= 2 ? 4 : 0), { type: 'jouer', carte: k, ferm: i });
+    } else if (k === 'saisonnier') {
+      if (s.restants[pi] === p.ouv && posesPossibles(s, pi).length >= 3) prop(5, { type: 'jouer', carte: k });
+    } else if (k === 'primeur') {
+      if (unites(p) >= 3) prop(unites(p), { type: 'jouer', carte: k });
+    } else if (k === 'coupDeMain') {
+      if (pl && c.styles.includes(pl.st)) prop(6 + RECETTES[pl.st].prix, { type: 'jouer', carte: k, style: pl.st });
+    } else if (k === 'fournisseur') {
+      if (pl && pl.miss > 0) { const ach = Z(); let n = 0; for (const r of RES) while (pl.manque[r] - ach[r] > 0 && n < c.max) { ach[r]++; n++; } if (n) prop(n * 2 + 2, { type: 'jouer', carte: k, achats: ach }); }
+    } else if (k === 'boucheAOreille') {
+      prop(DEV.boucheAOreille * w, { type: 'jouer', carte: k });
+    } else if (k === 'grandeFoire') {
+      const m = meilleuresLivraisons(s, pi, livraisonsMax(p));
+      if (m && s.restants[pi] > 0) prop(m.livraisons.length * 2 + 1, { type: 'jouer', carte: k });
+    }
+  }
+  return best ? best.action : null;
 }
 
 /* ---------- décision ---------- */
@@ -290,6 +355,8 @@ export function aiAction(s, pi) {
     return { type: 'cancelTrade' };
   }
 
+  // 0. Une carte Développement si c'est le moment
+  if (niveau(s) !== 'apprenti') { const dv = jouerDev(s, pi); if (dv) return dv; }
   // 1. Brasser dès qu'on peut (gratuit)
   const br = has('brasser');
   if (br) {
