@@ -2,135 +2,144 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<title>Brassins — fiche à imprimer</title>
+<title>Brassins — prototype à imprimer</title>
+<!-- Même direction artistique que le jeu en ligne : polices, couleurs et dessins de client/dessins.js.
+     Page module : à servir par HTTP (node docs/prototype/pdf.cjs s'en charge). -->
 <style>
-@page { size: A4; margin: 10mm; }
+@font-face { font-family: "Alfa Slab One"; src: url(polices/alfa-slab-one-latin-400-normal.woff2) format("woff2"); font-weight: 400; }
+@font-face { font-family: "Alfa Slab One"; src: url(polices/alfa-slab-one-latin-ext-400-normal.woff2) format("woff2"); font-weight: 400; unicode-range: U+0100-024F, U+1E00-1EFF, U+20A0-20AB, U+20AD-20CF; }
+@font-face { font-family: "Barlow"; src: url(polices/barlow-latin-400-normal.woff2) format("woff2"); font-weight: 400; }
+@font-face { font-family: "Barlow"; src: url(polices/barlow-latin-500-normal.woff2) format("woff2"); font-weight: 500; }
+@font-face { font-family: "Barlow"; src: url(polices/barlow-latin-600-normal.woff2) format("woff2"); font-weight: 600; }
+@font-face { font-family: "Barlow"; src: url(polices/barlow-latin-ext-400-normal.woff2) format("woff2"); font-weight: 400; unicode-range: U+0100-024F, U+1E00-1EFF, U+20A0-20AB, U+20AD-20CF; }
+@font-face { font-family: "Barlow"; src: url(polices/barlow-latin-ext-500-normal.woff2) format("woff2"); font-weight: 500; unicode-range: U+0100-024F, U+1E00-1EFF, U+20A0-20AB, U+20AD-20CF; }
+@font-face { font-family: "Barlow"; src: url(polices/barlow-latin-ext-600-normal.woff2) format("woff2"); font-weight: 600; unicode-range: U+0100-024F, U+1E00-1EFF, U+20A0-20AB, U+20AD-20CF; }
+@font-face { font-family: "Barlow Condensed"; src: url(polices/barlow-condensed-latin-500-normal.woff2) format("woff2"); font-weight: 500; }
+@font-face { font-family: "Barlow Condensed"; src: url(polices/barlow-condensed-latin-600-normal.woff2) format("woff2"); font-weight: 600; }
+@font-face { font-family: "Barlow Condensed"; src: url(polices/barlow-condensed-latin-700-normal.woff2) format("woff2"); font-weight: 700; }
+@font-face { font-family: "Barlow Condensed"; src: url(polices/barlow-condensed-latin-ext-500-normal.woff2) format("woff2"); font-weight: 500; unicode-range: U+0100-024F, U+1E00-1EFF, U+20A0-20AB, U+20AD-20CF; }
+@font-face { font-family: "Barlow Condensed"; src: url(polices/barlow-condensed-latin-ext-600-normal.woff2) format("woff2"); font-weight: 600; unicode-range: U+0100-024F, U+1E00-1EFF, U+20A0-20AB, U+20AD-20CF; }
+@font-face { font-family: "Barlow Condensed"; src: url(polices/barlow-condensed-latin-ext-700-normal.woff2) format("woff2"); font-weight: 700; unicode-range: U+0100-024F, U+1E00-1EFF, U+20A0-20AB, U+20AD-20CF; }
+
+:root {
+  --creme: #f4e9d4; --creme2: #eadcc0; --encre: #2b1d14; --encre2: #6b5442; --cuivre: #d38b46; --cuivre2: #b56d2e; --orge: #f2c14e; --brique: #c8553d;
+  --display: "Alfa Slab One", Rockwell, Georgia, serif; --num: "Barlow Condensed", "Arial Narrow", sans-serif; --texte: "Barlow", system-ui, sans-serif;
+}
+@page { size: A4; margin: 9mm; }
 * { box-sizing: border-box; }
-body { font-family: Georgia, "Times New Roman", serif; color: #1a120d; margin: 0; font-size: 10.5pt; line-height: 1.3; }
-h1 { font-size: 20pt; margin: 0 0 2mm; letter-spacing: .5px; }
-h2 { font-size: 13pt; margin: 4mm 0 2mm; border-bottom: 1.5px solid #1a120d; padding-bottom: 1mm; }
-h3 { font-size: 10.5pt; margin: 2mm 0 1mm; text-transform: uppercase; letter-spacing: .08em; }
-p { margin: 0 0 1.5mm; }
+body { font-family: var(--texte); color: var(--encre); margin: 0; font-size: 9.2pt; line-height: 1.24; background: #fff; }
+h1 { font-family: var(--display); font-weight: 400; font-size: 24pt; margin: 0 0 1mm; color: var(--cuivre2); letter-spacing: .3px; }
+h1 small { font-family: var(--num); font-weight: 600; font-size: 10pt; letter-spacing: .12em; text-transform: uppercase; color: var(--encre2); margin-left: 3mm; }
+h2 { font-family: var(--num); font-weight: 700; font-size: 11pt; letter-spacing: .12em; text-transform: uppercase; color: var(--cuivre2); margin: 2.5mm 0 1.2mm; border-bottom: 1.5px solid var(--encre); padding-bottom: .6mm; }
+h3 { font-family: var(--num); font-weight: 700; font-size: 10.5pt; letter-spacing: .1em; text-transform: uppercase; margin: 2.5mm 0 1mm; color: var(--encre2); }
+h3 small { letter-spacing: .02em; text-transform: none; font-weight: 500; }
+p { margin: 0 0 1.4mm; }
+ul, ol { margin: 0 0 1.5mm; padding-left: 4.5mm; }
+li { margin-bottom: .5mm; }
+small { font-size: 8.3pt; color: var(--encre2); }
+b { font-weight: 600; }
 .page { page-break-after: always; }
 .page:last-child { page-break-after: auto; }
-.land { width: 277mm; height: 190mm; }
-small { font-size: 8.5pt; color: #4a3a30; }
-.rules { font-size: 9.2pt; line-height: 1.22; }
-.rules ul, .rules ol { margin: 1mm 0; }
-.rules h2 { margin: 2.5mm 0 1.5mm; }
-table { border-collapse: collapse; width: 100%; font-size: 9.5pt; }
-th, td { border: 1px solid #1a120d; padding: 1mm 2mm; text-align: left; vertical-align: top; }
-th { background: #eee6d8; font-weight: 600; }
-.cards { display: grid; grid-template-columns: repeat(3, 63mm); grid-auto-rows: 88mm; gap: 3mm; justify-content: center; }
-.card { border: 1.2px solid #1a120d; border-radius: 3mm; padding: 4mm; display: flex; flex-direction: column; position: relative; break-inside: avoid; }
-.card .kind { font-size: 8pt; text-transform: uppercase; letter-spacing: .12em; color: #4a3a30; }
-.card .title { font-size: 15pt; font-weight: 700; margin: 2mm 0 1mm; line-height: 1.1; }
-.card .style { font-size: 12pt; margin: 1mm 0 3mm; }
-.card .pay { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 2mm; }
-.card .pay div { border: 1px solid #1a120d; border-radius: 2mm; padding: 2mm; text-align: center; }
-.card .pay b { display: block; font-size: 16pt; }
-.card .pay span { font-size: 8pt; text-transform: uppercase; letter-spacing: .08em; }
-.card .note { font-size: 8.5pt; color: #4a3a30; margin-top: 2mm; }
-.card.season { background: #f7f2e8; }
-.card.bar { border-style: solid; } .card.cave { border-width: 2.5px; } .card.fest { border-style: double; border-width: 4px; } .card.mairie { border-width: 2.5px; border-style: dashed; } .card.obj { background: #f0e6d2; border-style: dotted; border-width: 2.5px; }
-.tag { position: absolute; top: 3mm; right: 4mm; font-size: 8pt; border: 1px solid #1a120d; border-radius: 2mm; padding: .5mm 1.5mm; }
-.dem span { display: inline-block; border: 1px solid #1a120d; border-radius: 2mm; padding: .5mm 2mm; margin: 0 1mm 1mm 0; font-size: 10pt; }
-/* plateau */
-.board { display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: auto auto; gap: 3mm; }
-.spot { border: 1.5px solid #1a120d; border-radius: 3mm; padding: 2mm 3mm 12mm; min-height: 26mm; position: relative; }
-.spot.multi { padding-bottom: 2mm; }
-.spot.multi { border-style: dashed; }
-.spot h4 { margin: 0 0 1.5mm; font-size: 11.5pt; }
-.spot .slot { position: absolute; bottom: 3mm; right: 3mm; width: 10mm; height: 10mm; border: 1.5px dashed #1a120d; border-radius: 50%; }
-.spot .slot.two { right: 15mm; }
-.spot .slot.three { right: 27mm; }
-.spot .slot.four { right: 39mm; }
-.yield { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1mm; font-size: 9pt; text-align: center; margin-top: 1mm; }
-.yield div { border: 1px solid #1a120d; border-radius: 1.5mm; padding: .5mm 0; }
-.yield b { display: block; font-size: 12pt; }
-.tracks { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; margin-top: 3mm; }
-.track { border: 1.5px solid #1a120d; border-radius: 3mm; padding: 2mm 3mm; }
-.track h4 { margin: 0 0 1.5mm; font-size: 10.5pt; }
-.steps { display: flex; gap: 1.5mm; }
-.steps div { flex: 1; border: 1px solid #1a120d; border-radius: 1.5mm; text-align: center; padding: 1mm 0; font-size: 10pt; min-height: 6mm; }
-.steps div.base { background: #eee6d8; font-weight: 700; }
-.file { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2mm; }
-.file div { border: 1.5px dashed #1a120d; border-radius: 3mm; height: 20mm; display: flex; align-items: flex-end; justify-content: center; padding: 2mm; font-size: 8.5pt; color: #4a3a30; text-align: center; }
-.file div.deck { border-style: solid; }
-.seasons { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1.5mm; }
-.seasons div { border: 1px solid #1a120d; border-radius: 1.5mm; text-align: center; font-size: 8.5pt; padding: 1.5mm 0; height: 11mm; }
-.seasons div b { display: block; font-size: 10pt; }
-/* plateau joueur */
-.pboard { border: 1.5px solid #1a120d; border-radius: 3mm; padding: 4mm; height: 274mm; display: flex; flex-direction: column; gap: 2mm; overflow: hidden; }
-.pbh { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1.5px solid #1a120d; padding-bottom: 1mm; }
-.pbh b { font-size: 16pt; }
-.grille { display: grid; grid-template-columns: 12mm repeat(3, 40mm) 5mm 40mm; grid-auto-rows: 47mm; gap: 2mm; align-items: stretch; }
-.grille .lab { writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font-size: 8.5pt; text-transform: uppercase; letter-spacing: .1em; color: #4a3a30; }
-.grille .head { grid-row: auto; height: auto; }
-.slot2 { border: 1.5px solid #1a120d; border-radius: 3mm; display: flex; align-items: flex-end; justify-content: center; font-size: 8pt; color: #4a3a30; padding-bottom: 1.5mm; text-align: center; }
-.slot2.locked { border-style: dashed; }
-.slot2.stock { background: #f7f2e8; }
-.ghead { display: grid; grid-template-columns: 12mm repeat(3, 40mm) 5mm 40mm; gap: 2mm; font-size: 8.5pt; text-transform: uppercase; letter-spacing: .1em; color: #4a3a30; text-align: center; }
-.ghead .arrow { font-size: 14pt; color: #1a120d; letter-spacing: 0; }
-.equip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2mm; margin-top: 1mm; }
-.equip div { border: 1px dashed #1a120d; border-radius: 2mm; padding: 1.5mm 2mm; font-size: 8pt; min-height: 20mm; }
-.equip b { display: block; font-size: 9pt; }
-.bieres { display: grid; grid-template-columns: repeat(4, 38mm); grid-auto-rows: 52mm; gap: 3mm; justify-content: center; }
-.biere { border: 1.2px solid #1a120d; border-radius: 3mm; display: flex; flex-direction: column; overflow: hidden; break-inside: avoid; }
-.biere .band { height: 16mm; border-bottom: 1.2px solid #1a120d; }
-.biere .bn { font-size: 12pt; font-weight: 700; padding: 2mm 2.5mm 0; line-height: 1.1; }
-.biere .bu { font-size: 8.5pt; padding: 0 2.5mm; color: #4a3a30; }
-.biere .bp { margin-top: auto; padding: 0 2.5mm 2mm; font-size: 8pt; color: #4a3a30; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
-ul { margin: 0 0 1.5mm; padding-left: 5mm; }
-li { margin-bottom: .8mm; }
-.rules p, .rules li { font-size: 9.2pt; }
-/* piste de réputation */
-.repstrip { display: grid; grid-template-columns: repeat(17, 1fr); gap: 1mm; }
-.repstrip div { border: 1px solid #1a120d; border-radius: 1.2mm; text-align: center; font-size: 8.5pt; padding: 1.2mm 0; }
-.repstrip div.cinq { background: #eee6d8; font-weight: 700; }
+.intro { font-style: italic; color: var(--encre2); }
+table { border-collapse: collapse; width: 100%; font-size: 9pt; }
+th, td { border: 1px solid var(--encre); padding: 1mm 1.8mm; text-align: left; vertical-align: top; }
+th { background: var(--creme2); font-family: var(--num); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: 8.5pt; }
+td b { font-weight: 600; }
+.pastille { display: inline-block; width: 3.2mm; height: 3.2mm; border-radius: 50%; border: 1.2px solid var(--encre); vertical-align: -0.4mm; margin-right: 1mm; }
+
+/* plateau */
+.plateau svg { width: 100%; height: auto; display: block; }
+.evts { margin-top: 2mm; }
+.evts td { font-size: 8pt; padding: .8mm 1.4mm; }
+.evts td:first-child { font-family: var(--num); font-weight: 700; font-size: 11pt; text-align: center; width: 7mm; background: var(--creme2); }
+
 /* feuilles de marque */
 .fms { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
-.fm { border: 1.4px solid #1a120d; border-radius: 3mm; padding: 4mm; display: flex; flex-direction: column; gap: 1.6mm; break-inside: avoid; height: 128mm; }
-.fmh { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1.4px solid #1a120d; padding-bottom: 1.5mm; }
-.fmh b { font-size: 16pt; }
-.fmh span { text-transform: uppercase; letter-spacing: .12em; font-size: 8.5pt; }
-.fml { font-size: 10pt; display: flex; align-items: flex-end; gap: 1.5mm; }
-.fml i { flex: 1; border-bottom: 1px dotted #1a120d; height: 4.5mm; }
+.fm { background: #fffdf7; color: var(--encre); border: 1.5px solid var(--encre); border-radius: 3mm; padding: 4mm 5mm; background-image: repeating-linear-gradient(180deg, transparent 0 7.5mm, rgba(61,127,166,.14) 7.5mm 7.8mm); font-size: 10pt; height: 128mm; }
+.fm .fmh { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid var(--encre); padding-bottom: 1mm; margin-bottom: 2mm; }
+.fm .fmh b { font-family: var(--display); font-weight: 400; font-size: 15pt; color: var(--cuivre2); }
+.fm .fmh span { font: 700 8.5pt var(--num); letter-spacing: .12em; text-transform: uppercase; color: var(--encre2); }
+.fml { display: flex; gap: 2mm; align-items: baseline; margin: 1.5mm 0; }
+.fml i { flex: 1; border-bottom: 1px dotted var(--encre); font-style: normal; }
 .fml i.court { flex: .5; }
-.fm h4 { margin: 2mm 0 0; font-size: 10pt; }
-.fmstyles { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5mm 4mm; font-size: 10.5pt; }
-.fmstyles div { display: flex; align-items: center; gap: 2mm; }
-.box { width: 4.5mm; height: 4.5mm; border: 1.4px solid #1a120d; border-radius: .8mm; display: inline-block; }
-.fmt td { border: none; border-bottom: 1px solid #b9a98f; padding: 1.6mm 1mm; font-size: 10pt; }
-.fmt td.case { width: 16mm; border: 1.4px solid #1a120d; }
-.fmt tr.tot td { font-weight: 700; font-size: 12pt; border-bottom: none; }
-.fmt tr.tot td.case { border-bottom: 1.4px solid #1a120d; }
-.trou { display: inline-block; width: 14mm; border-bottom: 1px dotted #1a120d; }
+.fm .fmt2 { font: 700 9pt var(--num); letter-spacing: .1em; text-transform: uppercase; margin: 2.5mm 0 1mm; }
+.fm .fmt2 small { letter-spacing: 0; text-transform: none; font-weight: 500; }
+.fmstyles { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5mm 4mm; }
+.fmstyles span { display: flex; align-items: center; gap: 2mm; }
+.box { width: 5mm; height: 5mm; border: 1.6px solid var(--encre); border-radius: 1mm; background: #fff; display: inline-block; flex: none; }
+.fmrow { display: flex; justify-content: space-between; align-items: center; gap: 2mm; padding: 1.4mm 0; border-bottom: 1px solid #e3d6bd; }
+.fmrow b { min-width: 14mm; height: 8mm; border: 1.6px solid var(--encre); border-radius: 1.2mm; background: #fff; display: inline-block; }
+.fmrow.tot { border-bottom: none; font-weight: 700; font-size: 12pt; }
+.fmrow.tot b { background: var(--orge); }
+.trou { display: inline-block; width: 14mm; border-bottom: 1px dotted var(--encre); }
+
+/* plateau brasserie */
+.pboard { border: 2px solid var(--encre); border-radius: 4mm; padding: 4mm; height: 276mm; display: flex; flex-direction: column; gap: 2mm; overflow: hidden; background: var(--creme); }
+.pbh { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--encre); padding-bottom: 1.5mm; gap: 3mm; }
+.pbh b { font-family: var(--display); font-weight: 400; font-size: 17pt; color: var(--cuivre2); }
+.pbh .ico { display: flex; gap: 3mm; align-items: center; }
+.pbh .ico svg { height: 9mm; width: auto; }
+.pbh small { text-align: right; }
+.ghead { display: grid; grid-template-columns: 12mm repeat(3, 40mm) 5mm 40mm; gap: 2mm; font: 700 8.5pt var(--num); text-transform: uppercase; letter-spacing: .1em; color: var(--encre2); text-align: center; }
+.ghead .arrow { font-size: 14pt; color: var(--encre); letter-spacing: 0; }
+.grille { display: grid; grid-template-columns: 12mm repeat(3, 40mm) 5mm 40mm; grid-auto-rows: 47mm; gap: 2mm; }
+.grille .lab { writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font: 700 8.5pt var(--num); text-transform: uppercase; letter-spacing: .1em; color: var(--encre2); }
+.slot2 { border: 1.6px solid var(--encre); border-radius: 3mm; display: flex; align-items: flex-end; justify-content: center; font: 600 8pt var(--num); letter-spacing: .06em; text-transform: uppercase; color: var(--encre2); padding-bottom: 1.5mm; text-align: center; background: #fffdf7; }
+.slot2.locked { border-style: dashed; background: transparent; }
+.slot2.stock { background: var(--creme2); }
+.equip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2mm; margin-top: 1mm; }
+.equip div { border: 1.4px dashed var(--encre); border-radius: 2mm; padding: 1.5mm 2mm; font-size: 8pt; min-height: 20mm; background: #fffdf7; }
+.equip b { display: block; font: 700 9.5pt var(--num); letter-spacing: .04em; text-transform: uppercase; }
+
+/* cartes bière */
+.bieres { display: grid; grid-template-columns: repeat(4, 38mm); grid-auto-rows: 52mm; gap: 3mm; justify-content: center; }
+.biere { border: 1.6px solid var(--encre); border-radius: 3mm; display: flex; flex-direction: column; overflow: hidden; break-inside: avoid; background: var(--creme); }
+.biere .band { height: 24mm; border-bottom: 1.6px solid var(--encre); display: grid; place-items: center; }
+.biere .band svg { height: 20mm; width: auto; }
+.biere .bn { font: 700 13pt var(--num); padding: 1.5mm 2.5mm 0; line-height: 1.05; text-transform: uppercase; letter-spacing: .04em; }
+.biere .bu { font-size: 8.5pt; padding: 0 2.5mm; color: var(--encre2); }
+.biere .bp { margin-top: auto; padding: 0 2.5mm 2mm; font-size: 8pt; color: var(--encre2); }
+
+/* cartes client et objectif, comme à l'écran */
+.cards { display: grid; grid-template-columns: repeat(3, 63mm); grid-auto-rows: 88mm; gap: 3mm; justify-content: center; }
+.ccard { background: var(--creme); color: var(--encre); border: 2px solid var(--encre); border-radius: 4mm; overflow: hidden; display: flex; flex-direction: column; break-inside: avoid; }
+.ccard .bandeau { background: var(--kc); color: #fff; font: 700 9.5pt var(--num); letter-spacing: .14em; text-transform: uppercase; padding: 1.8mm 3mm; display: flex; justify-content: space-between; gap: 2mm; }
+.ccard .bandeau i { font-style: normal; letter-spacing: .02em; text-transform: none; font-weight: 600; }
+.ccard .art { background: var(--kf); margin: 2.5mm 2.5mm 0; border-radius: 3mm; display: grid; place-items: center; height: 26mm; }
+.ccard .art svg { height: 22mm; width: auto; }
+.ccard .nom { font: 700 14pt var(--num); text-align: center; padding: 2mm 2mm 0; line-height: 1.1; }
+.ccard .veut { display: flex; justify-content: center; align-items: center; gap: 1.5mm; font-size: 9.5pt; color: var(--encre2); padding: 1.5mm 2mm; flex-wrap: wrap; text-align: center; }
+.ccard .u { width: 4.5mm; height: 4.5mm; border-radius: 50%; border: 1.5px solid var(--encre); background: var(--sc); flex: none; }
+.ccard .txt { padding: 1mm 3mm; text-align: center; font-size: 10pt; line-height: 1.3; }
+.ccard .pied { display: flex; justify-content: space-between; align-items: center; padding: 1.5mm 3mm 2.5mm; margin-top: auto; font: 700 11pt var(--num); }
+.ccard .piece { background: var(--cuivre); border: 1.5px solid var(--encre); border-radius: 99mm; padding: .3mm 2.5mm; color: var(--encre); }
+.ccard .etoile { width: 9mm; height: 9mm; }
+.ccard .note { font-size: 7.8pt; color: var(--encre2); text-align: center; padding: 0 3mm 2mm; line-height: 1.25; }
 </style>
 </head>
 <body>
 
 <!-- ========== PAGE 1 : RÈGLES ========== -->
 <section class="page rules">
-  <h1>Brassins</h1>
-  <p><i>Prototype papier, deuxième version. 2 à 4 joueurs, 8 à 12 saisons. Valeurs issues de la simulation : à corriger en jouant.</i></p>
+  <h1>Brassins <small>Prototype à imprimer · deuxième version</small></h1>
+  <p class="intro">2 à 4 joueurs, 8 à 12 saisons, 45 minutes à une heure. Valeurs issues de la simulation : à corriger en jouant.</p>
   <div class="two">
     <div>
       <h2>Mise en place</h2>
       <ul>
         <li>Chacun prend un plateau Brasserie, <b>3 ouvriers</b>, <b>4 Malt, 2 Houblon, 5 Argent</b>. Les deux premiers fermenteurs sont ouverts.</li>
         <li>Chacun pioche <b>2 cartes Objectif, en garde 1</b> face cachée, remet l'autre sous la pile. Révélée au décompte.</li>
-        <li>Les 4 marqueurs de prix sur la case grisée de leur piste. Les marqueurs de réputation à 0.</li>
+        <li>Les 4 marqueurs de prix sur la case en surbrillance de leur piste. Les marqueurs de réputation à 0.</li>
         <li>Mélanger les clients (la Commande de la mairie à part) ; en retourner 5 sur la file. Deux dés de couleurs différentes : météo et événement.</li>
-        <li>Tirer au sort le premier joueur de la première saison. <b>Le dernier joueur de cette première saison commence avec 1 Réputation</b> (la plus vieille brasserie du village).</li>
+        <li>Tirer au sort le premier joueur de la première saison. <b>Le dernier joueur de cette première saison commence avec 1 Réputation</b>.</li>
       </ul>
       <h2>Une saison</h2>
-      <ol style="padding-left:5mm">
+      <ol>
         <li><b>Les dés.</b> Le premier joueur lance le dé météo (1 : mauvaise saison, champs et houblonnières −1 ; 6 : belle saison, +1 ; sinon normale) et le dé événement, lu dans la colonne de la saison sur le plateau. L'événement s'applique tout de suite. Les styles en demande sont fixes par saison, imprimés sur le plateau.</li>
         <li><b>Brassins mûrs.</b> Rien à faire : les cartes Bière arrivées en stock à la fin de la saison précédente sont disponibles.</li>
         <li><b>Pose des ouvriers.</b> Le premier joueur tourne d'un cran à chaque saison, puis vers la gauche. Chacun pose <b>un</b> ouvrier et fait l'action tout de suite. On continue jusqu'à ce que tous soient posés. <b>Brasser ne demande pas d'ouvrier</b> : à tout moment de son tour, recette + fermenteur libre = on brasse. On lance le <b>dé de brassage</b> : 1 = brassin raté, 1 unité en moins ; 6 = cuvée exceptionnelle, 1 unité en plus. On empile autant de cartes Bière du style sur une ligne libre de son plateau Brasserie, dans la colonne de la recette : <b>prête dans 1</b> (Blonde), <b>2</b> (IPA, Stout) ou <b>3</b> saisons (Garde). Première fois qu'on brasse un style : on le coche sur sa feuille de marque, <b>+1 Réputation</b>.</li>
-        <li><b>Fin de saison.</b> Les prix remontent d'un cran vers leur base. Le client le plus à gauche de la file est défaussé, on complète. Plus de 6 cartes en stock : le surplus est vendu au prix de la piste. Puis chacun <b>fait glisser ses brassins d'une colonne vers la droite</b> ; ce qui sort de la colonne « prête dans 1 » va au stock, la ligne est libre. Les ouvriers reviennent.</li>
+        <li><b>Fin de saison.</b> Les prix remontent d'un cran vers leur base. Le client le plus à gauche de la file est défaussé, on complète. Plus de 6 cartes en stock : le surplus est vendu au prix de la piste. Puis chacun <b>fait glisser ses brassins d'une colonne vers la droite</b> ; ce qui sort de « prête dans 1 » va au stock, la ligne est libre. Les ouvriers reviennent.</li>
       </ol>
       <h2>Fin de partie</h2>
       <p>Dès qu'un joueur atteint <b>30 de réputation</b>, on termine la saison (fin de saison comprise) et on compte ; sinon après l'hiver de l'an 3. Chacun révèle son objectif : <b>Réputation + objectif</b> (s'il est rempli) <b>+ 1 point par 8 Argent</b>. La bière restante ne vaut rien. Égalité : le plus riche, puis celui qui a le plus de bière.</p>
@@ -140,7 +149,7 @@ li { margin-bottom: .8mm; }
       <p>Un rond = une place d'ouvrier pour la saison. Les cases en pointillé accueillent tout le monde.</p>
       <ul>
         <li><b>Champs et houblonnières</b> : récolter selon la saison (chiffre de la case), modifié par la météo. <b>Deux places</b> : le second ouvrier récolte 1 de moins. Fermés en hiver.</li>
-                <li><b>Marché aux matières</b> : acheter jusqu'à 3 matières (Malt 2, Houblon 2).</li>
+        <li><b>Marché aux matières</b> : acheter jusqu'à 3 matières (Malt 2, Houblon 2). Une place.</li>
         <li><b>Tournée</b> (pointillé) : livrer 1 client de la file (2 avec le Camion) : prendre la carte, donner la bière, encaisser l'Argent et la Réputation, compléter la file.</li>
         <li><b>Marché aux bières</b> (pointillé) : vendre autant d'unités qu'on veut, au prix de la piste ; chaque unité vendue baisse le prix de 1 pour tout le monde. Style en demande : +2.</li>
         <li><b>Chantier</b> (pointillé) : acheter 1 équipement.</li>
@@ -154,156 +163,172 @@ li { margin-bottom: .8mm; }
     </div>
   </div>
   <h2>Recettes</h2>
-  <table>
-    <tr><th>Style</th><th>Malt</th><th>Houblon</th><th>Fermentation</th><th>Prix de base</th><th>Réputation chez un client</th><th>Condition</th></tr>
-    <tr><td><b>Blonde</b> (jaune)</td><td>2</td><td>1</td><td>1 saison</td><td>3</td><td>1</td><td>–</td></tr>
-    <tr><td><b>IPA</b> (orange)</td><td>2</td><td>2</td><td>2 saisons</td><td>5</td><td>2</td><td>–</td></tr>
-    <tr><td><b>Stout</b> (noir)</td><td>3</td><td>1</td><td>2 saisons</td><td>6</td><td>3</td><td>Touraille</td></tr>
-    <tr><td><b>Bière de garde</b> (brun)</td><td>4</td><td>1</td><td>3 saisons</td><td>7</td><td>4</td><td>–</td></tr>
-  </table>
+  <table id="recettes"></table>
   <p><small>Un brassin donne 2 unités (3 avec la Grande cuve). Matériel : cubes Malt / Houblon, pièces, 60 cartes Bière (15 par style, une carte = une unité), 44 cartes Client + la Mairie, 12 cartes Objectif, 2 dés pour la saison et 1 dé de brassage, 3 pions par joueur, 4 marqueurs de prix, 1 marqueur de réputation par joueur, un plateau Brasserie par joueur.</small></p>
 </section>
 
 <!-- ========== PAGE 2 : PLATEAU ========== -->
 <section class="page">
-  <h1>Plateau</h1>
-  <div class="board">
-    <div class="spot"><h4>Champ d'orge</h4><small>Malt · 2 places, le 2<sup>e</sup> récolte 1 de moins</small><div class="yield"><div>Pr<b>3</b></div><div>Été<b>4</b></div><div>Aut<b>4</b></div><div>Hiv<b>–</b></div></div><div class="slot"></div><div class="slot two"></div></div>
-    <div class="spot"><h4>Champ d'orge</h4><small>Malt · 2 places, le 2<sup>e</sup> récolte 1 de moins</small><div class="yield"><div>Pr<b>3</b></div><div>Été<b>4</b></div><div>Aut<b>4</b></div><div>Hiv<b>–</b></div></div><div class="slot"></div><div class="slot two"></div></div>
-    <div class="spot"><h4>Houblonnière</h4><small>Houblon · 2 places, le 2<sup>e</sup> récolte 1 de moins</small><div class="yield"><div>Pr<b>2</b></div><div>Été<b>2</b></div><div>Aut<b>4</b></div><div>Hiv<b>–</b></div></div><div class="slot"></div><div class="slot two"></div></div>
-    <div class="spot"><h4>Houblonnière</h4><small>Houblon · 2 places, le 2<sup>e</sup> récolte 1 de moins</small><div class="yield"><div>Pr<b>2</b></div><div>Été<b>2</b></div><div>Aut<b>4</b></div><div>Hiv<b>–</b></div></div><div class="slot"></div><div class="slot two"></div></div>
-    <div class="spot"><h4>Marché aux matières</h4><small>Jusqu'à 3 matières<br>Malt 2 · Houblon 2</small><div class="slot"></div></div>
-    <div class="spot multi"><h4>Tournée</h4><small>Livrer 1 client de la file (2 avec le Camion). Ouvert à tous.</small><div class="slot four"></div></div>
-    <div class="spot multi"><h4>Marché aux bières</h4><small>Vendre au prix de la piste, chaque unité baisse le prix de 1. En demande : +2.</small></div>
-    <div class="spot multi"><h4>Chantier</h4><small>Acheter 1 équipement : Grande cuve 6 · Fermenteur 4 · Touraille 4 · Camion 6 · Salle de dégustation 7</small></div>
-    <div class="spot" style="border-style:dotted"><h4>Premier joueur</h4><small>Tourne d'un cran à chaque saison. Poser le marqueur ici.</small></div>
-    <div class="spot" style="border-style:dotted"><h4>Dés de saison</h4><small>Lancés par le premier joueur : météo, puis événement (table ci-dessous).</small></div>
-  </div>
-  <h3 style="margin-top:4mm">File des clients <small>(défausser le plus à gauche à chaque fin de saison)</small></h3>
-  <div class="file"><div class="deck">pioche</div><div>1 · le plus ancien</div><div>2</div><div>3</div><div>4</div><div>5 · le plus récent</div></div>
-  <div class="tracks">
-    <div class="track"><h4>Prix · Blonde</h4><div class="steps"><div>1</div><div>2</div><div class="base">3</div><div>4</div><div>5</div><div>6</div><div>7</div></div></div>
-    <div class="track"><h4>Prix · IPA</h4><div class="steps"><div>1</div><div>2</div><div>3</div><div>4</div><div class="base">5</div><div>6</div><div>7</div></div></div>
-    <div class="track"><h4>Prix · Stout</h4><div class="steps"><div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div class="base">6</div><div>7</div></div></div>
-    <div class="track"><h4>Prix · Bière de garde</h4><div class="steps"><div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div class="base">7</div></div></div>
-  </div>
-  <h3 style="margin-top:3mm">Saisons</h3>
-  <div class="seasons">
-    <div><b>Pr</b>an 1</div><div><b>Été</b>an 1</div><div><b>Aut</b>an 1</div><div><b>Hiv</b>an 1</div>
-    <div><b>Pr</b>an 2</div><div><b>Été</b>an 2</div><div><b>Aut</b>an 2</div><div><b>Hiv</b>an 2</div>
-    <div><b>Pr</b>an 3</div><div><b>Été</b>an 3</div><div><b>Aut</b>an 3</div><div><b>Hiv</b>an 3</div>
-  </div>
-  <h3 style="margin-top:3mm">Dé événement <small>· dé météo : 1 = champs et houblonnières −1, 6 = +1</small></h3>
-  <table style="font-size:8pt">
-    <tr><th style="width:8mm">Dé</th><th>Printemps <small>· en demande : Blonde, IPA</small></th><th>Été <small>· Blonde, IPA</small></th><th>Automne <small>· Stout, IPA</small></th><th>Hiver <small>· Stout, Garde</small></th></tr>
-    <tr><td>1</td><td><b>Coopérative</b> : matières à 1 Argent</td><td><b>Touristes</b> : 2 clients de plus</td><td><b>Foire aux vins</b> : les caves paient +2 par unité</td><td><b>Gel</b> : matières à 3 Argent</td></tr>
-    <tr><td>2</td><td><b>Belle levée</b> : champs d'orge +1</td><td><b>Terrasses</b> : les bars paient +1 par unité</td><td><b>Grand marché</b> : les ventes ne font pas baisser les prix</td><td><b>Bilan de l'année</b> : +1 Réputation par style en stock</td></tr>
-    <tr><td>3</td><td><b>Mildiou</b> : houblonnières fermées</td><td><b>Canicule</b> : −1 unité sur un brassin en cours</td><td><b>Belle récolte</b> : champs et houblonnières +1</td><td><b>Grève des transporteurs</b> : pas de Tournée</td></tr>
-    <tr><td>4</td><td><b>Contamination</b> : −1 unité sur un brassin en cours</td><td><b>Fête de la bière</b> : tous les prix +1</td><td><b>Commande de la mairie</b> : client spécial sur la file</td><td><b>Douanes</b> : 1 Argent par 3 unités en stock</td></tr>
-    <tr><td>5</td><td><b>Critique gastronomique</b> : +3 Réputation au premier qui livre une Cave</td><td><b>Pénurie</b> : Marché aux matières fermé</td><td><b>Concours régional</b> : +5 / +2</td><td><b>Marché de Noël</b> : 2 clients de plus</td></tr>
-    <tr><td>6</td><td><b>Brasseur invité</b> : le Stout se brasse sans Touraille</td><td><b>Inspection</b> : −1 unité sur chaque brassin en cours</td><td><b>Salon des brasseurs</b> : concours à +8 / +3</td><td><b>Fête au village</b> : 2 clients de plus, tous les prix +1</td></tr>
-  </table>
-  <h3 style="margin-top:3mm">Piste de réputation <small>· un marqueur par joueur, à 0 (1 pour le dernier de la première saison)</small></h3>
-  <div class="repstrip"></div>
+  <h1>Plateau <small>À imprimer en A3 si possible</small></h1>
+  <div class="plateau" id="plateau"></div>
+  <h3>Dé événement <small>· dé météo : 1 = champs et houblonnières −1, 6 = +1</small></h3>
+  <table class="evts" id="evts"></table>
 </section>
 
-<!-- ========== FEUILLES DE MARQUE (carnet, ou à imprimer) ========== -->
+<!-- ========== FEUILLES DE MARQUE ========== -->
 <section class="page">
-  <h1>Feuilles de marque <small style="font-size:10pt;font-weight:400">· une par joueur et par partie, à découper ou en carnet</small></h1>
+  <h1>Feuilles de marque <small>une par joueur et par partie</small></h1>
   <div class="fms" id="feuilles"></div>
 </section>
 
-<!-- ========== PAGES 3-4 : PLATEAUX BRASSERIE ========== -->
 <div id="pboards"></div>
 <div id="bieres"></div>
-
-<!-- ========== CARTES CLIENT ========== -->
 <div id="clients"></div>
 
+<script type="module">
+import * as D from '../../client/dessins.js';
+import { STYLES, RECETTES, CASES, DEMANDE, SAISONS, NB_SAISONS, FIN_REP, EVENEMENTS, EVT, CLIENTS, CLIENT_MAIRIE, OBJECTIFS, AMELIORATIONS } from '../../moteur/index.js';
 
-
-<script>
-const STYLE = { blonde: 'Blonde', ipa: 'IPA', stout: 'Stout', garde: 'Bière de garde' };
-const PRIX = { blonde: 3, ipa: 5, stout: 6, garde: 7 };
+const SN = { blonde: 'Blonde', ipa: 'IPA', stout: 'Stout', garde: 'Bière de garde' };
 const SAI = ['Printemps', 'Été', 'Automne', 'Hiver'];
-const clients = [];
-['Le Comptoir', 'Chez Lucette', 'Le Relais', 'Bar des Sports', 'La Terrasse', 'Le Tabac-Presse', 'Café de la Gare', 'Le Petit Bal', 'Le Zinc', 'La Belle Époque'].forEach((t) => clients.push({ kind: 'bar', title: t, style: null, n: 1, bonus: 0, rep: 1 }));
-const barsStyle = { blonde: ['La Guinguette', 'Le Marché couvert', 'Buvette du stade'], ipa: ['Le Rock Bar', 'La Cave à bières', 'Le Skate Park'], stout: ['Le Pub irlandais', 'La Cheminée', 'Le Club de rugby'], garde: ['L’Auberge', 'La Table d’hôtes', 'Le Relais de chasse'] };
-for (const [st, names] of Object.entries(barsStyle)) names.forEach((t) => clients.push({ kind: 'bar', title: t, style: st, n: 1, bonus: 1, rep: 2 }));
-['Cave du Bourg', 'Cave Saint-Front', 'Épicerie fine', 'Cave de la Halle', 'Cave du Château', 'La Vinothèque', 'Le Caviste', 'Cave des Remparts'].forEach((t) => clients.push({ kind: 'cave', title: t, style: null, choix: ['stout', 'garde'], n: 1, bonus: 3, rep: 3 }));
-const fest = { 0: [['Festival de printemps', 'blonde'], ['Foire de Pâques', 'blonde'], ['Foire de mai', 'blonde'], ['Fête des plantes', 'ipa']], 1: [['Fête de la bière', 'blonde'], ['Feux de la Saint-Jean', 'blonde'], ['Fête des moissons', 'ipa'], ['Bal du 14 juillet', 'ipa'], ['Festival rock', 'ipa']], 2: [['Foire d’automne', 'stout'], ['Fête des vendanges', 'ipa'], ['Salon des brasseurs', 'garde']], 3: [['Marché de Noël', 'garde'], ['Saint-Vincent', 'stout']] };
-for (const [s, l] of Object.entries(fest)) l.forEach(([t, st]) => clients.push({ kind: 'fest', title: t, style: st, n: 2, bonus: 1, rep: 2, saison: +s }));
-clients.push({ kind: 'mairie', title: 'Commande de la mairie', style: null, n: 3, bonus: 2, rep: 4 });
-const KIND = { bar: 'Bar', cave: 'Cave', fest: 'Festival', mairie: 'Mairie · événement' };
-function clientCard(c) {
-  const prix = c.style ? `${c.n} × ${PRIX[c.style] + c.bonus}` : c.choix ? `${c.n} × ${PRIX[c.choix[0]] + c.bonus} ou ${PRIX[c.choix[1]] + c.bonus}` : `${c.n} × base${c.bonus ? ' +' + c.bonus : ''}`;
-  const veut = c.style ? STYLE[c.style] : c.choix ? c.choix.map((st) => STYLE[st]).join(' ou ') : c.kind === 'mairie' ? 'un style tiré au dé' : 'n’importe quel style';
-  return `<div class="card ${c.kind}"><div class="kind">${KIND[c.kind]}</div>${c.kind === 'fest' ? `<div class="tag">${SAI[c.saison]}</div>` : ''}
-    <div class="title">${c.title}</div>
-    <div class="style">${c.n} unité${c.n > 1 ? 's' : ''} de <b>${veut}</b></div>
-    <div class="pay"><div><b>${prix}</b><span>Argent</span></div><div><b>+${c.rep}</b><span>Réputation</span></div></div>
-    <div class="note">${c.kind === 'fest' ? `Livré au ${SAI[c.saison].toLowerCase()} : +2 Réputation.` : c.kind === 'mairie' ? 'Dé : 1-2 Blonde, 3 IPA, 4 Stout, 5-6 Garde. Hors pioche.' : ''} Style en demande : +1 Réputation.</div></div>`;
+const RN = { malt: 'Malt', houb: 'Houblon' };
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const $ = (s) => document.querySelector(s);
+
+/* ---------- recettes ---------- */
+$('#recettes').innerHTML = `<tr><th>Style</th><th>Malt</th><th>Houblon</th><th>Fermentation</th><th>Prix de base</th><th>Réputation chez un client</th><th>Condition</th></tr>` +
+  STYLES.map((st) => { const r = RECETTES[st]; return `<tr><td><span class="pastille" style="background:${D.STYLE_COL[st]}"></span><b>${SN[st]}</b></td><td>${r.malt}</td><td>${r.houb}</td><td>${r.ferm} saison${r.ferm > 1 ? 's' : ''}</td><td>${r.prix}</td><td>${r.rep}</td><td>${r.exige ? AMELIORATIONS[r.exige].nom : '–'}</td></tr>`; }).join('');
+
+/* ---------- plateau : même dessin qu'à l'écran, en 4 colonnes, piste de réputation autour ---------- */
+function plateau() {
+  const id = 'pl', TW = 258, TH = 232, GAP = 14, M = 18, cols = 4;
+  const W = M * 2 + cols * TW + (cols - 1) * GAP, cases = Object.keys(CASES), rows = Math.ceil(cases.length / cols);
+  const y0 = M + 78, yp = y0 + rows * (TH + GAP) + 4, yf = yp + 26 + 2 * 40 + 14;
+  const H = yf + 26 + 170 + M;
+  const RM = 40, WT = W + 2 * RM, HT = H + 2 * RM;
+  let o = `<svg viewBox="0 0 ${WT} ${HT}" xmlns="http://www.w3.org/2000/svg">${D.defs(id)}`;
+  o += `<rect x="4" y="4" width="${WT - 8}" height="${HT - 8}" rx="24" fill="${D.C.creme2}" stroke="${D.C.encre}" stroke-width="2"/>`;
+  // piste de réputation 0 à 50 sur le pourtour
+  { const t = RM / 2, w = WT - 2 * t, h = HT - 2 * t, L = 2 * (w + h), N = 51, c = Math.min(26, L / N - 3);
+    const pos = (n) => { let d = (n / N) * L; if (d < w) return [t + d, t]; d -= w; if (d < h) return [t + w, t + d]; d -= h; if (d < w) return [t + w - d, t + h]; d -= w; return [t, t + h - d]; };
+    for (let n = 0; n < N; n++) { const [x, y] = pos(n), cinq = n % 5 === 0 || n === FIN_REP;
+      o += `<rect x="${x - c / 2}" y="${y - c / 2}" width="${c}" height="${c}" rx="5" fill="${n === FIN_REP ? D.C.cuivre : cinq ? '#f9edd2' : D.C.creme}" stroke="${D.C.encre}" stroke-width="${cinq ? 1.8 : 1}"/>`;
+      o += `<text x="${x}" y="${y + 4}" text-anchor="middle" font-family="Barlow Condensed" font-size="${cinq ? 12 : 10}" font-weight="700" fill="${D.C.encre}">${n}</text>`; } }
+  o += `<g transform="translate(${RM - 4},${RM - 4})"><rect x="4" y="4" width="${W - 8}" height="${H - 8}" rx="20" fill="url(#${id}-pap)"/><rect x="12" y="12" width="${W - 24}" height="${H - 24}" rx="15" fill="none" stroke="${D.C.encre}" stroke-width="2" opacity=".25"/>`;
+  const txt = (x, y, s, size = 12) => `<text x="${x}" y="${y}" font-family="Barlow Condensed" font-size="${size}" font-weight="700" fill="${D.C.encre2}" letter-spacing="2">${s}</text>`;
+  // calendrier
+  const step = (W - 2 * M - 28) / 12;
+  o += txt(M + 6, M + 12, `CALENDRIER · FIN À ${FIN_REP} RÉPUTATION (CASE CUIVRE) OU APRÈS L'AN 3 · UN MARQUEUR DE SAISON À AVANCER`);
+  for (let t = 0; t < NB_SAISONS; t++) {
+    const k = t % 4, an = Math.floor(t / 4), x = M + 18 + t * step + an * 14, y = M + 40, r = Math.min(18, step / 2 - 3);
+    o += `<circle cx="${x}" cy="${y}" r="${r}" fill="${D.SAISON_COL[k]}" stroke="${D.C.encre}" stroke-width="1.5"/>${D.iconeSaison(k, x, y)}`;
+    o += `<text x="${x}" y="${y + r + 12}" text-anchor="middle" font-family="Barlow Condensed" font-size="9" font-weight="600" fill="${D.C.encre2}">${k === 0 ? `AN ${an + 1} · ` : ''}${DEMANDE[SAISONS[k]].map((st) => SN[st].replace('Bière de ', '')).join(' + ')}</text>`;
+  }
+  // cases
+  cases.forEach((c, k) => {
+    const d = CASES[c], x = M + (k % cols) * (TW + GAP), y = y0 + Math.floor(k / cols) * (TH + GAP);
+    o += `<g transform="translate(${x},${y})"><clipPath id="${id}-c${k}"><rect width="${TW}" height="128" rx="14"/></clipPath><rect width="${TW}" height="${TH}" rx="14" fill="${D.C.creme2}"/>`;
+    o += `<g clip-path="url(#${id}-c${k})">${D.artCase(c, TW)}</g><path d="M0 128 H${TW}" stroke="${D.C.encre}" stroke-width="2"/>`;
+    o += `<text x="14" y="154" font-family="Barlow Condensed" font-size="19" font-weight="700" fill="${D.C.encre}" letter-spacing="1">${esc(d.nom.toUpperCase())}</text>`;
+    const sous = { marcheMat: '3 matières max · 2 € chacune', tournee: 'Livrer 1 client · 2 avec le Camion', marcheBieres: 'Prix de la piste · −1 par unité vendue', chantier: 'Acheter 1 équipement' }[c];
+    if (d.recolte) {
+      o += `<text x="14" y="175" font-family="Barlow" font-size="14" font-weight="500" fill="${D.C.encre2}">${RN[d.res]} · le 2ᵉ ouvrier récolte 1 de moins</text>`;
+      o += d.recolte.map((n, j) => `<g transform="translate(${150 + j * 26},206)"><circle r="11" fill="${D.SAISON_COL[j]}" stroke="${D.C.encre}" stroke-width="1.2"/><text y="4.5" text-anchor="middle" font-family="Barlow Condensed" font-size="13" font-weight="700" fill="${D.C.encre}">${n || '–'}</text></g>`).join('');
+    } else o += `<text x="14" y="175" font-family="Barlow" font-size="14" font-weight="500" fill="${D.C.encre2}">${sous}</text>`;
+    const places = d.recolte ? ['1', '−1'] : c === 'marcheMat' ? ['1'] : ['m', 'm', 'm'];
+    const pas = Math.min(52, (d.recolte ? 120 : TW - 40) / places.length);
+    places.forEach((pl, j) => { const cx = 30 + j * pas, cy = 206;
+      o += `<circle cx="${cx}" cy="${cy}" r="19" fill="${D.C.creme}" stroke="${D.C.encre}" stroke-width="1.8" ${pl === 'm' ? 'stroke-dasharray="4 3"' : ''}/>`;
+      if (pl === '−1') o += `<text x="${cx}" y="${cy + 5}" text-anchor="middle" font-family="Barlow Condensed" font-size="13" font-weight="700" fill="${D.C.encre2}">−1</text>`; });
+    o += `<rect width="${TW}" height="${TH}" rx="14" fill="none" stroke="${D.C.encre}" stroke-width="2"/></g>`;
+  });
+  // pistes de prix
+  o += txt(M + 6, yp + 14, 'PRIX AU MARCHÉ AUX BIÈRES · STYLE EN DEMANDE : +2 AU MARCHÉ, +1 RÉPUTATION CHEZ UN CLIENT');
+  STYLES.forEach((st, r) => {
+    const col2 = Math.floor(r / 2), row = r % 2, x0 = M + 6 + col2 * ((W - 2 * M) / 2), y = yp + 26 + row * 40, base = RECETTES[st].prix;
+    o += `<rect x="${x0}" y="${y}" width="96" height="30" rx="15" fill="${D.STYLE_COL[st]}" stroke="${D.C.encre}" stroke-width="1.5"/><text x="${x0 + 48}" y="${y + 21}" text-anchor="middle" font-family="Barlow Condensed" font-size="14" font-weight="700" fill="${st === 'stout' ? '#f6eadb' : D.C.encre}" letter-spacing="1">${SN[st].toUpperCase().replace('BIÈRE DE ', '')}</text>`;
+    for (let n = 1; n <= 7; n++) { const cx = x0 + 106 + (n - 1) * 50;
+      o += `<rect x="${cx}" y="${y}" width="44" height="30" rx="7" fill="${n === base ? '#f9edd2' : D.C.creme2}" stroke="${D.C.encre}" stroke-width="${n === base ? 2.4 : 1.2}"/><text x="${cx + 22}" y="${y + 20}" text-anchor="middle" font-family="Barlow Condensed" font-size="14" font-weight="700" fill="${D.C.encre2}">${n}</text>`; }
+    o += `<text x="${x0 + 106 + 7 * 50 + 6}" y="${y + 22}" font-family="Barlow Condensed" font-size="13" font-weight="700" fill="${D.C.encre}">base ${base}</text>`;
+  });
+  // file des clients
+  o += txt(M + 6, yf + 14, 'LA FILE DES CLIENTS · LE PLUS ANCIEN À GAUCHE PART À CHAQUE FIN DE SAISON · ON COMPLÈTE À 5');
+  const sw = (W - 2 * M - 5 * GAP) / 6;
+  for (let k = 0; k < 6; k++) { const x = M + k * (sw + GAP), y = yf + 26;
+    o += `<rect x="${x}" y="${y}" width="${sw}" height="170" rx="12" fill="${k === 5 ? D.C.cuivre2 : D.C.creme}" stroke="${D.C.encre}" stroke-width="1.6" ${k < 5 ? 'stroke-dasharray="6 4"' : ''}/>`;
+    o += `<text x="${x + sw / 2}" y="${y + 92}" text-anchor="middle" font-family="Barlow Condensed" font-size="15" font-weight="700" fill="${k === 5 ? D.C.creme : D.C.encre2}" letter-spacing="2">${k === 5 ? 'PIOCHE' : k === 0 ? 'LE PLUS ANCIEN' : k === 4 ? 'LE PLUS RÉCENT' : k + 1}</text>`; }
+  // dés de saison
+  o += `<g transform="translate(${W - 150},${M + 4})">${D.de(6, '#f6eadb', D.C.encre, 40, -8)}</g><g transform="translate(${W - 96},${M + 4})">${D.de(3, D.C.brique, '#f6eadb', 40, 6)}</g>`;
+  o += txt(W - 150, M + 64, 'MÉTÉO · ÉVÉNEMENT', 10);
+  return o + '</g></svg>';
 }
-// Cartes Objectif : 12, mêmes pages que les clients
-const OBJ = [['Festivalier', 'Livrer 2 festivals.', 4], ['Fournisseur des caves', 'Livrer 2 caves.', 4], ['Bistrotier', 'Livrer 4 bars.', 4], ['Gamme complète', 'Brasser les 4 styles.', 3], ['Grande brasserie', 'Finir avec 4 fermenteurs et la Grande cuve.', 3], ['Médaillé', 'Remporter un concours ou un salon.', 4], ['Grossiste', 'Vendre 10 unités au Marché aux bières.', 4], ['Fournisseur officiel', 'Livrer la Commande de la mairie.', 5], ['Bas de laine', 'Finir avec 50 Argent ou plus.', 4], ['Belle installation', 'Avoir la Grande cuve, la Salle de dégustation et le Camion.', 4], ['Maître de garde', 'Livrer 4 unités de Bière de garde à des clients.', 4], ['Carte variée', 'Livrer des clients avec 3 styles différents.', 4]];
-const objCard = ([nom, txt, pts]) => `<div class="card obj"><div class="kind">Objectif secret</div><div class="title">${nom}</div><div class="style">${txt}</div><div class="pay"><div><b>+${pts}</b><span>points au décompte</span></div></div><div class="note">Gardé face cachée, révélé à la fin. On garde ses cartes Client livrées devant soi pour le prouver.</div></div>`;
-const toutes = [...clients.map(clientCard), ...OBJ.map(objCard)];
-let html = '';
-for (let i = 0; i < toutes.length; i += 9) html += `<section class="page"><div class="cards">${toutes.slice(i, i + 9).join('')}</div></section>`;
-document.getElementById('clients').innerHTML = html;
+$('#plateau').innerHTML = plateau();
 
-const saisons = [
-  [0, 'Printemps doux', 'Météo ordinaire', ['blonde', 'ipa'], null], [0, 'Printemps pluvieux', 'Champs d’orge +1', ['blonde', 'garde'], null], [0, 'Printemps froid', 'Houblonnières −1', ['stout', 'ipa'], 'Contamination : chacun retire 1 unité d’un brassin en cours.'],
-  [1, 'Bel été', 'Météo ordinaire', ['blonde', 'ipa'], null], [1, 'Canicule', 'Champs d’orge −1', ['blonde', 'stout'], 'Canicule : chacun retire 1 unité d’un brassin en cours.'], [1, 'Été orageux', 'Houblonnières −1', ['ipa', 'garde'], null],
-  [2, 'Belle récolte', 'Houblonnières +1', ['ipa', 'stout'], null], [2, 'Automne humide', 'Météo ordinaire', ['stout', 'garde'], 'Concours régional : chacun présente 1 unité. Meilleur +5, deuxième +2.'], [2, 'Automne sec', 'Champs d’orge −1', ['garde', 'ipa'], null],
-  [3, 'Hiver tranquille', 'Météo ordinaire', ['stout', 'garde'], null], [3, 'Hiver rude', 'Météo ordinaire', ['garde', 'blonde'], 'Contrôle des douanes : 1 Argent par tranche de 3 unités en stock.'], [3, 'Hiver de fête', 'Météo ordinaire', ['blonde', 'stout'], 'Fête au village : 2 clients de plus dans la file.'],
-];
-function seasonCard([s, nom, meteo, dem, evt]) {
-  return `<div class="card season"><div class="kind">Saison · ${SAI[s]}</div><div class="title">${nom}</div><div class="style">${meteo}</div>
-    <div class="dem"><small>En demande</small><br>${dem.map((d) => `<span>${STYLE[d]}</span>`).join('')}</div>
-    <div class="note" style="margin-top:auto">${evt ? `<b>Événement.</b> ${evt}` : 'Pas d’événement.'}</div></div>`;
-}
+/* ---------- table des événements ---------- */
+$('#evts').innerHTML = `<tr><th></th>${SAISONS.map((n, k) => `<th><span class="pastille" style="background:${D.SAISON_COL[k]}"></span>${SAI[k]} <small>· en demande : ${DEMANDE[n].map((st) => SN[st]).join(', ')}</small></th>`).join('')}</tr>` +
+  [1, 2, 3, 4, 5, 6].map((f) => `<tr><td>${f}</td>${SAISONS.map((n) => { const e = EVT[EVENEMENTS[n][f]]; return `<td><b>${esc(e.nom)}</b> : ${esc(e.txt.replace(/ cette saison\.$/, '.').replace(/\.$/, ''))}</td>`; }).join('')}</tr>`).join('');
 
-
-
-// Piste de réputation : 0 à 50
-document.querySelector('.repstrip').innerHTML = Array.from({ length: 51 }, (_, n) => `<div class="${n % 5 === 0 ? 'cinq' : ''}">${n}</div>`).join('');
-// Feuilles de marque : 4 par page, une par joueur et par partie
+/* ---------- feuilles de marque ---------- */
 const feuille = () => `<div class="fm">
   <div class="fmh"><b>Brassins</b><span>Feuille de marque</span></div>
   <div class="fml">Brasserie <i></i></div><div class="fml">Joueur <i></i> &nbsp; Date <i class="court"></i></div>
-  <h4>Styles brassés <small>· cocher au premier brassin du style : +1 Réputation sur la piste</small></h4>
-  <div class="fmstyles">${['Blonde', 'IPA', 'Stout', 'Bière de garde'].map((st) => `<div><span class="box"></span>${st}</div>`).join('')}</div>
-  <h4>Décompte final <small>· après l'hiver de l'an 3</small></h4>
-  <table class="fmt">
-    <tr><td>Réputation <small>(lue sur la piste)</small></td><td class="case"></td></tr>
-    <tr><td>Objectif <span class="trou" style="width:26mm"></span> <small>(si rempli)</small></td><td class="case"></td></tr>
-    <tr><td>Argent <span class="trou"></span> ÷ 8 <small>(arrondi en dessous)</small></td><td class="case"></td></tr>
-    <tr class="tot"><td>Total</td><td class="case"></td></tr>
-  </table>
-  <small>Égalité : le plus riche l'emporte, puis celui qui a le plus de bière. La bière restante ne rapporte rien.</small></div>`;
-document.getElementById('feuilles').innerHTML = feuille().repeat(4);
-// Plateaux Brasserie : un par page. Lignes = fermenteurs, colonnes = saisons avant d'être prête ; les cartes Bière glissent d'une colonne à chaque fin de saison.
+  <div class="fmt2">Styles brassés <small>· cocher au premier brassin du style : +1 Réputation sur la piste</small></div>
+  <div class="fmstyles">${STYLES.map((st) => `<span><i class="box"></i><span class="pastille" style="background:${D.STYLE_COL[st]}"></span>${SN[st]}</span>`).join('')}</div>
+  <div class="fmt2">Décompte final</div>
+  <div class="fmrow"><span>Réputation <small>lue sur la piste</small></span><b></b></div>
+  <div class="fmrow"><span>Objectif <span class="trou" style="width:30mm"></span> <small>si rempli</small></span><b></b></div>
+  <div class="fmrow"><span>Argent <span class="trou"></span> ÷ 8 <small>arrondi en dessous</small></span><b></b></div>
+  <div class="fmrow tot"><span>Total</span><b></b></div>
+  <p style="margin-top:3mm"><small>Égalité : le plus riche l'emporte, puis celui qui a le plus de bière. La bière restante ne rapporte rien.</small></p></div>`;
+$('#feuilles').innerHTML = feuille().repeat(4);
+
+/* ---------- plateaux brasserie ---------- */
 const pb = (n) => `<section class="page"><div class="pboard">
-  <div class="pbh"><b>Brasserie ${n}</b><small>Cuve : <b>2 cartes</b> par brassin (3 avec la Grande cuve) · dé de brassage : 1 = une de moins, 6 = une de plus</small></div>
+  <div class="pbh"><b>Brasserie ${n}</b><span class="ico">${D.sacSvg()}${D.coneSvg()}${D.piecesSvg()}</span><small>Cuve : <b>2 cartes</b> par brassin (3 avec la Grande cuve)<br>Dé de brassage : 1 = une de moins, 6 = une de plus</small></div>
   <div class="ghead"><span></span><span>Prête dans 3</span><span>Prête dans 2</span><span>Prête dans 1</span><span class="arrow">→</span><span>Stock · 6 max</span></div>
-  <div class="grille">${[1, 2, 3, 4].map((f) => `<div class="lab">Fermenteur ${f}</div>${['Garde', 'IPA · Stout', 'Blonde'].map((t) => `<div class="slot2 ${f > 2 ? 'locked' : ''}">${f > 2 ? 'à ouvrir au Chantier · 4' : t}</div>`).join('')}<span></span><div class="slot2 stock">${['Blonde', 'IPA', 'Stout', 'Bière de garde'][f - 1]}</div>`).join('')}</div>
+  <div class="grille">${[1, 2, 3, 4].map((f) => `<div class="lab">Fermenteur ${f}</div>${['Garde', 'IPA · Stout', 'Blonde'].map((t) => `<div class="slot2 ${f > 2 ? 'locked' : ''}">${f > 2 ? 'à ouvrir au Chantier · 4' : t}</div>`).join('')}<span></span><div class="slot2 stock">${SN[STYLES[f - 1]]}</div>`).join('')}</div>
   <small>Fin de saison : vendre d'abord le surplus au-delà de 6 cartes en stock, puis faire glisser chaque brassin d'une colonne vers la droite. Ce qui sort de « prête dans 1 » va au stock. Contamination, canicule, inspection : retirer une carte d'un brassin.</small>
-  <div class="equip">
-    <div><b>Grande cuve · 6</b>3 cartes par brassin</div>
-    <div><b>Fermenteur · 4</b>ouvre le 3ᵉ, puis le 4ᵉ</div>
-    <div><b>Touraille · 4</b>permet le Stout</div>
-    <div><b>Camion · 6</b>la Tournée livre 2 clients</div>
-    <div><b>Salle de dégustation · 7</b>1 carte par saison au prix de base +1, sans ouvrier ; chaque hiver +1 Réputation</div>
-  </div>
+  <div class="equip">${Object.entries(AMELIORATIONS).map(([u, d]) => `<div><b>${esc(d.nom)} · ${d.cout}</b>${esc(d.txt)}</div>`).join('')}</div>
   <small>Plateau réutilisable : on n'y écrit rien. Les styles brassés et le décompte se notent sur la feuille de marque.</small></div></section>`;
-document.getElementById('pboards').innerHTML = ['A', 'B', 'C', 'D'].map(pb).join('');
-// Cartes Bière : une carte = une unité, 15 par style, 20 par page
-const BIERES = [['Blonde', '#e8c15a', 3, 1], ['IPA', '#d98b3a', 5, 2], ['Stout', '#2b1b14', 6, 3], ['Bière de garde', '#8a4b2a', 7, 4]];
-const cartesBiere = BIERES.flatMap(([nom, col, prix, rep]) => Array.from({ length: 15 }, () => `<div class="biere"><div class="band" style="background:${col}"></div><div class="bn">${nom}</div><div class="bu">1 unité</div><div class="bp">Prix de base ${prix} · ${rep} Réputation chez un client</div></div>`));
+$('#pboards').innerHTML = ['A', 'B', 'C', 'D'].map(pb).join('');
+
+/* ---------- cartes bière ---------- */
+const FUT_COL = { blonde: '#c9952b', ipa: '#b5611c', stout: '#6b4a3a', garde: '#6e3218' };
+const cartesBiere = STYLES.flatMap((st) => Array.from({ length: 15 }, () => `<div class="biere"><div class="band" style="background:${D.STYLE_COL[st]}">${D.futSvg(FUT_COL[st])}</div><div class="bn">${SN[st]}</div><div class="bu">1 unité</div><div class="bp">Prix de base ${RECETTES[st].prix} · ${RECETTES[st].rep} Réputation chez un client</div></div>`));
 let hb = '';
 for (let i = 0; i < cartesBiere.length; i += 20) hb += `<section class="page"><div class="bieres">${cartesBiere.slice(i, i + 20).join('')}</div></section>`;
-document.getElementById('bieres').innerHTML = hb;
+$('#bieres').innerHTML = hb;
+
+/* ---------- cartes client et objectif ---------- */
+const KIND = { bar: 'Bar', cave: 'Cave', fest: 'Festival', mairie: 'Mairie · événement', obj: 'Objectif secret' };
+const KIND_COL = { ...D.KIND_COL, mairie: D.C.brique, obj: D.C.cuivre2 }, KIND_FOND = { ...D.KIND_FOND, mairie: '#f3d9cf', obj: '#f6e3b8' };
+const pictoMairie = `<svg viewBox="-40 -40 80 70"><path d="M-30 0 L0 -28 L30 0 Z" fill="${D.C.creme}" stroke="${D.C.encre}" stroke-width="2"/><rect x="-26" y="0" width="52" height="28" fill="#e6c9a0" stroke="${D.C.encre}" stroke-width="2"/>${[-16, 0, 16].map((x) => `<rect x="${x - 4}" y="6" width="8" height="22" fill="${D.C.encre2}"/>`).join('')}<path d="M0 -28 V-38 L10 -35 L0 -32" fill="${D.C.bleu}" stroke="${D.C.encre}" stroke-width="1.2"/></svg>`;
+const pictoObj = `<svg viewBox="-40 -40 80 70"><rect x="-28" y="-20" width="56" height="40" rx="4" fill="${D.C.creme}" stroke="${D.C.encre}" stroke-width="2"/><path d="M-28 -20 L0 4 L28 -20" fill="none" stroke="${D.C.encre}" stroke-width="2"/><circle cx="0" cy="8" r="9" fill="${D.C.brique}" stroke="${D.C.encre}" stroke-width="1.5"/><text y="12" text-anchor="middle" font-family="Barlow Condensed" font-size="11" font-weight="700" fill="#fff">?</text></svg>`;
+function clientCard(c) {
+  const styles = c.style ? [c.style] : c.styles ?? null;
+  const prix = c.style ? `${c.n} × ${RECETTES[c.style].prix + c.bonus}` : styles ? `${c.n} × ${styles.map((st) => RECETTES[st].prix + c.bonus).join(' ou ')}` : `${c.n} × base${c.bonus ? ' +' + c.bonus : ''}`;
+  const veut = c.style ? SN[c.style] : styles ? styles.map((st) => SN[st]).join(' ou ') : c.kind === 'mairie' ? 'un style tiré au dé' : 'tous styles';
+  const fest = c.kind === 'fest';
+  return `<div class="ccard" style="--kc:${KIND_COL[c.kind]};--kf:${KIND_FOND[c.kind]}">
+    <div class="bandeau"><span>${KIND[c.kind]}</span>${fest ? `<i>${SAI[c.saison]}</i>` : ''}</div>
+    <div class="art">${c.kind === 'mairie' ? pictoMairie : D.pictoClient(c.kind)}</div>
+    <div class="nom">${esc(c.nom)}</div>
+    <div class="veut">${Array.from({ length: c.n }, () => `<span class="u" style="--sc:${c.style ? D.STYLE_COL[c.style] : D.C.pierre}"></span>`).join('')} ${veut}</div>
+    <div class="note">${fest ? `Livré au ${SAI[c.saison].toLowerCase()} : +2 Réputation.` : c.kind === 'mairie' ? 'Dé : 1-2 Blonde, 3 IPA, 4 Stout, 5-6 Garde. Hors pioche.' : ''} Style en demande : +1 Réputation.</div>
+    <div class="pied"><span class="piece">${prix} €</span>${D.etoile(c.rep)}</div></div>`;
+}
+const objCard = ([, o]) => `<div class="ccard" style="--kc:${KIND_COL.obj};--kf:${KIND_FOND.obj}">
+    <div class="bandeau"><span>${KIND.obj}</span></div><div class="art">${pictoObj}</div>
+    <div class="nom">${esc(o.nom)}</div><div class="txt">${esc(o.txt)}</div>
+    <div class="note">Gardé face cachée, révélé au décompte. Les cartes Client livrées restent devant soi pour le prouver.</div>
+    <div class="pied"><span class="piece">+${o.pts} points</span></div></div>`;
+const toutes = [...CLIENTS.map(clientCard), clientCard({ ...CLIENT_MAIRIE }), ...Object.entries(OBJECTIFS).map(objCard)];
+let hc = '';
+for (let i = 0; i < toutes.length; i += 9) hc += `<section class="page"><div class="cards">${toutes.slice(i, i + 9).join('')}</div></section>`;
+$('#clients').innerHTML = hc;
+
+await document.fonts.ready;
+window.pret = true;
 </script>
 </body>
 </html>
