@@ -34,6 +34,7 @@ export function botAction(view, me) {
   const L = legalActions(view, me);
   const has = (type) => L.find((a) => a.type === type);
   if (has('respondTrade') && view.trade?.from !== me) return { type: 'respondTrade', accept: false };
+  const ob = has('objectif'); if (ob) return { type: 'objectif', garde: ob.cartes[0] };
   const ev = has('evenement'); if (ev) return { type: 'evenement', ferm: ev.targets[0] };
   const cc = has('concours'); if (cc) return { type: 'concours', style: cc.styles[0] };
   if (view.trade?.from === me) return { type: 'cancelTrade' };

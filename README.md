@@ -1,21 +1,22 @@
 # Brassins
 
-Jeu de gestion de brasserie, par pose d'ouvriers. On récolte, on brasse, on fait fermenter, on livre les clients de la file et on vend au marché, sur un plateau commun où chaque place prise manque aux autres. Trois ans de quatre saisons, et la brasserie la plus réputée l'emporte. Seul contre l'ordinateur, ou à plusieurs, en direct ou en différé. Les règles sont pensées pour tenir sur une table : un plateau A3, trois dés, quarante cartes.
+Jeu de gestion de brasserie, par pose d'ouvriers. On récolte, on brasse, on fait fermenter, on livre les clients de la file et on vend au marché, sur un plateau commun où chaque place prise manque aux autres. Le premier à 30 de réputation sonne la fin, et la brasserie qui a le plus de points l'emporte, objectif secret compris. Seul contre l'ordinateur, ou à plusieurs, en direct ou en différé. Les règles sont pensées pour tenir sur une table : un plateau A3, trois dés, une centaine de cartes.
 
 Issu de [Terres de Houblon](https://github.com/antoineguiral/Terre-de-houblon), dont il garde l'architecture (moteur séparé de l'affichage, serveur arbitre, client réseau, déploiement) avec des règles entièrement nouvelles. La première version de Brassins, sur plateau hexagonal, est sur la branche `brassins-hex` ; Terres de Houblon sur la branche `terres-de-houblon`.
 
 ## Les règles
 
-- **Le plateau.** 8 cases d'action : deux champs d'orge, deux houblonnières (deux places chacun, le second récolte un de moins, fermés l'hiver), le Marché aux matières, la Tournée (une place par joueur), le Marché aux bières et le Chantier (ouverts à tous).
-- **Une saison.** Le premier joueur lance deux dés : la météo (1 : récoltes −1, 6 : +1) et l'événement, lu dans la table de la saison (mildiou, contamination, critique gastronomique, canicule, pénurie, concours, douanes, grève…). Puis chacun à son tour pose un ouvrier et agit aussitôt, jusqu'à ce que tous soient posés. Le premier joueur tourne à chaque saison.
+- **Le plateau.** 8 cases d'action : deux champs d'orge, deux houblonnières (deux places chacun, le second récolte un de moins, fermés l'hiver), le Marché aux matières (une place), la Tournée, le Marché aux bières et le Chantier (ouverts à tous).
+- **Une saison.** Le premier joueur lance deux dés : la météo (1 : récoltes −1, 6 : +1) et l'événement, un par face dans la table de la saison (mildiou, contamination, critique gastronomique, canicule, pénurie, concours, douanes, grève…). Puis chacun à son tour pose un de ses trois ouvriers et agit aussitôt, jusqu'à ce que tous soient posés. Le premier joueur tourne à chaque saison.
 - **Brasser.** 4 styles, de la Blonde (1 saison, 3 Argent, 1 réputation) à la Bière de garde (3 saisons, 7 Argent, 4 réputation), le Stout avec une Touraille. Deux matières : Malt et Houblon. Un brassin donne 2 unités (3 avec la Grande cuve), et un dé : 1 c'est une unité en moins, 6 une de plus. La première fois qu'on brasse un style : +1 réputation.
-- **Les clients.** 40 cartes, 5 en file sous les yeux de tous : bars, caves, festivals liés à une saison. Livrer, c'est prendre la carte. Le plus ancien part à chaque fin de saison.
+- **Les clients.** 44 cartes, 5 en file sous les yeux de tous : bars, caves (Stout ou Garde au choix), festivals liés à une saison. Livrer, c'est prendre la carte ; avec le Camion, deux par Tournée. Le plus ancien part à chaque fin de saison.
 - **Le Marché aux bières.** Une piste de prix par style : chaque unité vendue baisse le prix d'un cran, pour tout le monde ; les prix remontent d'un cran par saison. Deux styles en demande par saison : +2 au Marché, +1 réputation chez un client.
-- **S'équiper.** Grande cuve, fermenteurs, Touraille, Embauche, Salle de dégustation.
+- **S'équiper.** Grande cuve, fermenteurs, Touraille, Camion, Salle de dégustation.
 - **Les échanges.** Une offre par tour aux autres brasseries, en matières, bière ou Argent.
-- **Le décompte.** Réputation + diversité (3 styles +2, 4 styles +5) + 1 point par 8 Argent.
+- **L'objectif secret.** Au départ, 2 cartes piochées, 1 gardée : livrer 2 caves, brasser les 4 styles, finir avec 50 Argent… 3 à 5 points au décompte si c'est rempli, révélé à la fin.
+- **La fin.** À la fin de la saison où quelqu'un atteint 30 de réputation, ou après trois ans. Décompte : réputation + objectif + 1 point par 8 Argent.
 
-Toutes les valeurs sont dans [`moteur/constantes.js`](moteur/constantes.js). Elles sortent de la simulation (voir [`docs/conception-table.md`](docs/conception-table.md)), à affiner en jouant : l'ordre au premier tour garde un léger biais, et l'IPA est le style le moins brassé par l'IA. Les règles pour les joueurs, telles qu'on les expliquerait à table : [`docs/regles.md`](docs/regles.md).
+Toutes les valeurs sont dans [`moteur/constantes.js`](moteur/constantes.js). Elles sortent de la simulation (voir [`docs/conception-table.md`](docs/conception-table.md)), à affiner en jouant : l'IPA est le style le moins brassé par l'IA, et l'Argent pèse un quart du score. Les règles pour les joueurs, telles qu'on les expliquerait à table : [`docs/regles.md`](docs/regles.md).
 
 ## Jouer en local
 

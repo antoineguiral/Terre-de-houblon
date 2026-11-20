@@ -6,8 +6,8 @@
 //                                                        pasApas : l'ordinateur attend un clic (onStep) pour jouer
 
 import {
-  RES, STYLES, ITEMS, RECETTES, CASES, ACHAT, ACHAT_MAX, AMELIORATIONS, EVT, SAISONS, NB_SAISONS, STOCK_MAX, FERMENTEURS_MAX, OUVRIERS_MAX,
-  DEMANDE, ARGENT_PAR_POINT, ZI, total, legalActions, saisonIdx, unites, cuveUnites, prixMarche, valeurLivraison, pointsDiversite,
+  RES, STYLES, ITEMS, RECETTES, CASES, ACHAT_MAX, AMELIORATIONS, EVT, OBJECTIFS, SAISONS, NB_SAISONS, FIN_REP, STOCK_MAX, FERMENTEURS_MAX,
+  DEMANDE, ARGENT_PAR_POINT, ZI, total, legalActions, saisonIdx, unites, cuveUnites, prixMarche, prixMatiere, valeurLivraison, stylesClient,
 } from '../moteur/index.js';
 import { RN, RI, SN, SI, SAISON_NOM, KIND, nomItem, nomSaison, meteoTexte, fmt, logLines, plural } from './textes.js';
 import { RYTHMES, rythme, choisirRythme, facteur, DUREE_BULLE } from './rythme.js';
@@ -71,12 +71,12 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
   // Le plateau imprimé, dessiné depuis l'état : calendrier, 8 cases illustrées avec leurs places et les ouvriers
   // posés, pistes de prix. Une case jouable s'illumine et se clique. En portrait (téléphone), deux colonnes.
   const TW = 258, TH = 232, GAP = 14, M = 18;
-  const SOUS = { marcheMat: `${ACHAT_MAX} matières max · ${ACHAT.malt} € chacune`, tournee: 'Livrer un client de la file', marcheBieres: 'Vendre au prix de la piste', chantier: 'Acheter un équipement' };
+  const SOUS = (c) => ({ marcheMat: `${ACHAT_MAX} matières max · ${prixMatiere(view, 'malt')} € chacune`, tournee: 'Livrer un client de la file', marcheBieres: 'Vendre au prix de la piste', chantier: 'Acheter un équipement' }[c]);
   const ACTION = { marcheMat: 'Acheter…', tournee: 'Livrer…', marcheBieres: 'Vendre…', chantier: 'S’équiper…' };
   function recolteDe(v, c, d) {
     const t = poseSur(c), si = saisonIdx(v);
     if (v.ferme.includes(c)) return 0;
-    return t?.recolte ?? Math.max(0, d.recolte[si] ? d.recolte[si] + ({ 1: -1, 6: 1 }[v.meteo] ?? 0) + (v.evt === 'recolte' ? 1 : 0) - (v.occ[c]?.length ?? 0) : 0);
+    return t?.recolte ?? Math.max(0, d.recolte[si] ? d.recolte[si] + ({ 1: -1, 6: 1 }[v.meteo] ?? 0) + (v.recolteBonus?.[d.res] ?? 0) - (v.occ[c]?.length ?? 0) : 0);
   }
   // Cases 0 à 50 le long d'un rectangle (sens des aiguilles d'une montre depuis le coin haut gauche),
   // un marqueur par joueur ; au-delà de 50, le marqueur repart de 0 avec un « +50 »
@@ -124,7 +124,7 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
     o += `<rect x="12" y="12" width="${W - 24}" height="${H - 24}" rx="15" fill="none" stroke="${D.C.encre}" stroke-width="2" opacity=".25"/>`;
     // calendrier : 12 saisons, marqueur sur la saison en cours
     const step = (W - 2 * M - 28) / 12;
-    o += `<text x="${M + 6}" y="${M + 12}" font-size="12" font-weight="700" fill="${D.C.encre2}" letter-spacing="2">CALENDRIER · EN DEMANDE : ${v.demande.map((st) => SN[st].toUpperCase()).join(' ET ')}</text>`;
+    o += `<text x="${M + 6}" y="${M + 12}" font-size="12" font-weight="700" fill="${D.C.encre2}" letter-spacing="2">CALENDRIER · FIN À ${v.opts?.finRep ?? FIN_REP} RÉPUTATION · EN DEMANDE : ${v.demande.map((st) => SN[st].toUpperCase()).join(' ET ')}</text>`;
     for (let t = 0; t < NB_SAISONS; t++) {
       const k = t % 4, an = Math.floor(t / 4), x = M + 18 + t * step + an * (portrait ? 6 : 14), y = M + 42, r = Math.min(18, step / 2 - (portrait ? 6 : 3));
       o += `<g opacity="${t < v.saison ? .45 : 1}"><title>${esc(nomSaison(t))} · en demande : ${DEMANDE[SAISONS[k]].map((st) => SN[st]).join(', ')}</title><circle cx="${x}" cy="${y}" r="${r}" fill="${D.SAISON_COL[k]}" stroke="${D.C.encre}" stroke-width="1.5"/>${D.iconeSaison(k, x, y)}</g>`;
@@ -147,12 +147,12 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
         o += d.recolte.map((n, j) => `<g transform="translate(${150 + j * 26},206)"><circle r="11" fill="${D.SAISON_COL[j]}" stroke="${D.C.encre}" stroke-width="${j === saisonIdx(v) ? 2.6 : 1.2}"/><text y="4.5" text-anchor="middle" font-size="13" font-weight="700" fill="${D.C.encre}">${n || '–'}</text></g>`).join('');
         o += closed ? `<g transform="translate(${TW / 2},64)"><rect x="-52" y="-16" width="104" height="32" rx="16" fill="${D.C.encre}"/><text y="6" text-anchor="middle" font-size="16" font-weight="700" fill="#f4e9d4" letter-spacing="2">FERMÉ</text></g>`
           : `<g transform="translate(12,12)"><rect width="${q ? 104 : 86}" height="30" rx="15" fill="#f4e9d4" stroke="${D.C.encre}" stroke-width="1.5"/><text x="${q ? 52 : 43}" y="20" text-anchor="middle" font-size="16" font-weight="700" fill="${D.C.encre}">${q ? `+${q} ${RN[d.res]}` : 'épuisé'}</text></g>`;
-      } else o += `<text x="14" y="175" font-size="14" font-weight="500" fill="${D.C.encre2}">${SOUS[c]}</text>`;
+      } else o += `<text x="14" y="175" font-size="14" font-weight="500" fill="${D.C.encre2}">${SOUS(c)}</text>`;
       // étiquette d'action, collée sur l'illustration (jamais sur le titre)
       if (t) o += `<g transform="translate(${TW - 12},92)" filter="url(#${id}-o2)"><rect x="-100" y="0" width="100" height="28" rx="14" fill="${D.C.cuivre}" stroke="${D.C.encre}" stroke-width="1.5"/><text x="-50" y="19" text-anchor="middle" font-size="15" font-weight="700" fill="${D.C.encre}">${d.recolte ? 'Récolter' : ACTION[c]}</text></g>`;
       // places et ouvriers
       const occ = c === 'tournee' ? v.tournee : v.occ[c] ?? [];
-      const places = d.recolte ? ['1', '−1'] : c === 'marcheMat' ? ['1'] : c === 'tournee' ? P().map(() => 'j') : ['m', 'm', 'm'];
+      const places = d.recolte ? ['1', '−1'] : c === 'marcheMat' ? ['1'] : ['m', 'm', 'm'];
       const n = Math.max(places.length, occ.length), pas = Math.min(52, (d.recolte ? 120 : TW - 40) / n);
       for (let j = 0; j < n; j++) {
         const cx = 30 + j * pas, cy = 206, pl = places[j] ?? 'm';
@@ -186,8 +186,9 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
     if (!p || !ui.mode || ui.mode === 'tournee') return '';
     if (ui.mode === 'marcheMat') {
       const sel = ui.sel ?? (ui.sel = { malt: 0, houb: 0 });
-      const n = total(sel), cout = RES.reduce((s, r) => s + sel[r] * ACHAT[r], 0);
-      return `<div class="modebox"><h4>Marché aux matières</h4><div class="offer3">${RES.map((r) => `<span class="rl">${chip(r)}${RN[r]} · ${ACHAT[r]} €</span>${stepper('sel', r, sel[r], n < ACHAT_MAX && cout + ACHAT[r] <= p.argent ? sel[r] + 1 : sel[r])}`).join('')}</div>
+      const px = (r) => prixMatiere(view, r);
+      const n = total(sel), cout = RES.reduce((s, r) => s + sel[r] * px(r), 0);
+      return `<div class="modebox"><h4>Marché aux matières</h4><div class="offer3">${RES.map((r) => `<span class="rl">${chip(r)}${RN[r]} · ${px(r)} €</span>${stepper('sel', r, sel[r], n < ACHAT_MAX && cout + px(r) <= p.argent ? sel[r] + 1 : sel[r])}`).join('')}</div>
         <div class="mrow"><button class="btn primary" data-act="poser" data-case="marcheMat" ${n ? '' : 'disabled'}>Acheter pour ${cout} €</button><button class="btn ghost" data-act="cancel">Annuler</button></div></div>`;
     }
     if (ui.mode === 'marcheBieres') {
@@ -201,31 +202,40 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
     if (ui.mode === 'chantier') {
       const t = poseSur('chantier');
       return `<div class="modebox"><h4>Chantier</h4><div class="build">${Object.entries(AMELIORATIONS).map(([u, d]) => {
-        const owned = u === 'ferm' ? p.nferm >= FERMENTEURS_MAX : u === 'embauche' ? p.ouv >= OUVRIERS_MAX : p.upg.includes(u);
+        const owned = u === 'ferm' ? p.nferm >= FERMENTEURS_MAX : p.upg.includes(u);
         return `<div class="bname ${owned ? 'owned' : ''}"><b>${esc(d.nom)}${u === 'ferm' ? ` (${p.nferm}/${FERMENTEURS_MAX})` : ''}</b><small>${esc(d.txt)}</small></div><button class="btn" data-act="poser" data-case="chantier" data-u="${u}" ${t?.targets.includes(u) ? '' : 'disabled'}>${owned ? 'Acquis' : d.cout + ' €'}</button>`;
       }).join('')}</div><div class="mrow"><button class="btn ghost" data-act="cancel">Annuler</button></div></div>`;
     }
     return '';
   }
 
+  // Livraisons déjà choisies dans la tournée en cours (avec le Camion, jusqu'à 2 avant d'envoyer)
+  const livs = () => (ui.mode === 'tournee' && ui.sel?.livs) || [];
   function renderFile() {
     const v = view;
     const t = ui.mode === 'tournee' ? poseSur('tournee') : null;
+    const max = t?.max ?? 1, choisis = livs();
+    // stock restant une fois les livraisons choisies retirées
+    const stock = mine() ? { ...my().stock } : null;
+    for (const l of choisis) { const cl = v.file.find((c) => c.id === l.client); if (cl) stock[l.style] -= cl.n; }
     $('#file').innerHTML = v.file.map((cl, k) => {
-      const can = t?.clients.find((x) => x.id === cl.id);
+      const choisi = choisis.find((l) => l.client === cl.id);
+      const styles = t && !choisi && choisis.length < max ? stylesClient(cl).filter((st) => valeurLivraison(v, me(), cl, st, stock)) : [];
+      const can = styles.length > 0;
       const val = mine() && cl.style ? valeurLivraison(v, me(), cl, cl.style) : null;
       const btns = can ? (cl.style ? `<button class="btn primary mini2" data-act="poser" data-case="tournee" data-client="${cl.id}" data-style="${cl.style}">Livrer</button>`
-        : can.styles.map((st) => `<button class="btn primary mini2" data-act="poser" data-case="tournee" data-client="${cl.id}" data-style="${st}">${SN[st]}</button>`).join('')) : '';
+        : styles.map((st) => `<button class="btn primary mini2" data-act="poser" data-case="tournee" data-client="${cl.id}" data-style="${st}">${SN[st]}</button>`).join('')) : choisi ? `<span class="dem">Dans le camion</span>` : '';
       const enSaison = cl.kind === 'fest' && cl.saison === saisonIdx(v);
-      const prix = cl.style ? `${cl.n * (RECETTES[cl.style].prix + cl.bonus + v.prixBonus)} €` : `base${cl.bonus ? ' +' + cl.bonus : ''}`;
-      return `<div class="ccard ${can ? 'can' : ''}" style="--kc:${D.KIND_COL[cl.kind]};--kf:${D.KIND_FOND[cl.kind]}">
+      const prix = cl.style ? `${cl.n * (RECETTES[cl.style].prix + cl.bonus + v.prixBonus + (v.bonusKind?.[cl.kind] ?? 0))} €` : `base${cl.bonus + (v.bonusKind?.[cl.kind] ?? 0) ? ' +' + (cl.bonus + (v.bonusKind?.[cl.kind] ?? 0)) : ''}`;
+      const veut = cl.style ? SN[cl.style] : cl.styles ? cl.styles.map((st) => SN[st]).join(' ou ') : 'tous styles';
+      return `<div class="ccard ${can ? 'can' : ''} ${choisi ? 'sel' : ''}" style="--kc:${D.KIND_COL[cl.kind]};--kf:${D.KIND_FOND[cl.kind]}">
         <div class="bandeau"><span>${KIND[cl.kind]}</span>${cl.kind === 'fest' ? `<i>${SAISON_NOM[SAISONS[cl.saison]]}${enSaison ? ' · maintenant' : ''}</i>` : ''}</div>
         <div class="art">${D.pictoClient(cl.kind)}</div>
         <b>${esc(cl.nom)}</b>
-        <div class="veut">${Array.from({ length: cl.n }, () => `<span class="u" style="--sc:${cl.style ? D.STYLE_COL[cl.style] : D.C.pierre}"></span>`).join('')} ${cl.style ? SN[cl.style] : 'tous styles'}</div>
+        <div class="veut">${Array.from({ length: cl.n }, () => `<span class="u" style="--sc:${cl.style ? D.STYLE_COL[cl.style] : D.C.pierre}"></span>`).join('')} ${veut}</div>
         <div class="pied"><span class="piece">${prix}</span>${D.etoile(val ? val.rep : cl.rep + (enSaison ? 2 : 0))}</div>
         ${k === 0 ? '<div class="old">part en fin de saison</div>' : ''}${btns ? `<div class="mrow">${btns}</div>` : ''}</div>`;
-    }).join('') + `<div class="ccard deck"><b>${v.deck}</b><small>dans la pioche</small>${ui.mode === 'tournee' ? '<button class="btn ghost mini2" data-act="cancel">Annuler</button>' : ''}</div>`;
+    }).join('') + `<div class="ccard deck"><b>${v.deck}</b><small>dans la pioche</small>${choisis.length ? `<button class="btn primary mini2" data-act="livrer">Livrer ${choisis.length === 1 ? 'ce client' : 'ces ' + choisis.length + ' clients'}</button>` : ''}${ui.mode === 'tournee' ? '<button class="btn ghost mini2" data-act="cancel">Annuler</button>' : ''}</div>`;
   }
 
 
@@ -242,11 +252,15 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
       if (ui.winClosed) return null;
       const w = v.winner, P0 = P();
       const order = P0.map((_, i) => i).sort((a, b) => P0[b].score.total - P0[a].score.total || P0[b].argent - P0[a].argent);
-      return { key: 'win', large: true, html: `<h2>${you(w) ? 'Trois ans ont passé : tu l’emportes !' : esc(P0[w].name) + ' l’emporte'}</h2>
+      const fin = v.finie === 'reputation' ? `${esc(P0.find((p) => p.rep >= (v.opts?.finRep ?? FIN_REP))?.name ?? '')} a atteint ${v.opts?.finRep ?? FIN_REP} de réputation` : 'Trois ans ont passé';
+      return { key: 'win', large: true, html: `<h2>${fin} : ${you(w) ? 'tu l’emportes !' : esc(P0[w].name) + ' l’emporte'}</h2>
         <div class="fms">${order.map((i) => feuilleDeMarque(i, true)).join('')}</div>
         <div class="mrow">${opts.rejouer ? '<button class="btn primary" data-again>Rejouer</button>' : '<button class="btn primary" data-home>Retour à l’accueil</button>'}<button class="btn ghost" data-close>Voir le plateau</button></div>` };
     }
     if (!p) return null;
+    const ob = legal('objectif');
+    if (ob) return { key: 'objectif', html: `<h2>Ton objectif secret</h2><p>Garde une de ces deux cartes. Elle rapporte ses points au décompte si tu l'as remplie ; les autres ne la verront qu'à la fin.</p>
+      <div class="objs">${ob.cartes.map((id) => `<button class="obj" data-obj="${id}"><b>${esc(OBJECTIFS[id].nom)}</b><span>${esc(OBJECTIFS[id].txt)}</span><i>${OBJECTIFS[id].pts} points</i></button>`).join('')}</div>` };
     const ev = legal('evenement');
     if (ev) return { key: `evt-${v.saison}`, html: `<h2>${EVT[ev.kind].nom}</h2><p>${EVT[ev.kind].txt} Lequel ?</p>
       <div class="mrow">${ev.targets.map((i) => `<button class="btn" data-ferm="${i}">${SN[p.ferms[i].st]} · ${plural(p.ferms[i].u, 'unité')}, prête dans ${p.ferms[i].left}</button>`).join('')}</div>` };
@@ -294,6 +308,7 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
     const b = e.target.closest('button');
     if (!b || b.disabled || !modalNow) return;
     const ds = b.dataset;
+    if (ds.obj !== undefined) return act({ type: 'objectif', garde: ds.obj });
     if (ds.ferm !== undefined) return act({ type: 'evenement', ferm: +ds.ferm });
     if (ds.style !== undefined) return act({ type: 'concours', style: ds.style });
     if ('again' in ds) return onNewGame?.();
@@ -315,13 +330,13 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
     if (ui.error) return { txt: ui.error, col: 'var(--copper)' };
     if (v.phase === 'over') return { txt: `${you(v.winner) ? 'Tu gagnes' : esc(P()[v.winner].name) + ' gagne'} la partie.`, col: PCOL[v.winner] };
     if (v.pending) {
-      const who = Object.keys(v.pending.need).map(Number);
-      if (mine() && who.includes(me())) return { txt: `${EVT[v.pending.kind].nom} : à toi de décider.`, col: PCOL[me()] };
-      return { txt: `${EVT[v.pending.kind].nom} : ${who.map((i) => esc(P()[i].name)).join(', ')} ${who.length > 1 ? 'décident' : 'décide'}…`, col: 'var(--muted)' };
+      const who = Object.keys(v.pending.need).map(Number), nom = v.pending.kind === 'objectif' ? 'Objectif secret' : EVT[v.pending.kind].nom;
+      if (mine() && who.includes(me())) return { txt: `${nom} : à toi de décider.`, col: PCOL[me()] };
+      return { txt: `${nom} : ${who.map((i) => esc(P()[i].name)).join(', ')} ${who.length > 1 ? 'décident' : 'décide'}…`, col: 'var(--muted)' };
     }
     if (v.trade && v.trade.from !== me() && !(v.trade.to.includes(me()) && !v.trade.resp[me()])) return { txt: `${esc(P()[v.trade.from].name)} attend des réponses à son offre…`, col: PCOL[v.trade.from] };
     if (free()) {
-      if (ui.mode === 'tournee') return { txt: 'Choisis le client à livrer dans la file.', col: PCOL[me()] };
+      if (ui.mode === 'tournee') return { txt: livs().length ? 'Ajoute un second client, ou livre tout de suite.' : `Choisis le client à livrer dans la file${(poseSur('tournee')?.max ?? 1) > 1 ? ' (jusqu’à 2 avec le Camion)' : ''}.`, col: PCOL[me()] };
       if (v.place) return { txt: 'Ouvrier posé. Brasse si tu peux, puis passe la main.', col: PCOL[me()] };
       if (!(v.restants[me()] > 0)) return { txt: 'Plus d’ouvrier cette saison : passe la main.', col: PCOL[me()] };
       if (!poses().length) return { txt: 'Aucune case jouable : tu passes, et l’ouvrier est perdu.', col: 'var(--copper)' };
@@ -376,13 +391,16 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
   // est une projection « si la partie s'arrêtait maintenant » ; à la fin, c'est le résultat.
   function feuilleDeMarque(i, fin) {
     const p = P()[i], sc = p.score, arg = Math.floor(p.argent / ARGENT_PAR_POINT);
+    const secret = sc.objectif === null;
+    const o = p.objectif && p.objectif !== true ? OBJECTIFS[p.objectif] : null;
+    const objTxt = secret ? (p.objectif ? 'Objectif secret' : 'Objectif à choisir') : o ? `${esc(o.nom)} <small>${esc(o.txt)} · ${o.pts} pts${p.objectifOk ? ' · atteint' : fin ? ' · manqué' : ' · pas encore'}</small>` : 'Sans objectif';
     return `<div class="fm ${fin && view.winner === i ? 'gagne' : ''}">
       <div class="fmh"><b>${esc(p.name)}</b><span>${fin ? (view.winner === i ? 'l’emporte' : 'feuille de marque') : 'Ta feuille de marque'}</span></div>
       <div class="fmt2">Styles brassés <small>+1 Réputation au premier brassin</small></div>
       <div class="fmstyles">${STYLES.map((st) => `<span class="${p.styles.includes(st) ? 'ok' : ''}"><i class="box" style="--sc:${D.STYLE_COL[st]};--ck:${st === 'stout' || st === 'garde' ? '#fff' : '#2b1d14'}">${p.styles.includes(st) ? '✓' : ''}</i>${SN[st]}</span>`).join('')}</div>
       <div class="fmt2">${fin ? 'Décompte final' : 'Décompte si la partie s’arrêtait maintenant'}</div>
       <div class="fmrow"><span>Réputation <small>sur la piste</small></span><b>${sc.rep}</b></div>
-      <div class="fmrow"><span>Diversité <small>3 styles +2 · les 4 +5</small></span><b>${sc.diversite}</b></div>
+      <div class="fmrow"><span>${objTxt}</span><b>${secret ? '?' : sc.objectif}</b></div>
       <div class="fmrow"><span>Argent <small>${p.argent} ÷ ${ARGENT_PAR_POINT}</small></span><b>${arg}</b></div>
       <div class="fmrow tot"><span>Total</span><b>${sc.total}</b></div></div>`;
   }
@@ -438,7 +456,7 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
   // Chaque nouvelle entrée du journal jouée par un autre devient une bulle, montrée l'une après l'autre,
   // avec la case concernée mise en lumière (ouvrier qui tombe) ou les dés qui roulent.
   const scene = { seen: null, queue: [], cur: null, timer: null, saison: null };
-  const SCENE_KINDS = new Set(['saison', 'ordre', 'poser', 'brasser', 'salle', 'passe', 'tradeOffer', 'tradeDone', 'perte', 'presente', 'concours', 'douanes', 'clientParti', 'vendre', 'salleRep', 'fin']);
+  const SCENE_KINDS = new Set(['saison', 'ordre', 'poser', 'brasser', 'salle', 'passe', 'tradeOffer', 'tradeDone', 'perte', 'presente', 'concours', 'douanes', 'bilan', 'clientParti', 'vendre', 'salleRep', 'fin']);
   function suivreJournal() {
     const last = view.log.at(-1)?.i ?? -1;
     if (scene.seen === null) { scene.seen = last; scene.saison = view.saison; return; }
@@ -516,9 +534,16 @@ export function createUi({ send, onNewGame, onHome, onStep }) {
       if (c === 'marcheMat') return act({ type: 'poser', case: c, achats: { ...ui.sel } });
       if (c === 'marcheBieres') return act({ type: 'poser', case: c, ventes: { ...ui.sel } });
       if (c === 'chantier') return act({ type: 'poser', case: c, u: b.dataset.u });
-      if (c === 'tournee') { const id = b.dataset.client; return act({ type: 'poser', case: c, client: /^\d+$/.test(id) ? +id : id, style: b.dataset.style }); }
+      if (c === 'tournee') {
+        const id = b.dataset.client, client = /^\d+$/.test(id) ? +id : id, max = poseSur('tournee')?.max ?? 1;
+        if (max <= 1) return act({ type: 'poser', case: c, client, style: b.dataset.style });
+        const l = [...livs(), { client, style: b.dataset.style }];
+        if (l.length >= max) return act({ type: 'poser', case: c, livraisons: l });
+        ui.sel = { livs: l }; return render();
+      }
       return act({ type: 'poser', case: c });
     },
+    livrer: () => act({ type: 'poser', case: 'tournee', livraisons: livs() }),
     brasser: (b) => act({ type: 'brasser', style: b.dataset.style }),
     salle: (b) => act({ type: 'salle', style: b.dataset.style }),
     og: (b) => { const r = b.dataset.r; ui.offer.give[r] = Math.max(0, ui.offer.give[r] + +b.dataset.d); render(); },

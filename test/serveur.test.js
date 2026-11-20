@@ -117,7 +117,7 @@ describe('serveur WebSocket', () => {
       await a.until((x) => x.statut === 'fini', 5000);
     } finally { ctl.stop = true; }
     assert.equal(a.vue.view.phase, 'over');
-    assert.equal(a.vue.view.saison, 11, 'douze saisons jouées');
+    assert.ok(a.vue.view.finie === 'reputation' ? a.vue.view.players.some((p) => p.rep >= 30) : a.vue.view.saison === 11, 'finie à la réputation ou après douze saisons');
     assert.ok(a.actions > 12 && b.actions > 12, `les deux humains ont joué (${a.actions} et ${b.actions} actions)`);
     assert.ok(a.vue.view.scores, 'décompte final');
     assert.deepEqual(a.refus, []);
@@ -143,7 +143,7 @@ describe('serveur WebSocket', () => {
     const a = await connect(srv.port);
     const p = await a.send({ t: 'creer', nom: 'Tenace', humains: 2, mode: 'differe' });
     await a.send({ t: 'demarrer' });
-    await a.until((v) => v.statut === 'jeu' && v.view.waiting.includes(0));
+    await a.until((v) => v.statut === 'jeu' && v.view.waiting.length === 1 && v.view.waiting[0] === 0);
     const before = a.vue.view;
     a.close();
     await srv.fermer();

@@ -1,6 +1,6 @@
 // Textes du jeu : noms, cases, événements, et rédaction du journal selon le joueur qui lit.
 
-import { RES, STYLES, ITEMS, SAISONS, CASES, EVT, AMELIORATIONS, NIVEAUX, METEO } from '../moteur/index.js';
+import { RES, STYLES, ITEMS, SAISONS, CASES, EVT, AMELIORATIONS, NIVEAUX, METEO, OBJECTIFS } from '../moteur/index.js';
 
 export const RN = { malt: 'Malt', houb: 'Houblon', argent: 'Argent' };
 export const RI = { malt: 'M', houb: 'H', argent: '€' };
@@ -10,7 +10,7 @@ export const SAISON_NOM = { printemps: 'Printemps', ete: 'Été', automne: 'Auto
 export const KIND = { bar: 'Bar', cave: 'Cave', fest: 'Festival', mairie: 'Mairie' };
 export const nomItem = (k) => RN[k] ?? SN[k];
 export const nomCase = (c) => CASES[c]?.nom ?? c;
-export const nomSaison = (t) => `${SAISON_NOM[SAISONS[t % 4]]} an ${Math.floor(t / 4) + 1}`;
+export const nomSaison = (t) => (t < 0 ? 'Début de partie' : `${SAISON_NOM[SAISONS[t % 4]]} an ${Math.floor(t / 4) + 1}`);
 export const nomNiveau = (n) => NIVEAUX[n]?.nom ?? n;
 export const meteoTexte = (m) => (METEO[m] === 1 ? 'Belle saison : champs et houblonnières +1' : METEO[m] === -1 ? 'Mauvaise saison : champs et houblonnières −1' : 'Météo ordinaire');
 export const fmt = (o) => ITEMS.filter((k) => o?.[k]).map((k) => `${o[k]} ${nomItem(k)}`).join(', ');
@@ -24,7 +24,9 @@ export function logLines(e, view) {
   const name = (i) => (tu(i) ? 'Tu' : P[i].name);
   const v2 = (i, a, b) => `${name(i)} ${tu(i) ? a : b}`;
   switch (e.k) {
-    case 'start': return [{ txt: `Nouvelle partie. ${tu(e.first) ? 'Tu commences' : P[e.first].name + ' commence'} ; ${tu(e.dernier) ? 'tu reçois' : P[e.dernier].name + ' reçoit'} 1 Réputation pour jouer en dernier.`, p: e.first }];
+    case 'start': return [{ txt: `Nouvelle partie. ${tu(e.first) ? 'Tu commences' : P[e.first].name + ' commence'} ; ${tu(e.dernier) ? 'tu reçois' : P[e.dernier].name + ' reçoit'} 1 Réputation pour jouer en dernier. Chacun choisit son objectif secret.`, p: e.first }];
+    case 'objectif': return [{ txt: `${v2(e.p, 'as choisi', 'a choisi')} ${tu(e.p) ? 'ton' : 'son'} objectif secret.`, p: e.p }];
+    case 'bilan': return [{ txt: `Bilan de l'année : ${tu(e.p) ? 'tu gagnes' : P[e.p].name + ' gagne'} ${e.n} Réputation (${plural(e.n, 'style')} en stock).`, p: e.p }];
     case 'saison': {
       const out = [{ txt: `${nomSaison(e.saison)} : ${meteoTexte(e.meteo).toLowerCase()}${e.evt ? `. ${EVT[e.evt].nom} : ${EVT[e.evt].txt}` : '.'}`, p: null }];
       e.finis.forEach((f) => out.push({ txt: `${tu(f.p) ? 'Ta' : P[f.p].name + ' : sa'} ${SN[f.st]} est prête (${plural(f.u, 'unité')}).`, p: f.p }));
@@ -40,7 +42,7 @@ export function logLines(e, view) {
       const c = e.case;
       if (CASES[c].recolte) return [{ txt: `${v2(e.p, 'récoltes', 'récolte')} ${e.n} ${RN[e.res]} (${nomCase(c)}).`, p: e.p }];
       if (c === 'marcheMat') return [{ txt: `${v2(e.p, 'achètes', 'achète')} ${fmtRes(e.achats)} (${e.cout} Argent).`, p: e.p }];
-      if (c === 'tournee') return [{ txt: `${v2(e.p, 'livres', 'livre')} ${e.client.nom} : ${plural(e.client.n, 'unité')} de ${SN[e.style]}, ${e.argent} Argent, ${e.rep} Réputation.`, p: e.p }];
+      if (c === 'tournee') return (e.livraisons ?? [e]).map((l) => ({ txt: `${v2(e.p, 'livres', 'livre')} ${l.client.nom} : ${plural(l.client.n, 'unité')} de ${SN[l.style]}, ${l.argent} Argent, ${l.rep} Réputation.`, p: e.p }));
       if (c === 'marcheBieres') return [{ txt: `${v2(e.p, 'vends', 'vend')} ${fmt(e.ventes)} au Marché (${e.gain} Argent).`, p: e.p }];
       if (c === 'chantier') return [{ txt: `${v2(e.p, "t'équipes", "s'équipe")} : ${AMELIORATIONS[e.u].nom}.`, p: e.p }];
       return [];
@@ -59,7 +61,12 @@ export function logLines(e, view) {
     case 'tradeDone': return [{ txt: `${v2(e.p, 'échanges', 'échange')} ${fmt(e.give)} contre ${fmt(e.get)} avec ${tu(e.with) ? 'toi' : P[e.with].name}.`, p: e.p }];
     case 'tradeClosed': return tu(e.p) && e.why === 'cancel' ? [{ txt: 'Ta proposition ne trouve pas preneur.', p: e.p }] : [];
     case 'endTurn': return [];
-    case 'fin': return [{ txt: tu(e.p) ? 'Trois ans ont passé : ta brasserie est la plus réputée du terroir !' : `Trois ans ont passé : ${P[e.p].name} est la brasserie la plus réputée du terroir.`, p: e.p }];
+    case 'fin': {
+      const pourquoi = e.pourquoi === 'reputation' ? 'La réputation de fin est atteinte' : 'Trois ans ont passé';
+      const out = [{ txt: tu(e.p) ? `${pourquoi} : ta brasserie est la plus réputée du terroir !` : `${pourquoi} : ${P[e.p].name} est la brasserie la plus réputée du terroir.`, p: e.p }];
+      (e.objectifs ?? []).forEach((o, i) => { if (o.id) out.push({ txt: `${tu(i) ? 'Ton' : P[i].name + ' : '} objectif « ${OBJECTIFS[o.id].nom} » ${o.ok ? 'atteint, +' + OBJECTIFS[o.id].pts : 'manqué'}.`, p: i }); });
+      return out;
+    }
     default: return [];
   }
 }

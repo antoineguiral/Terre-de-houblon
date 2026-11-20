@@ -4,7 +4,7 @@ export * from './constantes.js';
 export {
   VERSION, createGame, applyAction, legalActions, waitingFor, deciders, viewFor,
   saisonIdx, saisonNom, annee, unites, cuveUnites, a, enDemande, prixMarche, caseOuverte, caseLibre, ordre, recolte, peutBrasser,
-  valeurLivraison, stylesPour, ameliorationsPossibles, pointsDiversite, score, avoirs, posesPossibles,
+  valeurLivraison, stylesPour, stylesClient, livraisonsMax, prixMatiere, objectifAtteint, ameliorationsPossibles, score, avoirs, posesPossibles,
 } from './regles.js';
 export { aiAction, NIVEAUX } from './ia.js';
 

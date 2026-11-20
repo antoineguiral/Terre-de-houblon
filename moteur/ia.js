@@ -11,10 +11,10 @@
 // Le hasard de l'IA vient d'un générateur dérivé de l'état : la même position donne toujours la même décision.
 
 import {
-  NB_SAISONS, RES, STYLES, ITEMS, RECETTES, CASES, ACHAT, ACHAT_MAX, AMELIORATIONS, STOCK_MAX, FERMENTEURS_MAX, OUVRIERS_MAX, Z, ZI, total,
+  NB_SAISONS, FIN_REP, RES, STYLES, ITEMS, RECETTES, CASES, ACHAT, ACHAT_MAX, AMELIORATIONS, OBJECTIFS, STOCK_MAX, Z, ZI, ZS, total,
 } from './constantes.js';
 import { local, next } from './alea.js';
-import { saisonIdx, unites, cuveUnites, a, enDemande, prixMarche, valeurLivraison, stylesPour, peutBrasser, ameliorationsPossibles, avoirs, legalActions, posesPossibles, recolte } from './regles.js';
+import { unites, cuveUnites, a, enDemande, prixMatiere, valeurLivraison, stylesPour, stylesClient, livraisonsMax, ameliorationsPossibles, avoirs, legalActions, posesPossibles } from './regles.js';
 
 export const NIVEAUX = {
   apprenti: { nom: 'Apprenti', txt: 'Brasse ce qu’il peut et vend au Marché.' },
@@ -22,7 +22,17 @@ export const NIVEAUX = {
   maitre: { nom: 'Maître brasseur', txt: 'Garde ses bières pour les clients qui comptent et investit tôt.' },
 };
 
-const restantes = (s) => NB_SAISONS - s.saison; // saisons restantes, celle-ci comprise
+// Saisons restantes, celle-ci comprise : la durée maximale, ou moins si quelqu'un approche de la réputation de fin
+function restantes(s) {
+  const nb = s.opts?.nbSaisons ?? NB_SAISONS, finRep = s.opts?.finRep ?? FIN_REP;
+  let rem = nb - Math.max(0, s.saison);
+  if (finRep > 0) {
+    const top = Math.max(...s.players.map((p) => p.rep));
+    rem = Math.min(rem, Math.max(1, Math.ceil((finRep - top) / 2.5) + 1));
+  }
+  return rem;
+}
+const cpt = (p) => p.cpt ?? { bar: 0, cave: 0, fest: 0, mairie: 0, festSaison: 0, marche: 0, medailles: 0, livre: ZS() };
 const niveau = (s) => s.opts?.niveau ?? 'compagnon';
 const W = (s) => ({ apprenti: 1.2, compagnon: 2.2, maitre: 2.6 }[niveau(s)]); // valeur d'un point de réputation en Argent
 const rnd = (s, pi, k) => next(local(`${s.seed ?? s.seq}:${s.seq}:${pi}:${k}`));
@@ -40,9 +50,11 @@ function plan(s, pi) {
     const manque = Z();
     let miss = 0;
     RES.forEach((x) => { manque[x] = Math.max(0, r[x] - p.res[x]); miss += manque[x]; });
-    const demandeFile = s.file.filter((c) => c.style === st || c.style === null).length;
+    const demandeFile = s.file.filter((c) => stylesClient(c).includes(st)).length;
     let val = cuveUnites(p) * (r.prix + W(s) * r.rep) + 1.5 * demandeFile + (p.styles.includes(st) ? 0 : 2 + W(s));
     if (lvl === 'maitre' && enDemande(s, st)) val += 2;
+    if (p.objectif === 'gamme' && !p.styles.includes(st)) val += 3;
+    if (p.objectif === 'gardien' && st === 'garde') val += 3;
     val = val / Math.pow(r.ferm, 0.65) - 1.5 * miss + rnd(s, pi, 'plan' + st) * (lvl === 'apprenti' ? 3 : 0.4);
     if (best === null || val > best.val) best = { st, manque, miss, val };
   }
@@ -51,17 +63,37 @@ function plan(s, pi) {
 
 /* ---------- ventes ---------- */
 
-function meilleurClient(s, pi) {
-  const w = W(s);
-  let best = null;
-  for (const cl of s.file) {
-    for (const st of stylesPour(s, pi, cl)) {
-      const v = valeurLivraison(s, pi, cl, st);
-      const val = v.argent + w * v.rep;
-      if (best === null || val > best.val) best = { client: cl.id, style: st, val };
+// Bonus d'objectif pour une livraison à ce client
+function bonusObjectif(s, pi, cl, st) {
+  const p = s.players[pi], o = p.objectif, c = cpt(p);
+  if (!o) return 0;
+  const w = W(s), pts = OBJECTIFS[o].pts * w;
+  if (o === 'festivalier' && cl.kind === 'fest') return pts / 2;
+  if (o === 'caviste' && cl.kind === 'cave') return pts / 2;
+  if (o === 'bistrotier' && cl.kind === 'bar') return pts / 4;
+  if (o === 'officiel' && cl.kind === 'mairie') return pts;
+  if (o === 'gardien' && st === 'garde') return (pts / 4) * cl.n;
+  if (o === 'varie' && c.livre[st] === 0) return pts / 3;
+  return 0;
+}
+// Les meilleures livraisons possibles (jusqu'à `max`), avec le stock qui s'entame
+function meilleuresLivraisons(s, pi, max) {
+  const w = W(s), stock = { ...s.players[pi].stock }, pris = new Set(), out = [];
+  let val = 0;
+  for (let k = 0; k < max; k++) {
+    let best = null;
+    for (const cl of s.file) {
+      if (pris.has(cl.id)) continue;
+      for (const st of stylesPour(s, pi, cl, stock)) {
+        const v = valeurLivraison(s, pi, cl, st, stock);
+        const x = v.argent + w * v.rep + bonusObjectif(s, pi, cl, st);
+        if (best === null || x > best.val) best = { client: cl.id, style: st, val: x, n: cl.n };
+      }
     }
+    if (!best) break;
+    out.push({ client: best.client, style: best.style }); pris.add(best.client); stock[best.style] -= best.n; val += best.val;
   }
-  return best;
+  return out.length ? { livraisons: out, val } : null;
 }
 
 // Unités à garder pour les clients, plutôt que de les brader au Marché
@@ -99,12 +131,13 @@ function meilleureAmelioration(s, pi) {
     const cout = AMELIORATIONS[u].cout;
     if (cout > p.argent - reserveArgent) continue;
     if (lvl === 'apprenti' && !['cuve', 'ferm'].includes(u)) continue;
+    const o = p.objectif;
     const gain = {
-      cuve: rem * 2.5,
-      ferm: rem * (busy ? 1.8 : 0.5),
-      touraille: rem * 1.2,
-      embauche: rem * (lvl === 'maitre' ? 2.4 : 2.0),
-      salle: rem * 1.3 + Math.floor(rem / 4) * w,
+      cuve: rem * 2.5 + (o === 'installe' || o === 'grande' ? 1.5 * w : 0),
+      ferm: rem * (busy ? 1.8 : 0.5) + (o === 'grande' ? w : 0),
+      touraille: rem * 1.2 + (o === 'gamme' ? 2 * w : 0),
+      camion: rem * (lvl === 'maitre' ? 1.6 : 1.3) + (o === 'installe' ? 1.5 * w : 0),
+      salle: rem * 1.3 + Math.floor(rem / 4) * w + (o === 'installe' ? 1.5 * w : 0),
     }[u];
     if (gain - cout > 0 && (best === null || gain - cout > best.val)) best = { u, val: gain - cout };
   }
@@ -170,13 +203,13 @@ function choixPose(s, pi) {
       if (lvl === 'apprenti') continue;
       const ach = Z();
       let n = 0, cout = 0;
-      for (const x of RES) while (manque[x] - ach[x] > 0 && n < ACHAT_MAX && p.argent - cout >= ACHAT[x]) { ach[x]++; n++; cout += ACHAT[x]; }
+      for (const x of RES) while (manque[x] - ach[x] > 0 && n < ACHAT_MAX && p.argent - cout >= prixMatiere(s, x)) { ach[x]++; n++; cout += prixMatiere(s, x); }
       if (!n) continue;
       const complet = RES.every((x) => manque[x] - ach[x] <= 0);
-      opts.push({ val: n * 2.2 * (complet ? 1 : 0.5), action: { type: 'poser', case: c, achats: ach } });
+      opts.push({ val: n * (2.2 + (ACHAT[RES[0]] - prixMatiere(s, RES[0]))) * (complet ? 1 : 0.5), action: { type: 'poser', case: c, achats: ach } });
     } else if (c === 'tournee') {
-      const cl = meilleurClient(s, pi);
-      if (cl) opts.push({ val: cl.val, action: { type: 'poser', case: c, client: cl.client, style: cl.style } });
+      const m = meilleuresLivraisons(s, pi, livraisonsMax(p));
+      if (m) opts.push({ val: m.val, action: { type: 'poser', case: c, livraisons: m.livraisons } });
     } else if (c === 'marcheBieres') {
       const v = ventes(s, pi, false);
       if (!v) continue;
@@ -184,18 +217,19 @@ function choixPose(s, pi) {
       const prix = { ...s.prix };
       for (const st of STYLES) for (let k = 0; k < v[st]; k++) { val += prix[st] + (enDemande(s, st) ? 2 : 0); prix[st] = Math.max(1, prix[st] - 1); }
       val *= unites(p) >= 4 || p.argent < 3 ? 0.9 : 0.55;
+      if (p.objectif === 'grossiste' && cpt(p).marche < 10) val += 1.5 * total(v);
       opts.push({ val, action: { type: 'poser', case: c, ventes: v } });
     } else if (c === 'chantier') {
       const am = meilleureAmelioration(s, pi);
       if (am) opts.push({ val: am.val, action: { type: 'poser', case: c, u: am.u } });
     }
   }
-  void w; void rem;
+  void w; void rem; void lvl;
   if (!opts.length) {
     // rien d'intéressant : on pose quand même, au plus simple, plutôt que de perdre l'ouvrier
     const t = poses[0];
     if (CASES[t.case].recolte) return { type: 'poser', case: t.case };
-    if (t.case === 'marcheMat') return { type: 'poser', case: t.case, achats: { [RES.find((x) => p.argent >= ACHAT[x])]: 1 } };
+    if (t.case === 'marcheMat') return { type: 'poser', case: t.case, achats: { [RES.find((x) => p.argent >= prixMatiere(s, x))]: 1 } };
     if (t.case === 'tournee') return { type: 'poser', case: t.case, client: t.clients[0].id, style: t.clients[0].styles[0] };
     if (t.case === 'marcheBieres') return { type: 'poser', case: t.case, ventes: { [t.styles[0]]: 1 } };
     return { type: 'poser', case: t.case, u: t.targets[0] };
@@ -226,6 +260,13 @@ export function aiAction(s, pi) {
     return { type: 'respondTrade', accept: false };
   }
 
+  const ob = has('objectif');
+  if (ob) {
+    // l'objectif le plus réaliste : points pondérés par la facilité estimée
+    const facile = { festivalier: 0.8, caviste: 0.8, bistrotier: 1, gamme: 0.9, grande: 0.9, medaille: 0.6, grossiste: 0.8, officiel: 0.3, laine: 0.7, installe: 0.7, gardien: 0.7, varie: 0.9 };
+    const garde = ob.cartes.reduce((b, id) => (b === null || OBJECTIFS[id].pts * facile[id] + rnd(s, pi, id) * 0.5 > OBJECTIFS[b].pts * facile[b] + rnd(s, pi, b) * 0.5 ? id : b), null);
+    return { type: 'objectif', garde };
+  }
   const ev = has('evenement');
   if (ev) {
     const idx = ev.targets.reduce((b, i) => (b === null || p.ferms[i].u * RECETTES[p.ferms[i].st].prix < p.ferms[b].u * RECETTES[p.ferms[b].st].prix ? i : b), null);
@@ -257,7 +298,7 @@ export function aiAction(s, pi) {
   }
   // 2. Salle de dégustation
   const sa = has('salle');
-  if (sa && unites(p) > reserve(s, pi)) return { type: 'salle', style: sa.styles.reduce((b, x) => (RECETTES[x].prix > RECETTES[b].prix ? x : b)) };
+  if (sa && unites(p) > reserve(s, pi) && !(p.objectif === 'grossiste' && cpt(p).marche < 10)) return { type: 'salle', style: sa.styles.reduce((b, x) => (RECETTES[x].prix > RECETTES[b].prix ? x : b)) };
   // 3. Négocier s'il manque une matière (avant de poser)
   if (!s.place) { const prop = proposition(s, pi); if (prop) return prop; }
   // 4. Poser l'ouvrier

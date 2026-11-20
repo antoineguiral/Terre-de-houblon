@@ -6,6 +6,7 @@ async function step(page, c) {
   if (await page.locator('#modal:not([hidden])').count()) {
     const box = page.locator('#modalBox'), title = (await box.locator('h2').textContent()) || '';
     if (/emporte/.test(title)) { bump('fin vue'); return 'fini'; }
+    if (/objectif secret/.test(title)) { bump('objectif'); await box.locator('[data-obj]').first().click(); return true; }
     if (/Contamination|Canicule/.test(title)) { bump('perte'); await box.locator('[data-ferm]').first().click(); return true; }
     if (/Concours|Salon/.test(title)) { bump('concours'); await box.locator('[data-style]').first().click(); return true; }
     if (/Offre de/.test(title)) { bump('offre reçue'); const acc = box.locator('[data-y]:not(:disabled)'); try { if (await acc.count() && c['offre reçue'] % 2) { await acc.click({ timeout: 1500 }); bump('offre acceptée'); } else await box.locator('[data-n]').click({ timeout: 1500 }); } catch { bump('offre disparue'); } return true; }
@@ -31,6 +32,7 @@ async function step(page, c) {
     if (await click('#file [data-act="poser"]', 'livraison')) return true;
     return click('#file [data-act="cancel"]', 'annulation');
   }
+  if (await click('#file [data-act="livrer"]', 'livraison camion')) return true;
   if (await click('#brasser [data-act="brasser"]', 'brassin')) return true;
   if (await click('[data-act="salle"]', 'salle')) return true;
   if (await tuile('[data-case="tournee"]', 'tournée')) return true;

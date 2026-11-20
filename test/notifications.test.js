@@ -42,7 +42,7 @@ describe('notifications e-mail', () => {
     assert.equal(mails.length, 1);
     const m = mails[0];
     assert.equal(m.to, 'moi@exemple.fr');
-    assert.match(m.subject, new RegExp(`À toi de poser ton 1er ouvrier \\(partie ${salle.code}, Printemps an 1\\)`));
+    assert.match(m.subject, new RegExp(`Choisis ton objectif secret \\(partie ${salle.code}\\)`));
     assert.ok(m.html.includes(`https://jeu.test/#p=${jeton}`));
     assert.ok(m.text.includes(`https://jeu.test/desabonner?jeton=${jeton}`));
     assert.equal(m.unsubscribe, `https://jeu.test/desabonner?jeton=${jeton}`);

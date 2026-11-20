@@ -63,9 +63,10 @@ describe('salle', () => {
     const { deps, clock, tours } = setup();
     const { salle } = Salle.creer({ nom: 'Lent', humains: 1, mode: 'direct', delai: 60 }, deps);
     salle.demarrer(0);
-    // les IA qui jouent avant l'humain jouent d'abord
+    // l'humain choisit son objectif, puis les IA qui jouent avant lui jouent d'abord
+    playHuman(salle, clock, 0, () => !salle.etat.pending);
     for (let n = 0; n < 100 && !waitingFor(salle.etat).includes(0); n++) clock.advance(100);
-    assert.deepEqual(tours, [0]);
+    assert.ok(tours.length >= 1 && tours.every((i) => i === 0), 'seule la place humaine est prévenue');
     const deadline = salle.meta.echeances[0];
     assert.ok(deadline > clock.now() + 59000 && deadline <= clock.now() + 60000, 'échéance à 60 s');
     const turn = salle.etat.turn, nlog = salle.etat.log.length;
@@ -131,7 +132,7 @@ describe('salle', () => {
     const { deps, clock } = setup();
     const { salle } = Salle.creer({ nom: 'Liste', humains: 1, mode: 'direct', delai: 60 }, deps);
     salle.demarrer(0);
-    playHuman(salle, clock, 0, () => salle.etat.phase === 'main');
+    playHuman(salle, clock, 0, () => salle.etat.saison >= 0);
     assert.match(salle.resume(0).saison, /^Printemps an 1$/);
   });
 });

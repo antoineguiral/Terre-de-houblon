@@ -3,7 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createGame, applyAction, legalActions, waitingFor, deciders, viewFor, aiStep, aiAction, score, unites,
-  STYLES, RES, RECETTES, CASES, STOCK_MAX, CUVE, AMELIORATIONS, NB_SAISONS, FILE, DEPART, REP_DERNIER, SAISONS, DEMANDE, CONCOURS, EVT,
+  STYLES, RES, RECETTES, CASES, STOCK_MAX, CUVE, AMELIORATIONS, NB_SAISONS, FIN_REP, FILE, DEPART, REP_DERNIER, SAISONS, DEMANDE, CONCOURS, EVT, EVENEMENTS,
+  OBJECTIFS, OUVRIERS_DEPART, CLIENTS,
 } from '../moteur/index.js';
 import { playOut } from '../outils/simulation.js';
 
@@ -25,23 +26,39 @@ function dote(s, pi, { res = {}, argent = null, stock = {}, upg = null } = {}) {
   return c;
 }
 // Force les dés de la saison courante (météo normale, pas d'événement) pour des tests déterministes
-function calme(s) { const c = structuredClone(s); c.meteo = 3; c.evt = null; c.ferme = []; c.prixBonus = 0; c.critique = false; c.invite = false; c.pending = null; return c; }
+function calme(s) { const c = structuredClone(s); c.meteo = 3; c.evt = null; c.ferme = []; c.prixBonus = 0; c.critique = false; c.invite = false; c.pending = null; c.prixMatiere = null; c.bonusKind = null; c.marcheFixe = false; c.recolteBonus = {}; return c; }
 
-test('création : première saison lancée, dés, file de clients, départ, dernier joueur +1 Réputation', () => {
-  const s = createGame({ seed: 7, players: P4 });
+test('création : objectifs à choisir, puis première saison lancée, dés, file de clients, départ, dernier joueur +1 Réputation', () => {
+  let s = createGame({ seed: 7, players: P4 });
   assert.equal(s.phase, 'main');
+  assert.equal(s.saison, -1, 'la saison attend le choix des objectifs');
+  assert.equal(s.pending.type, 'objectif');
+  assert.deepEqual(waitingFor(s), [0, 1, 2, 3]);
+  s.players.forEach((p) => assert.equal(p.objectifs.length, 2));
+  const v = viewFor(s, 0);
+  assert.equal(typeof v.players[1].objectifs, 'number', 'les cartes des autres sont cachées');
+  ko(applyAction(s, 0, { type: 'objectif', garde: 'xyz' }), /parmi/);
+  ko(applyAction(s, 0, { type: 'poser', case: 'champA' }), /attente/);
+  const choix = s.players[0].objectifs[1];
+  s = ok(applyAction(s, 0, { type: 'objectif', garde: choix }));
+  assert.equal(s.players[0].objectif, choix);
+  assert.equal(viewFor(s, 1).players[0].objectif, true, 'le choix des autres reste secret');
+  while (s.pending) s = aiStep(s).state;
   assert.equal(s.saison, 0);
   assert.ok(s.meteo >= 1 && s.meteo <= 6 && s.de >= 1 && s.de <= 6);
+  assert.equal(s.evt, EVENEMENTS.printemps[s.de], 'une face, un événement');
   assert.deepEqual(s.demande, DEMANDE.printemps);
   assert.ok(s.file.length >= FILE);
-  assert.equal(s.file.length + s.deck.length + (s.evt === 'mairie' ? -1 : 0), 40);
+  assert.equal(s.file.length + s.deck.length + (s.evt === 'mairie' ? -1 : 0), CLIENTS.length);
   s.players.forEach((p, i) => {
     assert.deepEqual(p.res, DEPART.res);
     assert.equal(p.argent, DEPART.argent);
-    assert.equal(p.ouv, 2);
+    assert.equal(p.ouv, OUVRIERS_DEPART);
     assert.equal(p.rep, i === (s.first + 3) % 4 ? REP_DERNIER : 0);
   });
   assert.throws(() => createGame({ players: [{ name: 'Seul' }] }));
+  // sans objectifs : la saison démarre tout de suite
+  assert.equal(createGame({ seed: 7, players: P4, objectifs: false }).saison, 0);
 });
 
 test('poser : une case prise est prise, un deuxième ouvrier sur un champ récolte un de moins, hiver fermé', () => {
@@ -131,25 +148,35 @@ test('marché aux matières : jusqu’à 3, payées ; marché aux bières : prix
   ok(applyAction(s, r, { type: 'poser', case: 'marcheBieres', ventes: { ipa: 1 } }));
 });
 
-test('tournée : une par joueur et par saison, client pris de la file, argent et réputation, festival en saison', () => {
+test('tournée : ouverte à tous, client pris de la file, argent et réputation, cave au choix, camion, festival en saison', () => {
   let s = calme(prete(11));
   const pi = s.cur;
   s = dote(s, pi, { stock: { blonde: 4, stout: 2, garde: 2 } });
-  const bar = s.file.find((c) => c.kind === 'bar' && c.style === null);
-  if (bar) {
-    const rep0 = s.players[pi].rep, arg0 = s.players[pi].argent;
-    ko(applyAction(s, pi, { type: 'poser', case: 'tournee', client: bar.id }), /Choisis un style/);
-    s = ok(applyAction(s, pi, { type: 'poser', case: 'tournee', client: bar.id, style: 'blonde' }));
-    assert.equal(s.players[pi].argent, arg0 + RECETTES.blonde.prix + bar.bonus);
-    assert.equal(s.players[pi].rep, rep0 + bar.rep + (s.demande.includes('blonde') ? 1 : 0));
-    assert.ok(!s.file.some((c) => c.id === bar.id));
-    assert.equal(s.file.length, FILE, 'la file est complétée');
-    assert.ok(s.tournee.includes(pi));
-    s = ok(applyAction(s, pi, { type: 'endTurn' }));
-    // même joueur, deuxième ouvrier : plus de tournée
-    while (s.cur !== pi && s.phase === 'main' && s.saison === 0) s = aiStep(s).state;
-    if (s.cur === pi && s.saison === 0) assert.ok(!legalActions(s, pi).find((x) => x.type === 'poser')?.targets.some((t) => t.case === 'tournee'));
-  }
+  const bar = { id: 'b', kind: 'bar', nom: 'Test', style: null, n: 1, bonus: 0, rep: 1 };
+  const cave = { id: 'c', kind: 'cave', nom: 'Cave', style: null, styles: ['stout', 'garde'], n: 1, bonus: 3, rep: 3 };
+  s.file[0] = bar; s.file[1] = cave;
+  const rep0 = s.players[pi].rep, arg0 = s.players[pi].argent;
+  ko(applyAction(s, pi, { type: 'poser', case: 'tournee', client: bar.id }), /Choisis un style/);
+  ko(applyAction(s, pi, { type: 'poser', case: 'tournee', client: cave.id, style: 'blonde' }), /Choisis un style/);
+  ko(applyAction(s, pi, { type: 'poser', case: 'tournee', livraisons: [{ client: bar.id, style: 'blonde' }, { client: cave.id, style: 'garde' }] }), /Camion/);
+  s = ok(applyAction(s, pi, { type: 'poser', case: 'tournee', client: bar.id, style: 'blonde' }));
+  assert.equal(s.players[pi].argent, arg0 + RECETTES.blonde.prix + bar.bonus);
+  assert.equal(s.players[pi].rep, rep0 + bar.rep + (s.demande.includes('blonde') ? 1 : 0));
+  assert.ok(!s.file.some((c) => c.id === bar.id));
+  assert.equal(s.file.length, FILE, 'la file est complétée');
+  assert.equal(s.players[pi].cpt.bar, 1);
+  s = ok(applyAction(s, pi, { type: 'endTurn' }));
+  // le joueur suivant peut aussi faire une tournée, et avec le camion, livrer deux clients d'un coup
+  const q = s.cur;
+  s = dote(s, q, { stock: { stout: 1, garde: 1 }, upg: ['camion'] });
+  s.file[1] = { ...cave, id: 'c2' };
+  const pose = legalActions(s, q).find((x) => x.type === 'poser').targets.find((t) => t.case === 'tournee');
+  assert.equal(pose.max, 2);
+  assert.ok(pose.clients.find((c) => c.id === 'c').styles.includes('garde'));
+  s = ok(applyAction(s, q, { type: 'poser', case: 'tournee', livraisons: [{ client: 'c', style: 'stout' }, { client: 'c2', style: 'garde' }] }));
+  assert.equal(s.players[q].cpt.cave, 2);
+  assert.equal(s.players[q].cpt.livre.garde, 1);
+  assert.equal(s.log.at(-1).livraisons.length, 2);
   // festival : +2 pendant sa saison, pas en dehors
   const f = structuredClone(calme(prete(12)));
   const fest = { id: 'x', kind: 'fest', nom: 'Test', style: 'blonde', n: 2, bonus: 1, rep: 2, saison: 0 };
@@ -162,7 +189,7 @@ test('tournée : une par joueur et par saison, client pris de la file, argent et
   assert.equal(vOut.log.at(-1).rep, 2 + (f.demande.includes('blonde') ? 1 : 0));
 });
 
-test('chantier : équipements, fermenteurs jusqu’à 4, embauche, salle une fois par saison', () => {
+test('chantier : équipements, fermenteurs jusqu’à 4, camion, salle une fois par saison', () => {
   let s = calme(prete(4));
   const pi = s.cur;
   s = dote(s, pi, { argent: 100, stock: { stout: 3 } });
@@ -176,14 +203,14 @@ test('chantier : équipements, fermenteurs jusqu’à 4, embauche, salle une foi
   assert.equal(s.players[pi].nferm, 4);
   const c4 = structuredClone(s); c4.place = false; c4.restants[pi] = 1;
   ko(applyAction(c4, pi, { type: 'poser', case: 'chantier', u: 'ferm' }), /déjà/);
-  s = again(s, 'embauche');
-  assert.equal(s.players[pi].ouv, 3);
+  s = again(s, 'camion');
+  assert.ok(s.players[pi].upg.includes('camion'));
   s = again(s, 'salle');
   const a0 = s.players[pi].argent;
   s = ok(applyAction(s, pi, { type: 'salle', style: 'stout' }));
   assert.equal(s.players[pi].argent, a0 + RECETTES.stout.prix + 1);
   ko(applyAction(s, pi, { type: 'salle', style: 'stout' }), /déjà servi/);
-  ko(applyAction(s, pi, { type: 'poser', case: 'chantier', u: 'camion' }), /inconnue|déjà/);
+  ko(applyAction(s, pi, { type: 'poser', case: 'chantier', u: 'embauche' }), /inconnue|déjà/);
 });
 
 test('fin de saison : fermentations, prix qui remontent, client le plus ancien défaussé, stock vendu d’office, ouvriers de retour, rotation', () => {
@@ -200,8 +227,10 @@ test('fin de saison : fermentations, prix qui remontent, client le plus ancien d
     if (t.saison !== 0) break;
     const pose = legalActions(t, t.cur).find((x) => x.type === 'poser');
     const ch = pose?.targets.find((x) => CASES[x.case].recolte);
+    const mb = pose?.targets.find((x) => x.case === 'marcheBieres');
     if (ch) t = ok(applyAction(t, t.cur, { type: 'poser', case: ch.case }));
-    else if (pose) t = ok(applyAction(t, t.cur, { type: 'poser', case: 'marcheBieres', ventes: { [pose.targets.find((x) => x.case === 'marcheBieres')?.styles[0] ?? 'blonde']: 1 } })).state ?? t;
+    else if (mb) t = ok(applyAction(t, t.cur, { type: 'poser', case: 'marcheBieres', ventes: { [mb.styles[0]]: 1 } }));
+    else if (pose) t = ok(applyAction(t, t.cur, { type: 'poser', case: 'chantier', u: pose.targets.find((x) => x.case === 'chantier').targets[0] }));
     t = ok(applyAction(t, t.cur, { type: 'endTurn' }));
   }
   assert.equal(t.saison, 1);
@@ -248,8 +277,16 @@ test('événements : contamination, inspection, douanes, concours, grève, pénu
   ko(applyAction(g, pi, { type: 'poser', case: 'tournee', client: g.file[0].id, style: 'blonde' }), /fermée/);
   const pn = structuredClone(s); pn.ferme = ['marcheMat'];
   ko(applyAction(pn, pi, { type: 'poser', case: 'marcheMat', achats: { malt: 1 } }), /fermée/);
-  // les douanes et l'inspection s'appliquent d'elles-mêmes au début d'une saison : vérifié sur des parties complètes
-  assert.ok(Object.keys(EVT).length >= 16);
+  // coopérative et gel : prix des matières ; grand marché : les prix ne bougent pas ; terrasses : les bars paient plus
+  const co = structuredClone(s); co.prixMatiere = 1; co.players[pi].argent = 3;
+  assert.equal(ok(applyAction(co, pi, { type: 'poser', case: 'marcheMat', achats: { malt: 3 } })).players[pi].argent, 0);
+  const gm = structuredClone(s); gm.marcheFixe = true; gm.players[pi].stock.blonde = 3;
+  assert.equal(ok(applyAction(gm, pi, { type: 'poser', case: 'marcheBieres', ventes: { blonde: 3 } })).prix.blonde, RECETTES.blonde.prix);
+  const te = structuredClone(s); te.bonusKind = { bar: 1 }; te.players[pi].stock.blonde = 1; te.file[0] = { id: 'b', kind: 'bar', nom: 'T', style: null, n: 1, bonus: 0, rep: 1 };
+  assert.equal(ok(applyAction(te, pi, { type: 'poser', case: 'tournee', client: 'b', style: 'blonde' })).log.at(-1).argent, RECETTES.blonde.prix + 1);
+  // chaque saison a un événement par face
+  SAISONS.forEach((n) => assert.deepEqual(Object.keys(EVENEMENTS[n]).map(Number), [1, 2, 3, 4, 5, 6]));
+  assert.ok(Object.values(EVENEMENTS).flatMap(Object.values).every((e) => EVT[e]));
 });
 
 test('échanges : matières, bière et Argent ; contre-proposition ; conclusion', () => {
@@ -270,15 +307,22 @@ test('échanges : matières, bière et Argent ; contre-proposition ; conclusion'
   assert.equal(s.players[autre].stock.blonde, 1);
 });
 
-test('fin de partie : 12 saisons, décompte, départage', () => {
+test('fin de partie : à la réputation de fin ou après 12 saisons, décompte avec l’objectif, départage', () => {
   const { s } = playOut(3);
   assert.equal(s.phase, 'over');
-  assert.equal(s.saison, NB_SAISONS - 1);
+  if (s.finie === 'reputation') assert.ok(s.players.some((p) => p.rep >= FIN_REP));
+  else assert.equal(s.saison, NB_SAISONS - 1);
   s.players.forEach((p, i) => {
     const sc = score(s, i);
-    assert.equal(sc.total, p.rep + sc.diversite + Math.floor(p.argent / 8));
+    assert.equal(sc.objectif, OBJECTIFS[p.objectif].test(p) ? OBJECTIFS[p.objectif].pts : 0);
+    assert.equal(sc.total, p.rep + sc.objectif + Math.floor(p.argent / 8));
     assert.deepEqual(s.scores[i], sc);
+    assert.equal(typeof viewFor(s, 0).players[i].objectifOk, 'boolean', 'objectifs révélés à la fin');
   });
+  // durée fixe sans objectifs
+  const { s: f } = playOut(4, { finRep: 0, objectifs: false });
+  assert.equal(f.saison, NB_SAISONS - 1);
+  assert.equal(f.scores[0].objectif, 0);
   assert.equal(s.scores[s.winner].total, Math.max(...s.scores.map((x) => x.total)));
   ko(applyAction(s, s.winner, { type: 'endTurn' }), /terminée/);
 });

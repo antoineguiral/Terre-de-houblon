@@ -82,8 +82,12 @@ export function creerNotifier({ publicUrl, envoyer, base, now, setTimeout, clear
     const s = salle.etat, nom = s.players[siege].name, echeance = salle.meta.echeances[siege];
     const limite = echeance ? `Tu as jusqu'à ${dateLimite(echeance)} ; ensuite, l'ordinateur jouera ce tour à ta place.` : '';
     const SAISON_NOM = ['Printemps', 'Été', 'Automne', 'Hiver'];
-    const saison = `${SAISON_NOM[s.saison % 4]} an ${Math.floor(s.saison / 4) + 1}`;
+    const saison = s.saison >= 0 ? `${SAISON_NOM[s.saison % 4]} an ${Math.floor(s.saison / 4) + 1}` : 'début de partie';
     const evt = s.pending?.need?.[siege] ? s.pending.kind : null;
+    if (evt === 'objectif') {
+      return { sujet: `Choisis ton objectif secret (partie ${salle.code})`, titre: 'La partie commence', bouton: 'Choisir mon objectif',
+        lignes: [`${esc(nom)}, la partie est lancée : choisis l'objectif secret que tu gardes parmi tes deux cartes.`, limite] };
+    }
     if (evt) {
       const EVT = { contamination: ['Contamination', 'une levure sauvage s’est invitée : choisis le brassin qui perd 1 unité'], canicule: ['Canicule', 'il fait trop chaud : choisis le brassin qui perd 1 unité'], concours: ['Concours régional', 'présente une unité de ton stock'], salon: ['Salon des brasseurs', 'présente une unité de ton stock'] };
       const [titre, txt] = EVT[evt];

@@ -123,3 +123,15 @@ Même jeu, vraie IA, échanges compris (`npm run simulation -- 500 compagnon 4`)
 - Chaque événement sort une fois sur deux par partie.
 
 Les valeurs sont des points de départ. Jouer d'abord ; simuler ensuite si on hésite entre deux réglages (`npm run simulation`, ou `simulation-table.py` pour une variante rapide sans IA).
+
+## Deuxième version, après la première partie sur table (novembre 2026)
+
+Le retour de table : l'événement sortait trop rarement (deux faces sur six à vide), la partie était longue et sa fin sans tension, la Tournée à une place par joueur laissait peu à faire, pas assez de secret entre joueurs, trop de Stout et de Garde chez les clients. Ce qui a changé, et ce que dit la simulation (400 parties à 4, IA Compagnon) :
+
+- **Un événement par face.** Six par saison ; les deux nouvelles faces sont des bonus de prix ou de récolte (Coopérative, Belle levée, Touristes, Terrasses, Foire aux vins, Grand marché, Gel, Bilan de l'année). Le dé météo reste.
+- **Fin à 30 de réputation**, à la fin de la saison, plafond 12 saisons. Durée moyenne 8,9 saisons (6 à 12), 98 % des parties finies par la réputation. À 25 : 7,5 saisons ; à 35 : 10,2 ; à 40 : 11,3 et 38 % de parties qui vont au bout.
+- **Tournée ouverte à tous, 3 ouvriers d'entrée, Embauche remplacée par le Camion** (la Tournée livre 2 clients). 6,6 clients livrés par joueur, 0,9 ouvrier perdu par partie.
+- **Objectifs secrets** à la place de la diversité : 2 piochés, 1 gardé. Réussite de 39 % (Médaillé) à 96 % (Gamme complète, 3 points seulement) ; la plupart entre 50 et 60 %. La Commande de la mairie n'est presque jamais livrée par l'IA (3 unités du même style) : Fournisseur officiel reste un pari.
+- **Clients** : 44 cartes, les caves acceptent Stout ou Garde, les festivals penchent Blonde et IPA (5 / 5 / 2 / 2).
+
+Victoires selon le rang : 26 / 27 / 23 / 24 %. Score moyen 37 : réputation 26, objectif 2,4, Argent 8,8. L'Argent pèse près d'un quart du score, à surveiller maintenant que la fin se déclenche à la réputation : un joueur riche peut laisser un autre sonner la fin et gagner au décompte. Si ça se voit sur table, passer à 1 point par 10 Argent.
