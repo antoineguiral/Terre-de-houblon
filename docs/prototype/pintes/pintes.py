@@ -134,7 +134,14 @@ if __name__ == '__main__':
         for i in range(12):
             c = mesh.copy(); c.apply_translation(((i % 6) * 26, k * 64 + (i // 6) * 32, 0)); plateau.append(c)
     trimesh.util.concatenate(plateau).export(os.path.join(ICI, 'plateau-48.stl'))
+    # une plaque de 24 par forme (6 × 4), 156 × 128 mm : une couleur de filament par plaque
+    for st in STYLES:
+        mesh, _, _ = jeton(st)
+        pieces = []
+        for i in range(24):
+            c = mesh.copy(); c.apply_translation(((i % 6) * 26, (i // 6) * 32, 0)); pieces.append(c)
+        trimesh.util.concatenate(pieces).export(os.path.join(ICI, f'plaque-{st}-24.stl'))
     with open(os.path.join(ICI, 'pintes.scad'), 'w') as f:
         f.write(scad(formes))
     apercu(formes)
-    print('écrit : pintes.scad, pinte-*.stl, plateau-48.stl, apercu.png')
+    print('écrit : pintes.scad, pinte-*.stl, plateau-48.stl, plaque-*-24.stl, apercu.png')
